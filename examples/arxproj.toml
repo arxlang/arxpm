@@ -1,0 +1,17 @@
+[project]
+name = "hello-arx"
+version = "0.1.0"
+edition = "2026"
+
+[build]
+entry = "src/main.arx"
+out_dir = "build"
+
+[dependencies]
+http = { source = "registry" }
+mylib = { path = "../mylib" }
+utils = { git = "https://example.com/utils.git" }
+
+[toolchain]
+compiler = "arx"
+linker = "clang"

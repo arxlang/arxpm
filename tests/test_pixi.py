@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 import tomllib
 
@@ -20,11 +21,11 @@ class Recorder:
 
     def __call__(
         self,
-        command: list[str],
+        command: Sequence[str],
         cwd: Path | None = None,
         check: bool = False,
     ) -> CommandResult:
-        self.calls.append((command, cwd, check))
+        self.calls.append((list(command), cwd, check))
         return CommandResult(tuple(command), 0, "", "")
 
 

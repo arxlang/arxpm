@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 from arxpm.cli import app
@@ -29,7 +30,7 @@ class PassingDoctorService:
 
 def test_init_command_creates_project_files(
     tmp_path: Path,
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.chdir(tmp_path)
 
@@ -42,7 +43,7 @@ def test_init_command_creates_project_files(
 
 def test_add_command_writes_registry_dependency(
     tmp_path: Path,
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.chdir(tmp_path)
     runner.invoke(app, ["init", "--name", "demo", "--no-pixi"])
@@ -54,7 +55,9 @@ def test_add_command_writes_registry_dependency(
     assert '"http" = { source = "registry" }' in manifest
 
 
-def test_install_command_surfaces_human_error(monkeypatch) -> None:
+def test_install_command_surfaces_human_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(
         "arxpm.cli.ProjectService",
         FailingInstallProjectService,
@@ -68,7 +71,7 @@ def test_install_command_surfaces_human_error(monkeypatch) -> None:
 
 def test_install_command_requires_manifest(
     tmp_path: Path,
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(app, ["install"])
@@ -76,7 +79,9 @@ def test_install_command_requires_manifest(
     assert "manifest not found" in result.output
 
 
-def test_doctor_command_reports_success(monkeypatch) -> None:
+def test_doctor_command_reports_success(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr("arxpm.cli.DoctorService", PassingDoctorService)
 
     result = runner.invoke(app, ["doctor"])

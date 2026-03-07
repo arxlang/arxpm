@@ -4,10 +4,24 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol
 
 from arxpm.errors import ManifestError
 from arxpm.manifest import MANIFEST_FILENAME
 from arxpm.pixi import PIXI_FILENAME, PixiService
+
+
+class DoctorPixiAdapter(Protocol):
+    """Doctor-level pixi adapter protocol."""
+
+    def is_available(self) -> bool:
+        """Return whether pixi is available."""
+
+    def pixi_path(self, directory: Path) -> Path:
+        """Return pixi.toml path."""
+
+    def declared_dependencies(self, directory: Path) -> set[str]:
+        """Return declared dependencies from pixi.toml."""
 
 
 @dataclass(slots=True, frozen=True)
@@ -34,7 +48,7 @@ class DoctorReport:
 class DoctorService:
     """Environment and manifest diagnostics."""
 
-    def __init__(self, pixi: PixiService | None = None) -> None:
+    def __init__(self, pixi: DoctorPixiAdapter | None = None) -> None:
         self._pixi = pixi or PixiService()
 
     def run(self, directory: Path) -> DoctorReport:

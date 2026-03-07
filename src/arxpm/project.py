@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol
 
 from arxpm.errors import ManifestError, MissingCompilerError
 from arxpm.external import CommandResult
@@ -16,6 +17,27 @@ from arxpm.models import DependencySpec, Manifest
 from arxpm.pixi import PixiService
 
 _MAIN_SOURCE = 'fn main() {\n    print("Hello, Arx!");\n}\n'
+
+
+class ProjectPixiAdapter(Protocol):
+    """Project-level pixi adapter protocol."""
+
+    def ensure_available(self) -> None:
+        """Validate pixi availability."""
+
+    def ensure_manifest(
+        self,
+        directory: Path,
+        project_name: str,
+        required_dependencies: tuple[str, ...],
+    ) -> Path:
+        """Create or sync project pixi manifest."""
+
+    def install(self, directory: Path) -> CommandResult:
+        """Install pixi environment."""
+
+    def run(self, directory: Path, args: list[str]) -> CommandResult:
+        """Run a command with pixi."""
 
 
 @dataclass(slots=True, frozen=True)
@@ -38,7 +60,7 @@ class RunResult:
 class ProjectService:
     """High-level project workflows."""
 
-    def __init__(self, pixi: PixiService | None = None) -> None:
+    def __init__(self, pixi: ProjectPixiAdapter | None = None) -> None:
         self._pixi = pixi or PixiService()
 
     def init(

@@ -46,7 +46,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        run: makim release.ci
+        run: |
+          poetry config pypi-token.pypi ${PYPI_TOKEN}
+          makim release.ci
 
       - name: Generate documentation with changes from release process
         if: ${{ github.event_name == 'workflow_dispatch' }}

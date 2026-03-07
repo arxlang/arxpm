@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Mapping
 import json
 from pathlib import Path
+import re
 import shutil
 import tomllib
 from typing import Any
@@ -16,6 +17,7 @@ PIXI_FILENAME = "pixi.toml"
 DEFAULT_CHANNELS = ("conda-forge",)
 DEFAULT_PLATFORMS = ("linux-64", "osx-64", "win-64")
 BASE_DEPENDENCIES = ("python", "clang")
+_SIMPLE_KEY_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 class PixiService:
@@ -51,28 +53,38 @@ class PixiService:
         project_name: str,
         required_dependencies: Iterable[str] = BASE_DEPENDENCIES,
     ) -> Path:
-        """Create or update a minimal pixi.toml."""
+        """Create or partially sync pixi.toml for arxpm-managed fields."""
         path = self.pixi_path(directory)
-        data = _load_pixi_data(path) if path.exists() else {}
-
-        project = _normalize_project(data.get("project"), project_name)
-        dependencies = _normalize_dependencies(data.get("dependencies"))
-
-        changed = not path.exists()
-        for dependency in required_dependencies:
-            key = dependency.strip()
-            if not key:
-                continue
-            if key not in dependencies:
-                dependencies[key] = "*"
-                changed = True
-
-        if changed:
+        required = _normalize_required(required_dependencies)
+        if not path.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
-            text = render_pixi_manifest(project, dependencies)
+            text = render_minimal_manifest(project_name, required)
             path.write_text(text, encoding="utf-8")
+            return path
 
+        original = path.read_text(encoding="utf-8")
+        data = _load_pixi_data(path)
+        existing = _declared_dependency_names(data)
+        missing = [name for name in required if name not in existing]
+
+        updated = original
+        if missing:
+            updated = _insert_dependency_entries(updated, missing)
+        if not _has_arxpm_section(data):
+            updated = _append_arxpm_section(updated, required)
+
+        if updated != original:
+            _validate_toml_text(updated, path)
+            path.write_text(updated, encoding="utf-8")
         return path
+
+    def declared_dependencies(self, directory: Path) -> set[str]:
+        """Return declared pixi dependency names."""
+        path = self.pixi_path(directory)
+        if not path.exists():
+            return set()
+        data = _load_pixi_data(path)
+        return _declared_dependency_names(data)
 
     def install(self, directory: Path) -> CommandResult:
         """Run pixi install in a project directory."""
@@ -109,6 +121,23 @@ def render_pixi_manifest(
     return "\n".join(lines) + "\n"
 
 
+def render_minimal_manifest(
+    project_name: str,
+    required_dependencies: Iterable[str] = BASE_DEPENDENCIES,
+) -> str:
+    """Render a minimal pixi.toml for arxpm bootstrap."""
+    required = _normalize_required(required_dependencies)
+    project = {
+        "name": project_name,
+        "version": "0.1.0",
+        "channels": list(DEFAULT_CHANNELS),
+        "platforms": list(DEFAULT_PLATFORMS),
+    }
+    dependencies = {name: "*" for name in required}
+    text = render_pixi_manifest(project, dependencies)
+    return _append_arxpm_section(text, required)
+
+
 def _load_pixi_data(path: Path) -> dict[str, Any]:
     try:
         with path.open("rb") as stream:
@@ -121,60 +150,109 @@ def _load_pixi_data(path: Path) -> dict[str, Any]:
     return data
 
 
-def _normalize_project(raw: Any, project_name: str) -> dict[str, Any]:
-    if raw is None:
-        raw = {}
-    if not isinstance(raw, Mapping):
-        raise ManifestError("pixi [project] must be a table")
-
-    name = raw.get("name", project_name)
-    version = raw.get("version", "0.1.0")
-    channels = raw.get("channels", list(DEFAULT_CHANNELS))
-    platforms = raw.get("platforms", list(DEFAULT_PLATFORMS))
-
-    if not isinstance(name, str) or not name.strip():
-        raise ManifestError("pixi project.name must be a non-empty string")
-    if not isinstance(version, str) or not version.strip():
-        raise ManifestError("pixi project.version must be a non-empty string")
-
-    return {
-        "name": name,
-        "version": version,
-        "channels": _normalize_array(channels, "project.channels"),
-        "platforms": _normalize_array(platforms, "project.platforms"),
-    }
+def _validate_toml_text(text: str, path: Path) -> None:
+    try:
+        tomllib.loads(text)
+    except tomllib.TOMLDecodeError as exc:
+        raise ManifestError(f"invalid TOML in {path}: {exc}") from exc
 
 
-def _normalize_dependencies(raw: Any) -> dict[str, str]:
-    if raw is None:
-        return {}
-    if not isinstance(raw, Mapping):
+def _declared_dependency_names(data: Mapping[str, Any]) -> set[str]:
+    dependencies_raw = data.get("dependencies")
+    if dependencies_raw is None:
+        return set()
+    if not isinstance(dependencies_raw, Mapping):
         raise ManifestError("pixi [dependencies] must be a table")
 
-    parsed: dict[str, str] = {}
-    for key, value in raw.items():
+    names: set[str] = set()
+    for key in dependencies_raw:
         if not isinstance(key, str) or not key.strip():
             raise ManifestError("pixi dependency name must be non-empty")
-        if not isinstance(value, str) or not value.strip():
-            raise ManifestError(
-                f"pixi dependency {key!r} must be a non-empty string"
-            )
-        parsed[key] = value
-    return parsed
+        names.add(key)
+    return names
 
 
-def _normalize_array(raw: Any, label: str) -> list[str]:
-    if not isinstance(raw, list):
-        raise ManifestError(f"pixi {label} must be an array of strings")
+def _normalize_required(required: Iterable[str]) -> tuple[str, ...]:
+    cleaned = {value.strip() for value in required if value.strip()}
+    return tuple(sorted(cleaned))
 
-    parsed: list[str] = []
-    for item in raw:
-        if not isinstance(item, str) or not item.strip():
-            raise ManifestError(
-                f"pixi {label} entries must be non-empty strings"
-            )
-        parsed.append(item)
-    return parsed
+
+def _has_arxpm_section(data: Mapping[str, Any]) -> bool:
+    tool = data.get("tool")
+    if not isinstance(tool, Mapping):
+        return False
+    return isinstance(tool.get("arxpm"), Mapping)
+
+
+def _append_arxpm_section(text: str, required: Iterable[str]) -> str:
+    entries = ", ".join(_quote(dep) for dep in required)
+    block = [
+        "[tool.arxpm]",
+        f"managed_dependencies = [{entries}]",
+    ]
+    return _append_table_block(text, block)
+
+
+def _insert_dependency_entries(
+    text: str,
+    dependency_names: Iterable[str],
+) -> str:
+    lines = text.splitlines()
+    table = _find_table_bounds(lines, "dependencies")
+    entries = [f"{_format_key(name)} = \"*\"" for name in dependency_names]
+
+    if table is None:
+        block = ["[dependencies]", *entries]
+        return _append_table_block(text, block)
+
+    _, end = table
+    updated = lines[:end] + entries + lines[end:]
+    return "\n".join(updated) + "\n"
+
+
+def _append_table_block(text: str, block: list[str]) -> str:
+    normalized = text
+    if normalized and not normalized.endswith("\n"):
+        normalized += "\n"
+    if normalized and not normalized.endswith("\n\n"):
+        normalized += "\n"
+    return normalized + "\n".join(block) + "\n"
+
+
+def _find_table_bounds(
+    lines: list[str],
+    table_name: str,
+) -> tuple[int, int] | None:
+    start: int | None = None
+    end = len(lines)
+    for index, line in enumerate(lines):
+        header = _table_header_name(line)
+        if header is None:
+            continue
+        if start is None:
+            if header == table_name:
+                start = index
+            continue
+        end = index
+        break
+    if start is None:
+        return None
+    return (start, end)
+
+
+def _table_header_name(line: str) -> str | None:
+    stripped = line.strip()
+    if not stripped.startswith("[") or not stripped.endswith("]"):
+        return None
+    if stripped.startswith("[["):
+        return None
+    return stripped[1:-1].strip()
+
+
+def _format_key(key: str) -> str:
+    if _SIMPLE_KEY_PATTERN.fullmatch(key):
+        return key
+    return _quote(key)
 
 
 def _array(values: Any) -> str:

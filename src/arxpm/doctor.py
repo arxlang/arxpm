@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-import shutil
 
-from arxpm.errors import ArxpmError, ManifestError
-from arxpm.manifest import load_manifest
-from arxpm.pixi import PixiService
+from arxpm.errors import ManifestError
+from arxpm.manifest import MANIFEST_FILENAME
+from arxpm.pixi import PIXI_FILENAME, PixiService
 
 
 @dataclass(slots=True, frozen=True)
@@ -36,80 +34,103 @@ class DoctorReport:
 class DoctorService:
     """Environment and manifest diagnostics."""
 
-    def __init__(
-        self,
-        pixi: PixiService | None = None,
-        which: Callable[[str], str | None] = shutil.which,
-    ) -> None:
+    def __init__(self, pixi: PixiService | None = None) -> None:
         self._pixi = pixi or PixiService()
-        self._which = which
 
     def run(self, directory: Path) -> DoctorReport:
         """Collect health checks for current project."""
         checks: list[DoctorCheck] = []
 
         pixi_ok = self._pixi.is_available()
-        pixi_message = (
-            "pixi is available"
-            if pixi_ok
-            else "pixi is not available on PATH"
-        )
+        pixi_message = "pixi is available" if pixi_ok else "pixi is missing"
         checks.append(
             DoctorCheck(name="pixi", ok=pixi_ok, message=pixi_message)
         )
 
-        try:
-            load_manifest(directory)
-        except ManifestError as exc:
-            checks.append(
-                DoctorCheck(
-                    name="manifest",
-                    ok=False,
-                    message=str(exc),
-                )
+        arxproj_path = directory / MANIFEST_FILENAME
+        arxproj_ok = arxproj_path.exists()
+        arxproj_message = (
+            f"{MANIFEST_FILENAME} found"
+            if arxproj_ok
+            else f"{MANIFEST_FILENAME} missing"
+        )
+        checks.append(
+            DoctorCheck(
+                name=MANIFEST_FILENAME,
+                ok=arxproj_ok,
+                message=arxproj_message,
             )
-        else:
-            checks.append(
-                DoctorCheck(
-                    name="manifest",
-                    ok=True,
-                    message="arxproj.toml is valid",
-                )
-            )
+        )
 
-        checks.append(self._check_tool("arx", directory, pixi_ok))
-        checks.append(self._check_tool("clang", directory, pixi_ok))
+        pixi_path = self._pixi.pixi_path(directory)
+        pixi_file_ok = pixi_path.exists()
+        pixi_file_message = (
+            f"{PIXI_FILENAME} found"
+            if pixi_file_ok
+            else f"{PIXI_FILENAME} missing"
+        )
+        checks.append(
+            DoctorCheck(
+                name=PIXI_FILENAME,
+                ok=pixi_file_ok,
+                message=pixi_file_message,
+            )
+        )
+
+        python_declared, clang_declared, detail = self._dependency_checks(
+            directory,
+            pixi_file_ok,
+        )
+        checks.append(
+            DoctorCheck(
+                name="python declared",
+                ok=python_declared,
+                message=detail["python"],
+            )
+        )
+        checks.append(
+            DoctorCheck(
+                name="clang declared",
+                ok=clang_declared,
+                message=detail["clang"],
+            )
+        )
 
         return DoctorReport(checks=tuple(checks))
 
-    def _check_tool(
+    def _dependency_checks(
         self,
-        tool: str,
         directory: Path,
-        pixi_ok: bool,
-    ) -> DoctorCheck:
-        path = self._which(tool)
-        if path is not None:
-            return DoctorCheck(
-                name=tool,
-                ok=True,
-                message=f"{tool} is available at {path}",
-            )
+        pixi_file_ok: bool,
+    ) -> tuple[bool, bool, dict[str, str]]:
+        if not pixi_file_ok:
+            details = {
+                "python": f"{PIXI_FILENAME} missing",
+                "clang": f"{PIXI_FILENAME} missing",
+            }
+            return (False, False, details)
 
-        if pixi_ok:
-            try:
-                self._pixi.run(directory, [tool, "--version"])
-            except ArxpmError:
-                pass
-            else:
-                return DoctorCheck(
-                    name=tool,
-                    ok=True,
-                    message=f"{tool} is available via pixi",
-                )
+        try:
+            dependencies = self._pixi.declared_dependencies(directory)
+        except ManifestError as exc:
+            details = {
+                "python": str(exc),
+                "clang": str(exc),
+            }
+            return (False, False, details)
 
-        return DoctorCheck(
-            name=tool,
-            ok=False,
-            message=f"{tool} is not available",
-        )
+        python_ok = "python" in dependencies
+        clang_ok = "clang" in dependencies
+        details = {
+            "python": (
+                "python is declared in pixi.toml"
+                if python_ok
+                else "python is not declared in pixi.toml"
+            ),
+            "clang": (
+                "clang is declared in pixi.toml"
+                if clang_ok
+                else "clang is not declared in pixi.toml"
+            ),
+        }
+        return (python_ok, clang_ok, details)

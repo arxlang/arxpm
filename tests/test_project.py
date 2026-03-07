@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+from arxpm.errors import ManifestError
 from arxpm.external import CommandResult
 from arxpm.manifest import load_manifest
 from arxpm.project import ProjectService
@@ -86,3 +89,11 @@ def test_install_calls_pixi_install(tmp_path: Path) -> None:
 
     assert pixi.install_calls == [tmp_path]
     assert pixi.ensure_manifest_calls
+
+
+def test_install_requires_arxproj_manifest(tmp_path: Path) -> None:
+    pixi = FakePixiService()
+    service = ProjectService(pixi=pixi)
+
+    with pytest.raises(ManifestError):
+        service.install(tmp_path)

@@ -5,68 +5,77 @@ from __future__ import annotations
 from pathlib import Path
 
 from arxpm.doctor import DoctorService
-from arxpm.errors import ExternalCommandError
-from arxpm.external import CommandResult
+from arxpm.errors import ManifestError
 from arxpm.manifest import create_default_manifest, save_manifest
 
 
 class FakePixiService:
     """Pixi test double for doctor."""
 
-    def __init__(self, available: bool, runnable: set[str]) -> None:
+    def __init__(
+        self,
+        available: bool,
+        dependencies: set[str] | None = None,
+        invalid: bool = False,
+    ) -> None:
         self._available = available
-        self._runnable = runnable
+        self._dependencies = dependencies or set()
+        self._invalid = invalid
 
     def is_available(self) -> bool:
         return self._available
 
-    def run(self, directory: Path, args: list[str]) -> CommandResult:
-        tool = args[0]
-        if tool in self._runnable:
-            return CommandResult(("pixi", "run", *args), 0, "", "")
-        raise ExternalCommandError(("pixi", "run", *args), 1, "not found")
+    @staticmethod
+    def pixi_path(directory: Path) -> Path:
+        return directory / "pixi.toml"
+
+    def declared_dependencies(self, directory: Path) -> set[str]:
+        if self._invalid:
+            raise ManifestError("invalid TOML in pixi.toml")
+        return set(self._dependencies)
 
 
-def test_doctor_ok_with_tools_on_path(tmp_path: Path) -> None:
+def test_doctor_reports_requested_health_checks(tmp_path: Path) -> None:
     save_manifest(tmp_path, create_default_manifest("demo"))
-
-    def which(name: str) -> str | None:
-        if name in {"arx", "clang"}:
-            return f"/usr/bin/{name}"
-        return None
-
+    (tmp_path / "pixi.toml").write_text("[dependencies]\n", encoding="utf-8")
     service = DoctorService(
-        pixi=FakePixiService(available=True, runnable=set()),
-        which=which,
+        pixi=FakePixiService(
+            available=True,
+            dependencies={"python", "clang"},
+        ),
     )
 
     report = service.run(tmp_path)
+    checks = {check.name: check for check in report.checks}
 
-    assert report.ok is True
+    assert checks["pixi"].ok is True
+    assert checks["arxproj.toml"].ok is True
+    assert checks["pixi.toml"].ok is True
+    assert checks["python declared"].ok is True
+    assert checks["clang declared"].ok is True
 
 
-def test_doctor_uses_pixi_for_tools_when_not_on_path(tmp_path: Path) -> None:
+def test_doctor_reports_missing_pixi_manifest(tmp_path: Path) -> None:
     save_manifest(tmp_path, create_default_manifest("demo"))
     service = DoctorService(
-        pixi=FakePixiService(available=True, runnable={"arx", "clang"}),
-        which=lambda _: None,
+        pixi=FakePixiService(available=True, dependencies={"python", "clang"}),
     )
 
     report = service.run(tmp_path)
-
     checks = {check.name: check for check in report.checks}
-    assert checks["arx"].ok is True
-    assert checks["clang"].ok is True
+    assert checks["pixi.toml"].ok is False
+    assert checks["python declared"].ok is False
+    assert checks["clang declared"].ok is False
 
 
-def test_doctor_reports_invalid_manifest(tmp_path: Path) -> None:
-    (tmp_path / "arxproj.toml").write_text("[project]\n", encoding="utf-8")
+def test_doctor_reports_invalid_pixi_file(tmp_path: Path) -> None:
+    save_manifest(tmp_path, create_default_manifest("demo"))
+    (tmp_path / "pixi.toml").write_text("[dependencies]\n", encoding="utf-8")
     service = DoctorService(
-        pixi=FakePixiService(available=False, runnable=set()),
-        which=lambda _: None,
+        pixi=FakePixiService(available=True, invalid=True),
     )
 
     report = service.run(tmp_path)
-
     checks = {check.name: check for check in report.checks}
-    assert checks["manifest"].ok is False
+    assert checks["python declared"].ok is False
+    assert checks["clang declared"].ok is False

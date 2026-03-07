@@ -71,6 +71,38 @@ python = "*"
     assert "clang" in data["dependencies"]
 
 
+def test_partial_sync_preserves_unrelated_sections(tmp_path: Path) -> None:
+    pixi_file = tmp_path / "pixi.toml"
+    pixi_file.write_text(
+        """
+[project]
+name = "demo"
+version = "0.1.0"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "*"
+
+[tasks]
+build = "echo custom"
+
+[feature.dev.dependencies]
+pytest = "*"
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    service = PixiService(which=lambda _: "/usr/bin/pixi")
+    service.ensure_manifest(tmp_path, "demo", ("python", "clang"))
+
+    content = pixi_file.read_text(encoding="utf-8")
+    assert 'build = "echo custom"' in content
+    assert "[feature.dev.dependencies]" in content
+    assert "clang = \"*\"" in content
+
+
 def test_install_and_run_call_runner(tmp_path: Path) -> None:
     recorder = Recorder()
     service = PixiService(runner=recorder, which=lambda _: "/usr/bin/pixi")

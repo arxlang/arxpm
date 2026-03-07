@@ -65,7 +65,7 @@ class ProjectService:
             self._pixi.ensure_manifest(
                 directory,
                 manifest.project.name,
-                required_dependencies=_required_pixi_dependencies(manifest),
+                required_dependencies=_required_pixi_dependencies(),
             )
 
         return manifest
@@ -104,7 +104,7 @@ class ProjectService:
         self._pixi.ensure_manifest(
             directory,
             manifest.project.name,
-            required_dependencies=_required_pixi_dependencies(manifest),
+            required_dependencies=_required_pixi_dependencies(),
         )
         return self._pixi.install(directory)
 
@@ -146,9 +146,5 @@ class ProjectService:
         )
 
 
-def _required_pixi_dependencies(manifest: Manifest) -> tuple[str, ...]:
-    values: set[str] = {"python", "clang"}
-    linker = manifest.toolchain.linker.strip()
-    if linker:
-        values.add(linker)
-    return tuple(sorted(values))
+def _required_pixi_dependencies() -> tuple[str, ...]:
+    return ("clang", "python")

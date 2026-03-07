@@ -66,6 +66,16 @@ def test_install_command_surfaces_human_error(monkeypatch) -> None:
     assert "pixi is missing" in result.output
 
 
+def test_install_command_requires_manifest(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["install"])
+    assert result.exit_code == 1
+    assert "manifest not found" in result.output
+
+
 def test_doctor_command_reports_success(monkeypatch) -> None:
     monkeypatch.setattr("arxpm.cli.DoctorService", PassingDoctorService)
 

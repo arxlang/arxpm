@@ -1,11 +1,12 @@
-"""Read and write arxproj.toml manifests."""
+"""
+title: Read and write arxproj.toml manifests.
+"""
 
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import tomllib
-from typing import Any
+from pathlib import Path
 
 from arxpm.errors import ManifestError
 from arxpm.models import Manifest
@@ -14,22 +15,50 @@ MANIFEST_FILENAME = "arxproj.toml"
 
 
 def manifest_path(directory: Path) -> Path:
-    """Return the manifest path for a project directory."""
+    """
+    title: Return the manifest path for a project directory.
+    parameters:
+      directory:
+        type: Path
+    returns:
+      type: Path
+    """
     return directory / MANIFEST_FILENAME
 
 
 def create_default_manifest(project_name: str) -> Manifest:
-    """Create a default v0 manifest."""
+    """
+    title: Create a default v0 manifest.
+    parameters:
+      project_name:
+        type: str
+    returns:
+      type: Manifest
+    """
     return Manifest.default(project_name)
 
 
 def load_manifest(directory: Path) -> Manifest:
-    """Load a project manifest from a directory."""
+    """
+    title: Load a project manifest from a directory.
+    parameters:
+      directory:
+        type: Path
+    returns:
+      type: Manifest
+    """
     return load_manifest_file(manifest_path(directory))
 
 
 def load_manifest_file(path: Path) -> Manifest:
-    """Load a project manifest file."""
+    """
+    title: Load a project manifest file.
+    parameters:
+      path:
+        type: Path
+    returns:
+      type: Manifest
+    """
     if not path.exists():
         raise ManifestError(f"manifest not found: {path}")
     try:
@@ -44,20 +73,43 @@ def load_manifest_file(path: Path) -> Manifest:
 
 
 def save_manifest(directory: Path, manifest: Manifest) -> Path:
-    """Save a project manifest into a directory."""
+    """
+    title: Save a project manifest into a directory.
+    parameters:
+      directory:
+        type: Path
+      manifest:
+        type: Manifest
+    returns:
+      type: Path
+    """
     path = manifest_path(directory)
     save_manifest_file(manifest, path)
     return path
 
 
 def save_manifest_file(manifest: Manifest, path: Path) -> None:
-    """Save a project manifest file."""
+    """
+    title: Save a project manifest file.
+    parameters:
+      manifest:
+        type: Manifest
+      path:
+        type: Path
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(render_manifest(manifest), encoding="utf-8")
 
 
 def render_manifest(manifest: Manifest) -> str:
-    """Render a manifest model to TOML."""
+    """
+    title: Render a manifest model to TOML.
+    parameters:
+      manifest:
+        type: Manifest
+    returns:
+      type: str
+    """
     lines: list[str] = [
         "[project]",
         f"name = {_quote(manifest.project.name)}",

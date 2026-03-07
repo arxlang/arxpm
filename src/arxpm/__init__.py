@@ -1,4 +1,6 @@
-"""arxpm package."""
+"""
+title: arxpm package.
+"""
 
 __all__ = ["__version__"]
 

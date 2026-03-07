@@ -1,4 +1,6 @@
-"""Typer CLI for arxpm."""
+"""
+title: Typer CLI for arxpm.
+"""
 
 from __future__ import annotations
 
@@ -38,7 +40,22 @@ def init(
         typer.Option("--directory", "-C", help="Project directory."),
     ] = Path("."),
 ) -> None:
-    """Initialize a new Arx project."""
+    """
+    title: Initialize a new Arx project.
+    parameters:
+      name:
+        type: >-
+          Annotated[str | None, typer.Option('--name', help='Project name
+          override.')]
+      pixi:
+        type: >-
+          Annotated[bool, typer.Option('--pixi/--no-pixi', help='Create or
+          update pixi.toml.')]
+      directory:
+        type: >-
+          Annotated[Path, typer.Option('--directory', '-C', help='Project
+          directory.')]
+    """
     project_service = ProjectService()
     target = _resolve(directory)
     try:
@@ -58,7 +75,14 @@ def install(
         typer.Option("--directory", "-C", help="Project directory."),
     ] = Path("."),
 ) -> None:
-    """Install project environment with pixi."""
+    """
+    title: Install project environment with pixi.
+    parameters:
+      directory:
+        type: >-
+          Annotated[Path, typer.Option('--directory', '-C', help='Project
+          directory.')]
+    """
     project_service = ProjectService()
     try:
         project_service.install(_resolve(directory))
@@ -84,7 +108,24 @@ def add(
         typer.Option("--directory", "-C", help="Project directory."),
     ] = Path("."),
 ) -> None:
-    """Add a dependency entry to arxproj.toml."""
+    """
+    title: Add a dependency entry to arxproj.toml.
+    parameters:
+      name:
+        type: Annotated[str, typer.Argument(help='Dependency name.')]
+      path:
+        type: >-
+          Annotated[Path | None, typer.Option('--path', help='Local path
+          dependency.')]
+      git:
+        type: >-
+          Annotated[str | None, typer.Option('--git', help='Git URL
+          dependency.')]
+      directory:
+        type: >-
+          Annotated[Path, typer.Option('--directory', '-C', help='Project
+          directory.')]
+    """
     project_service = ProjectService()
     try:
         manifest = project_service.add_dependency(
@@ -107,7 +148,14 @@ def build_command(
         typer.Option("--directory", "-C", help="Project directory."),
     ] = Path("."),
 ) -> None:
-    """Build project using arx through pixi."""
+    """
+    title: Build project using arx through pixi.
+    parameters:
+      directory:
+        type: >-
+          Annotated[Path, typer.Option('--directory', '-C', help='Project
+          directory.')]
+    """
     project_service = ProjectService()
     try:
         result = project_service.build(_resolve(directory))
@@ -124,7 +172,14 @@ def run_command(
         typer.Option("--directory", "-C", help="Project directory."),
     ] = Path("."),
 ) -> None:
-    """Build and run project artifact."""
+    """
+    title: Build and run project artifact.
+    parameters:
+      directory:
+        type: >-
+          Annotated[Path, typer.Option('--directory', '-C', help='Project
+          directory.')]
+    """
     project_service = ProjectService()
     try:
         project_service.run(_resolve(directory))
@@ -141,7 +196,14 @@ def doctor(
         typer.Option("--directory", "-C", help="Project directory."),
     ] = Path("."),
 ) -> None:
-    """Report environment and project health."""
+    """
+    title: Report environment and project health.
+    parameters:
+      directory:
+        type: >-
+          Annotated[Path, typer.Option('--directory', '-C', help='Project
+          directory.')]
+    """
     doctor_service = DoctorService()
     report = doctor_service.run(_resolve(directory))
 

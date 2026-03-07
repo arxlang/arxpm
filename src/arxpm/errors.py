@@ -1,4 +1,6 @@
-"""Custom exceptions for arxpm."""
+"""
+title: Custom exceptions for arxpm.
+"""
 
 from __future__ import annotations
 
@@ -6,23 +8,44 @@ from collections.abc import Sequence
 
 
 class ArxpmError(Exception):
-    """Base exception for arxpm."""
+    """
+    title: Base exception for arxpm.
+    """
 
 
 class ManifestError(ArxpmError):
-    """Manifest parsing or validation error."""
+    """
+    title: Manifest parsing or validation error.
+    """
 
 
 class MissingPixiError(ArxpmError):
-    """Pixi executable is missing."""
+    """
+    title: Pixi executable is missing.
+    """
 
 
 class MissingCompilerError(ArxpmError):
-    """Arx compiler configuration is missing."""
+    """
+    title: Arx compiler configuration is missing.
+    """
 
 
 class ExternalCommandError(ArxpmError):
-    """External command execution failed."""
+    """
+    title: External command execution failed.
+    attributes:
+      command:
+        type: tuple[str, Ellipsis]
+      returncode:
+        type: int
+      stderr:
+        type: str
+    """
+
+    command: tuple[str, ...]
+    returncode: int
+    stderr: str
 
     def __init__(
         self,

@@ -1,4 +1,6 @@
-"""Module entry point."""
+"""
+title: Module entry point.
+"""
 
 from arxpm.cli import app
 

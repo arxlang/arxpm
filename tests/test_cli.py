@@ -1,4 +1,6 @@
-"""Tests for Typer CLI behavior."""
+"""
+title: Tests for Typer CLI behavior.
+"""
 
 from __future__ import annotations
 
@@ -15,14 +17,18 @@ runner = CliRunner()
 
 
 class FailingInstallProjectService:
-    """Project service that fails on install."""
+    """
+    title: Project service that fails on install.
+    """
 
     def install(self, directory: Path) -> None:
         raise MissingPixiError("pixi is missing")
 
 
 class PassingDoctorService:
-    """Doctor service that always succeeds."""
+    """
+    title: Doctor service that always succeeds.
+    """
 
     def run(self, directory: Path) -> DoctorReport:
         return DoctorReport(checks=(DoctorCheck("pixi", True, "ok"),))

@@ -1,4 +1,6 @@
-"""Tests for arxproj.toml parsing and rendering."""
+"""
+title: Tests for arxproj.toml parsing and rendering.
+"""
 
 from __future__ import annotations
 

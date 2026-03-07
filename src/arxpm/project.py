@@ -1,4 +1,6 @@
-"""Project lifecycle operations."""
+"""
+title: Project lifecycle operations.
+"""
 
 from __future__ import annotations
 
@@ -20,10 +22,14 @@ _MAIN_SOURCE = 'fn main() {\n    print("Hello, Arx!");\n}\n'
 
 
 class ProjectPixiAdapter(Protocol):
-    """Project-level pixi adapter protocol."""
+    """
+    title: Project-level pixi adapter protocol.
+    """
 
     def ensure_available(self) -> None:
-        """Validate pixi availability."""
+        """
+        title: Validate pixi availability.
+        """
 
     def ensure_manifest(
         self,
@@ -31,18 +37,54 @@ class ProjectPixiAdapter(Protocol):
         project_name: str,
         required_dependencies: tuple[str, ...],
     ) -> Path:
-        """Create or sync project pixi manifest."""
+        """
+        title: Create or sync project pixi manifest.
+        parameters:
+          directory:
+            type: Path
+          project_name:
+            type: str
+          required_dependencies:
+            type: tuple[str, Ellipsis]
+        returns:
+          type: Path
+        """
 
     def install(self, directory: Path) -> CommandResult:
-        """Install pixi environment."""
+        """
+        title: Install pixi environment.
+        parameters:
+          directory:
+            type: Path
+        returns:
+          type: CommandResult
+        """
 
     def run(self, directory: Path, args: list[str]) -> CommandResult:
-        """Run a command with pixi."""
+        """
+        title: Run a command with pixi.
+        parameters:
+          directory:
+            type: Path
+          args:
+            type: list[str]
+        returns:
+          type: CommandResult
+        """
 
 
 @dataclass(slots=True, frozen=True)
 class BuildResult:
-    """Build execution output."""
+    """
+    title: Build execution output.
+    attributes:
+      manifest:
+        type: Manifest
+      command_result:
+        type: CommandResult
+      artifact:
+        type: Path
+    """
 
     manifest: Manifest
     command_result: CommandResult
@@ -51,14 +93,28 @@ class BuildResult:
 
 @dataclass(slots=True, frozen=True)
 class RunResult:
-    """Run execution output."""
+    """
+    title: Run execution output.
+    attributes:
+      build_result:
+        type: BuildResult
+      command_result:
+        type: CommandResult
+    """
 
     build_result: BuildResult
     command_result: CommandResult
 
 
 class ProjectService:
-    """High-level project workflows."""
+    """
+    title: High-level project workflows.
+    attributes:
+      _pixi:
+        type: ProjectPixiAdapter
+    """
+
+    _pixi: ProjectPixiAdapter
 
     def __init__(self, pixi: ProjectPixiAdapter | None = None) -> None:
         self._pixi = pixi or PixiService()
@@ -69,7 +125,18 @@ class ProjectService:
         name: str | None = None,
         create_pixi: bool = True,
     ) -> Manifest:
-        """Initialize a new Arx project."""
+        """
+        title: Initialize a new Arx project.
+        parameters:
+          directory:
+            type: Path
+          name:
+            type: str | None
+          create_pixi:
+            type: bool
+        returns:
+          type: Manifest
+        """
         project_name = name or directory.resolve().name
         manifest_path = directory / "arxproj.toml"
         if manifest_path.exists():
@@ -99,7 +166,20 @@ class ProjectService:
         path: Path | None = None,
         git: str | None = None,
     ) -> Manifest:
-        """Add or update a dependency in arxproj.toml."""
+        """
+        title: Add or update a dependency in arxproj.toml.
+        parameters:
+          directory:
+            type: Path
+          name:
+            type: str
+          path:
+            type: Path | None
+          git:
+            type: str | None
+        returns:
+          type: Manifest
+        """
         if not name.strip():
             raise ManifestError("dependency name must be a non-empty string")
         if path is not None and git is not None:
@@ -120,7 +200,14 @@ class ProjectService:
         return manifest
 
     def install(self, directory: Path) -> CommandResult:
-        """Install or sync environment dependencies via pixi."""
+        """
+        title: Install or sync environment dependencies via pixi.
+        parameters:
+          directory:
+            type: Path
+        returns:
+          type: CommandResult
+        """
         manifest = load_manifest(directory)
         self._pixi.ensure_available()
         self._pixi.ensure_manifest(
@@ -131,7 +218,14 @@ class ProjectService:
         return self._pixi.install(directory)
 
     def build(self, directory: Path) -> BuildResult:
-        """Build a project by calling arx through pixi."""
+        """
+        title: Build a project by calling arx through pixi.
+        parameters:
+          directory:
+            type: Path
+        returns:
+          type: BuildResult
+        """
         manifest = load_manifest(directory)
         self._pixi.ensure_available()
 
@@ -157,7 +251,14 @@ class ProjectService:
         )
 
     def run(self, directory: Path) -> RunResult:
-        """Build and run the produced artifact through pixi."""
+        """
+        title: Build and run the produced artifact through pixi.
+        parameters:
+          directory:
+            type: Path
+        returns:
+          type: RunResult
+        """
         build_result = self.build(directory)
         artifact_rel = Path(build_result.manifest.build.out_dir)
         artifact_rel = artifact_rel / build_result.manifest.project.name

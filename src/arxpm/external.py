@@ -1,11 +1,13 @@
-"""External process helpers."""
+"""
+title: External process helpers.
+"""
 
 from __future__ import annotations
 
+import subprocess
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-import subprocess
 from typing import Protocol
 
 from arxpm.errors import ExternalCommandError
@@ -13,7 +15,18 @@ from arxpm.errors import ExternalCommandError
 
 @dataclass(slots=True, frozen=True)
 class CommandResult:
-    """External command result."""
+    """
+    title: External command result.
+    attributes:
+      command:
+        type: tuple[str, Ellipsis]
+      returncode:
+        type: int
+      stdout:
+        type: str
+      stderr:
+        type: str
+    """
 
     command: tuple[str, ...]
     returncode: int
@@ -22,7 +35,9 @@ class CommandResult:
 
 
 class CommandRunner(Protocol):
-    """Callable interface for command runners."""
+    """
+    title: Callable interface for command runners.
+    """
 
     def __call__(
         self,
@@ -30,7 +45,18 @@ class CommandRunner(Protocol):
         cwd: Path | None = None,
         check: bool = False,
     ) -> CommandResult:
-        """Run a command and return its result."""
+        """
+        title: Run a command and return its result.
+        parameters:
+          command:
+            type: Sequence[str]
+          cwd:
+            type: Path | None
+          check:
+            type: bool
+        returns:
+          type: CommandResult
+        """
 
 
 def run_command(
@@ -38,7 +64,18 @@ def run_command(
     cwd: Path | None = None,
     check: bool = False,
 ) -> CommandResult:
-    """Run a subprocess command."""
+    """
+    title: Run a subprocess command.
+    parameters:
+      command:
+        type: Sequence[str]
+      cwd:
+        type: Path | None
+      check:
+        type: bool
+    returns:
+      type: CommandResult
+    """
     completed = subprocess.run(
         list(command),
         cwd=str(cwd) if cwd else None,

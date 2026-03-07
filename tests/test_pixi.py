@@ -1,10 +1,12 @@
-"""Tests for pixi adapter behavior."""
+"""
+title: Tests for pixi adapter behavior.
+"""
 
 from __future__ import annotations
 
+import tomllib
 from collections.abc import Sequence
 from pathlib import Path
-import tomllib
 
 import pytest
 
@@ -14,7 +16,12 @@ from arxpm.pixi import PixiService
 
 
 class Recorder:
-    """Record external command invocations."""
+    """
+    title: Record external command invocations.
+    attributes:
+      calls:
+        type: list[tuple[list[str], Path | None, bool]]
+    """
 
     def __init__(self) -> None:
         self.calls: list[tuple[list[str], Path | None, bool]] = []

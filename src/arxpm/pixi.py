@@ -1,13 +1,15 @@
-"""Pixi integration layer."""
+"""
+title: Pixi integration layer.
+"""
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Mapping
 import json
-from pathlib import Path
 import re
 import shutil
 import tomllib
+from collections.abc import Callable, Iterable, Mapping
+from pathlib import Path
 from typing import Any
 
 from arxpm.errors import ManifestError, MissingPixiError
@@ -21,7 +23,17 @@ _SIMPLE_KEY_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 class PixiService:
-    """Facade around pixi CLI operations."""
+    """
+    title: Facade around pixi CLI operations.
+    attributes:
+      _runner:
+        type: CommandRunner
+      _which:
+        type: Callable[[str], str | None]
+    """
+
+    _runner: CommandRunner
+    _which: Callable[[str], str | None]
 
     def __init__(
         self,
@@ -33,15 +45,28 @@ class PixiService:
 
     @staticmethod
     def pixi_path(directory: Path) -> Path:
-        """Return pixi.toml path for a project directory."""
+        """
+        title: Return pixi.toml path for a project directory.
+        parameters:
+          directory:
+            type: Path
+        returns:
+          type: Path
+        """
         return directory / PIXI_FILENAME
 
     def is_available(self) -> bool:
-        """Check if pixi is available on PATH."""
+        """
+        title: Check if pixi is available on PATH.
+        returns:
+          type: bool
+        """
         return self._which("pixi") is not None
 
     def ensure_available(self) -> None:
-        """Raise when pixi is not available."""
+        """
+        title: Raise when pixi is not available.
+        """
         if not self.is_available():
             raise MissingPixiError(
                 "pixi is required but was not found on PATH"
@@ -53,7 +78,18 @@ class PixiService:
         project_name: str,
         required_dependencies: Iterable[str] = BASE_DEPENDENCIES,
     ) -> Path:
-        """Create or partially sync pixi.toml for arxpm-managed fields."""
+        """
+        title: Create or partially sync pixi.toml for arxpm-managed fields.
+        parameters:
+          directory:
+            type: Path
+          project_name:
+            type: str
+          required_dependencies:
+            type: Iterable[str]
+        returns:
+          type: Path
+        """
         path = self.pixi_path(directory)
         required = _normalize_required(required_dependencies)
         if not path.exists():
@@ -79,7 +115,14 @@ class PixiService:
         return path
 
     def declared_dependencies(self, directory: Path) -> set[str]:
-        """Return declared pixi dependency names."""
+        """
+        title: Return declared pixi dependency names.
+        parameters:
+          directory:
+            type: Path
+        returns:
+          type: set[str]
+        """
         path = self.pixi_path(directory)
         if not path.exists():
             return set()
@@ -87,11 +130,27 @@ class PixiService:
         return _declared_dependency_names(data)
 
     def install(self, directory: Path) -> CommandResult:
-        """Run pixi install in a project directory."""
+        """
+        title: Run pixi install in a project directory.
+        parameters:
+          directory:
+            type: Path
+        returns:
+          type: CommandResult
+        """
         return self._runner(["pixi", "install"], cwd=directory, check=True)
 
     def run(self, directory: Path, args: Iterable[str]) -> CommandResult:
-        """Run a command via pixi run."""
+        """
+        title: Run a command via pixi run.
+        parameters:
+          directory:
+            type: Path
+          args:
+            type: Iterable[str]
+        returns:
+          type: CommandResult
+        """
         command = [part for part in args if part]
         if not command:
             raise ManifestError("pixi run command cannot be empty")
@@ -106,7 +165,16 @@ def render_pixi_manifest(
     project: Mapping[str, Any],
     dependencies: Mapping[str, str],
 ) -> str:
-    """Render a minimal pixi.toml."""
+    """
+    title: Render a minimal pixi.toml.
+    parameters:
+      project:
+        type: Mapping[str, Any]
+      dependencies:
+        type: Mapping[str, str]
+    returns:
+      type: str
+    """
     lines = [
         "[project]",
         f"name = {_quote(str(project['name']))}",
@@ -125,7 +193,16 @@ def render_minimal_manifest(
     project_name: str,
     required_dependencies: Iterable[str] = BASE_DEPENDENCIES,
 ) -> str:
-    """Render a minimal pixi.toml for arxpm bootstrap."""
+    """
+    title: Render a minimal pixi.toml for arxpm bootstrap.
+    parameters:
+      project_name:
+        type: str
+      required_dependencies:
+        type: Iterable[str]
+    returns:
+      type: str
+    """
     required = _normalize_required(required_dependencies)
     project = {
         "name": project_name,

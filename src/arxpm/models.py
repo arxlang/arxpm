@@ -1,4 +1,6 @@
-"""Typed data models for Arx project manifests."""
+"""
+title: Typed data models for Arx project manifests.
+"""
 
 from __future__ import annotations
 
@@ -11,7 +13,16 @@ from arxpm.errors import ManifestError
 
 @dataclass(slots=True, frozen=True)
 class ProjectConfig:
-    """Project metadata."""
+    """
+    title: Project metadata.
+    attributes:
+      name:
+        type: str
+      version:
+        type: str
+      edition:
+        type: str
+    """
 
     name: str
     version: str = "0.1.0"
@@ -28,7 +39,14 @@ class ProjectConfig:
 
 @dataclass(slots=True, frozen=True)
 class BuildConfig:
-    """Build configuration."""
+    """
+    title: Build configuration.
+    attributes:
+      entry:
+        type: str
+      out_dir:
+        type: str
+    """
 
     entry: str = "src/main.arx"
     out_dir: str = "build"
@@ -42,7 +60,14 @@ class BuildConfig:
 
 @dataclass(slots=True, frozen=True)
 class ToolchainConfig:
-    """Toolchain configuration."""
+    """
+    title: Toolchain configuration.
+    attributes:
+      compiler:
+        type: str
+      linker:
+        type: str
+    """
 
     compiler: str = "arx"
     linker: str = "clang"
@@ -58,7 +83,16 @@ class ToolchainConfig:
 
 @dataclass(slots=True, frozen=True)
 class DependencySpec:
-    """Dependency source specification."""
+    """
+    title: Dependency source specification.
+    attributes:
+      source:
+        type: str | None
+      path:
+        type: str | None
+      git:
+        type: str | None
+    """
 
     source: str | None = None
     path: str | None = None
@@ -81,7 +115,11 @@ class DependencySpec:
 
     @property
     def kind(self) -> str:
-        """Return dependency kind."""
+        """
+        title: Return dependency kind.
+        returns:
+          type: str
+        """
         if self.source is not None:
             return "registry"
         if self.path is not None:
@@ -90,22 +128,49 @@ class DependencySpec:
 
     @classmethod
     def registry(cls) -> DependencySpec:
-        """Create a registry placeholder dependency."""
+        """
+        title: Create a registry placeholder dependency.
+        returns:
+          type: DependencySpec
+        """
         return cls(source="registry")
 
     @classmethod
     def from_path(cls, path: str) -> DependencySpec:
-        """Create a local path dependency."""
+        """
+        title: Create a local path dependency.
+        parameters:
+          path:
+            type: str
+        returns:
+          type: DependencySpec
+        """
         return cls(path=path)
 
     @classmethod
     def from_git(cls, git: str) -> DependencySpec:
-        """Create a git dependency."""
+        """
+        title: Create a git dependency.
+        parameters:
+          git:
+            type: str
+        returns:
+          type: DependencySpec
+        """
         return cls(git=git)
 
     @classmethod
     def from_value(cls, name: str, value: Any) -> DependencySpec:
-        """Parse a dependency from TOML value."""
+        """
+        title: Parse a dependency from TOML value.
+        parameters:
+          name:
+            type: str
+          value:
+            type: Any
+        returns:
+          type: DependencySpec
+        """
         if not isinstance(value, Mapping):
             raise ManifestError(f"dependency {name!r} must be a table")
 
@@ -138,7 +203,11 @@ class DependencySpec:
         )
 
     def to_dict(self) -> dict[str, str]:
-        """Serialize dependency spec to TOML-compatible mapping."""
+        """
+        title: Serialize dependency spec to TOML-compatible mapping.
+        returns:
+          type: dict[str, str]
+        """
         if self.source is not None:
             return {"source": self.source}
         if self.path is not None:
@@ -150,7 +219,18 @@ class DependencySpec:
 
 @dataclass(slots=True)
 class Manifest:
-    """Arx project manifest model."""
+    """
+    title: Arx project manifest model.
+    attributes:
+      project:
+        type: ProjectConfig
+      build:
+        type: BuildConfig
+      dependencies:
+        type: dict[str, DependencySpec]
+      toolchain:
+        type: ToolchainConfig
+    """
 
     project: ProjectConfig
     build: BuildConfig = field(default_factory=BuildConfig)
@@ -159,12 +239,26 @@ class Manifest:
 
     @classmethod
     def default(cls, project_name: str) -> Manifest:
-        """Create a default project manifest."""
+        """
+        title: Create a default project manifest.
+        parameters:
+          project_name:
+            type: str
+        returns:
+          type: Manifest
+        """
         return cls(project=ProjectConfig(name=project_name))
 
     @classmethod
     def from_dict(cls, raw: Mapping[str, Any]) -> Manifest:
-        """Build a manifest model from parsed TOML data."""
+        """
+        title: Build a manifest model from parsed TOML data.
+        parameters:
+          raw:
+            type: Mapping[str, Any]
+        returns:
+          type: Manifest
+        """
         project_raw = _require_table(raw, "project")
         build_raw = _require_table(raw, "build")
         toolchain_raw = _require_table(raw, "toolchain")
@@ -202,7 +296,11 @@ class Manifest:
         )
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize manifest model to dictionary."""
+        """
+        title: Serialize manifest model to dictionary.
+        returns:
+          type: dict[str, Any]
+        """
         dependencies = {
             name: spec.to_dict()
             for name, spec in sorted(self.dependencies.items())

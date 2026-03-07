@@ -1,4 +1,6 @@
-"""Tests for project workflow operations."""
+"""
+title: Tests for project workflow operations.
+"""
 
 from __future__ import annotations
 
@@ -15,7 +17,16 @@ ManifestCall = tuple[Path, str, tuple[str, ...]]
 
 
 class FakePixiService:
-    """Pixi test double."""
+    """
+    title: Pixi test double.
+    attributes:
+      ensure_manifest_calls:
+        type: list[ManifestCall]
+      install_calls:
+        type: list[Path]
+      run_calls:
+        type: list[tuple[Path, list[str]]]
+    """
 
     def __init__(self) -> None:
         self.ensure_manifest_calls: list[ManifestCall] = []

@@ -1,4 +1,6 @@
-"""Tests for doctor checks."""
+"""
+title: Tests for doctor checks.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +12,20 @@ from arxpm.manifest import create_default_manifest, save_manifest
 
 
 class FakePixiService:
-    """Pixi test double for doctor."""
+    """
+    title: Pixi test double for doctor.
+    attributes:
+      _available:
+        type: bool
+      _dependencies:
+        type: set[str]
+      _invalid:
+        type: bool
+    """
+
+    _available: bool
+    _dependencies: set[str]
+    _invalid: bool
 
     def __init__(
         self,

@@ -1,4 +1,6 @@
-"""Environment health checks for arxpm."""
+"""
+title: Environment health checks for arxpm.
+"""
 
 from __future__ import annotations
 
@@ -12,21 +14,50 @@ from arxpm.pixi import PIXI_FILENAME, PixiService
 
 
 class DoctorPixiAdapter(Protocol):
-    """Doctor-level pixi adapter protocol."""
+    """
+    title: Doctor-level pixi adapter protocol.
+    """
 
     def is_available(self) -> bool:
-        """Return whether pixi is available."""
+        """
+        title: Return whether pixi is available.
+        returns:
+          type: bool
+        """
 
     def pixi_path(self, directory: Path) -> Path:
-        """Return pixi.toml path."""
+        """
+        title: Return pixi.toml path.
+        parameters:
+          directory:
+            type: Path
+        returns:
+          type: Path
+        """
 
     def declared_dependencies(self, directory: Path) -> set[str]:
-        """Return declared dependencies from pixi.toml."""
+        """
+        title: Return declared dependencies from pixi.toml.
+        parameters:
+          directory:
+            type: Path
+        returns:
+          type: set[str]
+        """
 
 
 @dataclass(slots=True, frozen=True)
 class DoctorCheck:
-    """Single doctor check result."""
+    """
+    title: Single doctor check result.
+    attributes:
+      name:
+        type: str
+      ok:
+        type: bool
+      message:
+        type: str
+    """
 
     name: str
     ok: bool
@@ -35,24 +66,47 @@ class DoctorCheck:
 
 @dataclass(slots=True, frozen=True)
 class DoctorReport:
-    """Doctor command report."""
+    """
+    title: Doctor command report.
+    attributes:
+      checks:
+        type: tuple[DoctorCheck, Ellipsis]
+    """
 
     checks: tuple[DoctorCheck, ...]
 
     @property
     def ok(self) -> bool:
-        """Return overall doctor status."""
+        """
+        title: Return overall doctor status.
+        returns:
+          type: bool
+        """
         return all(check.ok for check in self.checks)
 
 
 class DoctorService:
-    """Environment and manifest diagnostics."""
+    """
+    title: Environment and manifest diagnostics.
+    attributes:
+      _pixi:
+        type: DoctorPixiAdapter
+    """
+
+    _pixi: DoctorPixiAdapter
 
     def __init__(self, pixi: DoctorPixiAdapter | None = None) -> None:
         self._pixi = pixi or PixiService()
 
     def run(self, directory: Path) -> DoctorReport:
-        """Collect health checks for current project."""
+        """
+        title: Collect health checks for current project.
+        parameters:
+          directory:
+            type: Path
+        returns:
+          type: DoctorReport
+        """
         checks: list[DoctorCheck] = []
 
         pixi_ok = self._pixi.is_available()

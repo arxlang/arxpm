@@ -85,7 +85,11 @@ def test_build_and_run_delegate_to_pixi(tmp_path: Path) -> None:
     run_result = service.run(tmp_path)
 
     assert build_result.artifact == tmp_path / "build" / "demo"
-    assert pixi.run_calls[0][1][:3] == ["arx", "src/main.arx", "-o"]
+    assert pixi.run_calls[0][1][:3] == [
+        "arx",
+        "src/main.arx",
+        "--output-file",
+    ]
     assert pixi.run_calls[-1][1] == ["build/demo"]
     assert run_result.build_result.artifact == tmp_path / "build" / "demo"
 

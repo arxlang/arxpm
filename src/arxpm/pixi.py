@@ -176,7 +176,7 @@ def render_pixi_manifest(
       type: str
     """
     lines = [
-        "[project]",
+        "[workspace]",
         f"name = {_quote(str(project['name']))}",
         f"version = {_quote(str(project['version']))}",
         f"channels = {_array(project['channels'])}",

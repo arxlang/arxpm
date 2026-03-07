@@ -241,7 +241,12 @@ class ProjectService:
         artifact_path = directory / artifact_rel
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
 
-        command = [compiler, manifest.build.entry, "-o", str(artifact_rel)]
+        command = [
+            compiler,
+            manifest.build.entry,
+            "--output-file",
+            str(artifact_rel),
+        ]
         command_result = self._pixi.run(directory, command)
 
         return BuildResult(

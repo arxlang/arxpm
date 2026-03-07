@@ -6,5 +6,6 @@ dependencies:
   - clang 14.*
   - clangdev 14.*
   - pip
+  - pixi
   - poetry >=1.5
   - python

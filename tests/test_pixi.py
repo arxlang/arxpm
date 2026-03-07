@@ -50,7 +50,7 @@ def test_ensure_manifest_creates_minimal_pixi_file(tmp_path: Path) -> None:
 
     assert path.exists()
     data = tomllib.loads(path.read_text(encoding="utf-8"))
-    assert data["project"]["name"] == "hello-arx"
+    assert data["workspace"]["name"] == "hello-arx"
     assert "python" in data["dependencies"]
     assert "clang" in data["dependencies"]
 
@@ -59,7 +59,7 @@ def test_ensure_manifest_updates_missing_dependency(tmp_path: Path) -> None:
     pixi_file = tmp_path / "pixi.toml"
     pixi_file.write_text(
         """
-[project]
+[workspace]
 name = "demo"
 version = "0.1.0"
 channels = ["conda-forge"]
@@ -83,7 +83,7 @@ def test_partial_sync_preserves_unrelated_sections(tmp_path: Path) -> None:
     pixi_file = tmp_path / "pixi.toml"
     pixi_file.write_text(
         """
-[project]
+[workspace]
 name = "demo"
 version = "0.1.0"
 channels = ["conda-forge"]

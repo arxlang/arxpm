@@ -47,11 +47,39 @@ groups:
             ${{ args.path }} \
             ${{ args.params }}
 
+      smoke:
+        help: run smoke tests for examples
+        backend: bash
+        run: |
+          set -euo pipefail
+
+          if ! command -v pixi >/dev/null 2>&1; then
+            echo "pixi is required for tests.smoke"
+            echo "hint: activate/update conda dev env from conda/dev.yaml"
+            exit 1
+          fi
+          if ! command -v arx >/dev/null 2>&1; then
+            echo "arx is required for tests.smoke"
+            echo "hint: run poetry install --with dev in the active env"
+            exit 1
+          fi
+
+          tmp_dir="$(mktemp -d)"
+          trap 'rm -rf "${tmp_dir}"' EXIT
+
+          cp -r examples "${tmp_dir}/project"
+
+          python -m arxpm doctor --directory "${tmp_dir}/project"
+          python -m arxpm install --directory "${tmp_dir}/project"
+          python -m arxpm build --directory "${tmp_dir}/project"
+          python -m arxpm run --directory "${tmp_dir}/project"
+
       ci:
         help: run the same checks executed on CI
         hooks:
           pre-run:
             - task: tests.unit
+            - task: tests.smoke
             - task: tests.linter
 
   docs:

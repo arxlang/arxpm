@@ -1,4 +1,4 @@
-[project]
+[workspace]
 name = "hello-arx"
 version = "0.1.0"
 channels = ["conda-forge"]

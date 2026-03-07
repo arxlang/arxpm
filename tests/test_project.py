@@ -61,8 +61,7 @@ def test_init_and_add_dependency_forms(tmp_path: Path) -> None:
     assert manifest.dependencies["http"].kind == "registry"
     assert manifest.dependencies["mylib"].path == "../mylib"
     assert (
-        manifest.dependencies["utils"].git
-        == "https://example.com/utils.git"
+        manifest.dependencies["utils"].git == "https://example.com/utils.git"
     )
 
 

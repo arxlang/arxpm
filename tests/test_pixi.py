@@ -100,7 +100,7 @@ pytest = "*"
     content = pixi_file.read_text(encoding="utf-8")
     assert 'build = "echo custom"' in content
     assert "[feature.dev.dependencies]" in content
-    assert "clang = \"*\"" in content
+    assert 'clang = "*"' in content
 
 
 def test_install_and_run_call_runner(tmp_path: Path) -> None:

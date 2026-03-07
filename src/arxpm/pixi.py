@@ -199,7 +199,7 @@ def _insert_dependency_entries(
 ) -> str:
     lines = text.splitlines()
     table = _find_table_bounds(lines, "dependencies")
-    entries = [f"{_format_key(name)} = \"*\"" for name in dependency_names]
+    entries = [f'{_format_key(name)} = "*"' for name in dependency_names]
 
     if table is None:
         block = ["[dependencies]", *entries]

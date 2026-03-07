@@ -55,8 +55,7 @@ linker = "clang"
     assert manifest.dependencies["http"].kind == "registry"
     assert manifest.dependencies["mylib"].path == "../mylib"
     assert (
-        manifest.dependencies["utils"].git
-        == "https://example.com/utils.git"
+        manifest.dependencies["utils"].git == "https://example.com/utils.git"
     )
 
 

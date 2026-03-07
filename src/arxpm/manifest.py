@@ -74,9 +74,7 @@ def render_manifest(manifest: Manifest) -> str:
     for name, spec in sorted(manifest.dependencies.items()):
         payload = spec.to_dict()
         key, value = next(iter(payload.items()))
-        lines.append(
-            f"{_quote(name)} = {{ {key} = {_quote(value)} }}"
-        )
+        lines.append(f"{_quote(name)} = {{ {key} = {_quote(value)} }}")
 
     lines.extend(
         [

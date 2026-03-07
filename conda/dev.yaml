@@ -1,0 +1,10 @@
+name: arxpm
+channels:
+  - nodefaults
+  - conda-forge
+dependencies:
+  - clang 14.*
+  - clangdev 14.*
+  - pip
+  - poetry >=1.5
+  - python

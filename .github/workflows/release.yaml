@@ -20,37 +20,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: conda-incubator/setup-miniconda@v3
         with:
-          python-version: "3.11"
+          miniconda-version: "latest"
+          environment-file: conda/release.yaml
+          channels: conda-forge,nodefaults
+          activate-environment: arxpm
+          auto-update-conda: true
+          conda-solver: libmamba
+          python-version: "3.10"
 
       - name: Install deps
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e .
-          python -m pip install build twine
+          poetry config virtualenvs.create false
+          poetry install --with dev
 
       - name: Run release dry build
         if: ${{ github.event_name != 'workflow_dispatch' }}
-        run: python -m build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: makim release.dry
 
       - name: Release command
         if: ${{ github.event_name == 'workflow_dispatch' }}
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        run: |
-          python -m build
-          python -m twine upload \
-            --username __token__ \
-            --password "${PYPI_TOKEN}" \
-            dist/*
+        run: makim release.ci
 
-      - name: Generate documentation with release artifacts
+      - name: Generate documentation with changes from release process
         if: ${{ github.event_name == 'workflow_dispatch' }}
-        run: |
-          rm -rf build
-          mkdir -p build
-          cp README.md build/index.md
+        run: makim docs.build
 
       - name: GitHub Pages action
         if: ${{ github.event_name == 'workflow_dispatch' }}

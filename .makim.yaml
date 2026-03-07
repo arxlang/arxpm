@@ -1,0 +1,87 @@
+groups:
+  default:
+    tasks:
+      clean:
+        help: remove build artifacts and cache files
+        run: |
+          rm -fr build/
+          rm -fr dist/
+          rm -fr .eggs/
+          find . -name '*.egg-info' -exec rm -fr {} +
+          find . -name '*.egg' -exec rm -f {} +
+          find . -name '*.pyc' -exec rm -f {} +
+          find . -name '__pycache__' -exec rm -fr {} +
+          find . -name '*.pyo' -exec rm -f {} +
+          find . -name '*~' -exec rm -f {} +
+          rm -f .coverage
+          rm -fr htmlcov/
+          rm -fr .pytest_cache
+
+  tests:
+    tasks:
+      linter:
+        help: run linter and type checks
+        run: |
+          pre-commit install
+          pre-commit run --all-files
+
+      unit:
+        help: run unit tests
+        args:
+          path:
+            help: Specify the location of the tests
+            type: string
+            default: "tests"
+          params:
+            help: Specify parameters to be used for tests
+            type: string
+            default: "-q"
+        run: |
+          pytest -vv \
+            --cov=arxpm \
+            --cov-fail-under=84 \
+            --cov-report=term-missing \
+            --no-cov-on-fail \
+            ${{ args.path }} \
+            ${{ args.params }}
+
+      ci:
+        help: run the same checks executed on CI
+        hooks:
+          pre-run:
+            - task: tests.unit
+            - task: tests.linter
+
+  docs:
+    tasks:
+      build:
+        help: build documentation artifacts
+        run: |
+          rm -rf build
+          mkdir -p build
+          cp README.md build/index.md
+
+  release:
+    tasks:
+      dry:
+        help: build release artifacts in dry-run mode
+        hooks:
+          pre-run:
+            - task: default.clean
+        run: python -m build
+
+      ci:
+        help: build and publish release artifacts
+        hooks:
+          pre-run:
+            - task: default.clean
+        run: |
+          if [ -z "${PYPI_TOKEN}" ]; then
+            echo "PYPI_TOKEN is required"
+            exit 1
+          fi
+          python -m build
+          python -m twine upload \
+            --username __token__ \
+            --password "${PYPI_TOKEN}" \
+            dist/*

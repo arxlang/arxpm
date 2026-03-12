@@ -327,6 +327,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -556,6 +567,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -607,10 +629,17 @@
 </ul>
 <p>Arx projects use <code class="language-python highlight"><span class="n">arxproj</span><span class="o">.</span><span class="n">toml</span></code> as their project manifest. Python packaging is
 only for distributing <code class="language-python highlight"><span class="n">arxpm</span></code> itself.</p>
+<h2 id="compatibility">Compatibility<a class="headerlink" href="#compatibility" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Python 3.10+ is supported.</li>
+<li>On Python 3.10, <code class="language-python highlight"><span class="n">arxpm</span></code> uses <code class="language-python highlight"><span class="n">tomli</span></code> as a compatibility fallback for
+  <code class="language-python highlight"><span class="n">tomllib</span></code>.</li>
+</ul>
 <h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">models</span><span class="o">.</span><span class="n">py</span></code>: typed manifest models.</li>
 <li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">manifest</span><span class="o">.</span><span class="n">py</span></code>: parse/render <code class="language-python highlight"><span class="n">arxproj</span><span class="o">.</span><span class="n">toml</span></code>.</li>
+<li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">_toml</span><span class="o">.</span><span class="n">py</span></code>: TOML parser compatibility shim (<code class="language-python highlight"><span class="n">tomllib</span></code>/<code class="language-python highlight"><span class="n">tomli</span></code>).</li>
 <li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">pixi</span><span class="o">.</span><span class="n">py</span></code>: Pixi detection and partial <code class="language-python highlight"><span class="n">pixi</span><span class="o">.</span><span class="n">toml</span></code> sync.</li>
 <li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">project</span><span class="o">.</span><span class="n">py</span></code>: <code class="language-python highlight"><span class="n">init</span></code>, <code class="language-python highlight"><span class="n">add</span></code>, <code class="language-python highlight"><span class="n">install</span></code>, <code class="language-python highlight"><span class="n">build</span></code>, <code class="language-python highlight"><span class="n">run</span></code>.</li>
 <li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">doctor</span><span class="o">.</span><span class="n">py</span></code>: environment and manifest checks.</li>

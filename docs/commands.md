@@ -74,8 +74,7 @@ arxpm run
 arxpm run --directory examples
 ```
 
-Build/compiler output and the application stdout/stderr are streamed directly;
-`arxpm run` does not print an extra completion line.
+The command shows compiler and program output directly in your terminal.
 
 ## `arxpm pack`
 

@@ -186,8 +186,6 @@ def run_command(
     except ArxpmError as exc:
         _fail(exc)
 
-    typer.echo("Run completed.")
-
 
 @app.command()
 def doctor(

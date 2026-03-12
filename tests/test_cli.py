@@ -34,6 +34,15 @@ class PassingDoctorService:
         return DoctorReport(checks=(DoctorCheck("pixi", True, "ok"),))
 
 
+class PassingRunProjectService:
+    """
+    title: Project service that always succeeds on run.
+    """
+
+    def run(self, directory: Path) -> None:
+        return None
+
+
 def test_init_command_creates_project_files(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -83,6 +92,20 @@ def test_install_command_requires_manifest(
     result = runner.invoke(app, ["install"])
     assert result.exit_code == 1
     assert "manifest not found" in result.output
+
+
+def test_run_command_omits_completion_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "arxpm.cli.ProjectService",
+        PassingRunProjectService,
+    )
+
+    result = runner.invoke(app, ["run"])
+
+    assert result.exit_code == 0
+    assert "Run completed." not in result.output
 
 
 def test_doctor_command_reports_success(

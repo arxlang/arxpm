@@ -45,10 +45,27 @@ class PassingRunProjectService:
         return None
 
 
+class PassingBuildProjectService:
+    """
+    title: Project service that always succeeds on build.
+    """
+
+    def build(self, directory: Path) -> SimpleNamespace:
+        return SimpleNamespace(artifact=directory / "build" / "demo")
+
+
 class PassingPublishProjectService:
     """
-    title: Project service that always succeeds on publish.
+    title: Project service that always succeeds on publish/pack.
     """
+
+    def pack(self, directory: Path) -> SimpleNamespace:
+        return SimpleNamespace(
+            artifacts=(
+                directory / "dist" / "demo-0.1.0-py3-none-any.whl",
+                directory / "dist" / "demo-0.1.0.tar.gz",
+            )
+        )
 
     def publish(
         self,
@@ -124,6 +141,22 @@ def test_install_command_requires_manifest(
     assert "manifest not found" in result.output
 
 
+def test_compile_command_reports_artifact(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "arxpm.cli.ProjectService",
+        PassingBuildProjectService,
+    )
+
+    result = runner.invoke(app, ["compile"])
+
+    assert result.exit_code == 0
+    assert "Compile completed." in result.output
+
+
 def test_run_command_omits_completion_message(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -135,6 +168,23 @@ def test_run_command_omits_completion_message(
     result = runner.invoke(app, ["run"])
 
     assert result.exit_code == 0
+
+
+def test_pack_command_reports_artifacts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "arxpm.cli.ProjectService",
+        PassingPublishProjectService,
+    )
+
+    result = runner.invoke(app, ["pack"])
+
+    assert result.exit_code == 0
+    assert "Pack completed." in result.output
+    assert "demo-0.1.0-py3-none-any.whl" in result.output
 
 
 def test_publish_command_reports_artifacts(

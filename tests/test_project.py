@@ -206,6 +206,21 @@ def test_publish_builds_and_uploads_artifacts(tmp_path: Path) -> None:
     assert "--skip-existing" in upload_command
 
 
+def test_pack_builds_artifacts_without_upload(tmp_path: Path) -> None:
+    pixi = FakePixiService()
+    service = ProjectService(pixi=pixi)
+    service.init(tmp_path, name="demo", create_pixi=False)
+
+    pack_result = service.pack(tmp_path)
+
+    assert [path.name for path in pack_result.artifacts] == [
+        "demo-0.1.0-py3-none-any.whl",
+        "demo-0.1.0.tar.gz",
+    ]
+    assert pack_result.upload_result is None
+    assert len(pixi.run_calls) == 2
+
+
 def test_publish_dry_run_skips_upload(tmp_path: Path) -> None:
     pixi = FakePixiService()
     service = ProjectService(pixi=pixi)

@@ -141,6 +141,16 @@ def add(
     typer.echo(f"Added dependency {name} ({kind}).")
 
 
+def _compile_project(directory: Path, label: str) -> None:
+    project_service = ProjectService()
+    try:
+        result = project_service.build(_resolve(directory))
+    except ArxpmError as exc:
+        _fail(exc)
+
+    typer.echo(f"{label} completed. Artifact target: {result.artifact}")
+
+
 @app.command("build")
 def build_command(
     directory: Annotated[
@@ -156,13 +166,25 @@ def build_command(
           Annotated[Path, typer.Option('--directory', '-C', help='Project
           directory.')]
     """
-    project_service = ProjectService()
-    try:
-        result = project_service.build(_resolve(directory))
-    except ArxpmError as exc:
-        _fail(exc)
+    _compile_project(directory, "Build")
 
-    typer.echo(f"Build completed. Artifact target: {result.artifact}")
+
+@app.command("compile")
+def compile_command(
+    directory: Annotated[
+        Path,
+        typer.Option("--directory", "-C", help="Project directory."),
+    ] = Path("."),
+) -> None:
+    """
+    title: Compile project sources into a runnable binary artifact.
+    parameters:
+      directory:
+        type: >-
+          Annotated[Path, typer.Option('--directory', '-C', help='Project
+          directory.')]
+    """
+    _compile_project(directory, "Compile")
 
 
 @app.command("run")
@@ -185,6 +207,31 @@ def run_command(
         project_service.run(_resolve(directory))
     except ArxpmError as exc:
         _fail(exc)
+
+
+@app.command("pack")
+def pack_command(
+    directory: Annotated[
+        Path,
+        typer.Option("--directory", "-C", help="Project directory."),
+    ] = Path("."),
+) -> None:
+    """
+    title: Build package artifacts without uploading to an index.
+    parameters:
+      directory:
+        type: >-
+          Annotated[Path, typer.Option('--directory', '-C', help='Project
+          directory.')]
+    """
+    project_service = ProjectService()
+    try:
+        result = project_service.pack(_resolve(directory))
+    except ArxpmError as exc:
+        _fail(exc)
+
+    artifacts = ", ".join(str(path) for path in result.artifacts)
+    typer.echo(f"Pack completed. Artifacts: {artifacts}")
 
 
 @app.command("publish")

@@ -55,6 +55,16 @@ Current Arx invocation uses:
 arx <entry> --output-file <out_dir>/<project_name>
 ```
 
+## `arxpm compile`
+
+Compile through Pixi using the configured compiler. This is a clearer alias for
+`arxpm build` (which is kept for compatibility).
+
+```bash
+arxpm compile
+arxpm compile --directory examples
+```
+
 ## `arxpm run`
 
 Build and then run the produced artifact through Pixi.
@@ -66,6 +76,15 @@ arxpm run --directory examples
 
 Build/compiler output and the application stdout/stderr are streamed directly;
 `arxpm run` does not print an extra completion line.
+
+## `arxpm pack`
+
+Build package artifacts locally without uploading to a registry.
+
+```bash
+arxpm pack
+arxpm pack --directory examples
+```
 
 ## `arxpm publish`
 

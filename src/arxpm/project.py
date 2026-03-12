@@ -323,6 +323,17 @@ class ProjectService:
             command_result=command_result,
         )
 
+    def pack(self, directory: Path) -> PublishResult:
+        """
+        title: Build package artifacts without uploading.
+        parameters:
+          directory:
+            type: Path
+        returns:
+          type: PublishResult
+        """
+        return self.publish(directory, dry_run=True)
+
     def publish(
         self,
         directory: Path,

@@ -1,6 +1,13 @@
 # Release Notes
 ---
 
+# [1.1.0](https://github.com/arxlang/arxpm/compare/1.0.1...1.1.0) (2026-03-12)
+
+
+### Features
+
+* Add support for publishing with arxpm publish ([#2](https://github.com/arxlang/arxpm/issues/2)) ([2b498a6](https://github.com/arxlang/arxpm/commit/2b498a692a6af1199651bdcb1148daf8d631d900))
+
 ## [1.0.1](https://github.com/arxlang/arxpm/compare/1.0.0...1.0.1) (2026-03-12)
 
 

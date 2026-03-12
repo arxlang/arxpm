@@ -4,4 +4,4 @@ title: arxpm package.
 
 __all__ = ["__version__"]
 
-__version__ = "1.0.1"  # semantic-release
+__version__ = "1.1.0"  # semantic-release

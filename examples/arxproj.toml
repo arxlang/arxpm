@@ -8,9 +8,6 @@ entry = "src/main.x"
 out_dir = "build"
 
 [dependencies]
-http = { source = "registry" }
-mylib = { path = "../mylib" }
-utils = { git = "https://example.com/utils.git" }
 
 [toolchain]
 compiler = "arx"

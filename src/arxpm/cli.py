@@ -141,6 +141,16 @@ def add(
     typer.echo(f"Added dependency {name} ({kind}).")
 
 
+def _compile_project(directory: Path, label: str) -> None:
+    project_service = ProjectService()
+    try:
+        result = project_service.build(_resolve(directory))
+    except ArxpmError as exc:
+        _fail(exc)
+
+    typer.echo(f"{label} completed. Artifact target: {result.artifact}")
+
+
 @app.command("build")
 def build_command(
     directory: Annotated[
@@ -156,13 +166,25 @@ def build_command(
           Annotated[Path, typer.Option('--directory', '-C', help='Project
           directory.')]
     """
-    project_service = ProjectService()
-    try:
-        result = project_service.build(_resolve(directory))
-    except ArxpmError as exc:
-        _fail(exc)
+    _compile_project(directory, "Build")
 
-    typer.echo(f"Build completed. Artifact target: {result.artifact}")
+
+@app.command("compile")
+def compile_command(
+    directory: Annotated[
+        Path,
+        typer.Option("--directory", "-C", help="Project directory."),
+    ] = Path("."),
+) -> None:
+    """
+    title: Compile project sources into a runnable binary artifact.
+    parameters:
+      directory:
+        type: >-
+          Annotated[Path, typer.Option('--directory', '-C', help='Project
+          directory.')]
+    """
+    _compile_project(directory, "Compile")
 
 
 @app.command("run")
@@ -185,6 +207,98 @@ def run_command(
         project_service.run(_resolve(directory))
     except ArxpmError as exc:
         _fail(exc)
+
+
+@app.command("pack")
+def pack_command(
+    directory: Annotated[
+        Path,
+        typer.Option("--directory", "-C", help="Project directory."),
+    ] = Path("."),
+) -> None:
+    """
+    title: Build package artifacts without uploading to an index.
+    parameters:
+      directory:
+        type: >-
+          Annotated[Path, typer.Option('--directory', '-C', help='Project
+          directory.')]
+    """
+    project_service = ProjectService()
+    try:
+        result = project_service.pack(_resolve(directory))
+    except ArxpmError as exc:
+        _fail(exc)
+
+    artifacts = ", ".join(str(path) for path in result.artifacts)
+    typer.echo(f"Pack completed. Artifacts: {artifacts}")
+
+
+@app.command("publish")
+def publish_command(
+    repository_url: Annotated[
+        str | None,
+        typer.Option(
+            "--repository-url",
+            help="Override Python package repository upload URL.",
+        ),
+    ] = None,
+    skip_existing: Annotated[
+        bool,
+        typer.Option(
+            "--skip-existing/--no-skip-existing",
+            help="Skip artifacts that already exist remotely.",
+        ),
+    ] = False,
+    dry_run: Annotated[
+        bool,
+        typer.Option(
+            "--dry-run",
+            help="Build publish artifacts without uploading.",
+        ),
+    ] = False,
+    directory: Annotated[
+        Path,
+        typer.Option("--directory", "-C", help="Project directory."),
+    ] = Path("."),
+) -> None:
+    """
+    title: Build and publish package artifacts to a PyPI-compatible index.
+    parameters:
+      repository_url:
+        type: >-
+          Annotated[str | None, typer.Option('--repository-url', help='Override
+          Python package repository upload URL.')]
+      skip_existing:
+        type: >-
+          Annotated[bool, typer.Option('--skip-existing/--no-skip-existing',
+          help='Skip artifacts that already exist remotely.')]
+      dry_run:
+        type: >-
+          Annotated[bool, typer.Option('--dry-run', help='Build publish
+          artifacts without uploading.')]
+      directory:
+        type: >-
+          Annotated[Path, typer.Option('--directory', '-C', help='Project
+          directory.')]
+    """
+    project_service = ProjectService()
+    try:
+        result = project_service.publish(
+            _resolve(directory),
+            repository_url=repository_url,
+            skip_existing=skip_existing,
+            dry_run=dry_run,
+        )
+    except ArxpmError as exc:
+        _fail(exc)
+
+    artifacts = ", ".join(str(path) for path in result.artifacts)
+    if dry_run:
+        typer.echo(f"Publish dry-run completed. Artifacts: {artifacts}")
+        return
+
+    typer.echo(f"Published artifacts: {artifacts}")
 
 
 @app.command()

@@ -6,4 +6,5 @@ platforms = ["linux-64", "osx-64", "win-64"]
 
 [dependencies]
 python = "*"
+pip = "*"
 clang = "*"

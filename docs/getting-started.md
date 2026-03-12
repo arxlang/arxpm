@@ -30,7 +30,7 @@ The report should show:
 - pixi available
 - `arxproj.toml` found
 - `pixi.toml` found
-- `python` and `clang` declared in `pixi.toml`
+- `python`, `pip`, and `clang` declared in `pixi.toml`
 
 ## Run Example
 
@@ -38,6 +38,16 @@ The report should show:
 python -m arxpm install --directory examples
 python -m arxpm build --directory examples
 python -m arxpm run --directory examples
+```
+
+## Publish Package
+
+Set Twine credentials for your package index (PyPI example):
+
+```bash
+export TWINE_USERNAME=__token__
+export TWINE_PASSWORD=<pypi-token>
+python -m arxpm publish --directory examples
 ```
 
 ## Local Quality Gates

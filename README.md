@@ -17,7 +17,8 @@ workspace lifecycle, Pixi integration, and user-facing workflow commands.
 - `manifest.py`: `arxproj.toml` parsing and rendering.
 - `_toml.py`: TOML parser compatibility shim (`tomllib`/`tomli`).
 - `pixi.py`: Pixi adapter and `pixi.toml` handling.
-- `project.py`: project workflows (`init`, `add`, `install`, `build`, `run`).
+- `project.py`: project workflows (`init`, `add`, `install`, `build`, `run`,
+  `pack`, `publish`).
 - `doctor.py`: health checks for environment and manifest.
 - `cli.py`: Typer command layer.
 
@@ -27,7 +28,10 @@ workspace lifecycle, Pixi integration, and user-facing workflow commands.
 - `arxpm install`
 - `arxpm add <name> [--path PATH|--git URL]`
 - `arxpm build`
+- `arxpm compile`
 - `arxpm run`
+- `arxpm pack`
+- `arxpm publish`
 - `arxpm doctor`
 
 ## Development

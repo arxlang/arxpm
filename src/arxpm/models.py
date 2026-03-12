@@ -48,7 +48,7 @@ class BuildConfig:
         type: str
     """
 
-    entry: str = "src/main.arx"
+    entry: str = "src/main.x"
     out_dir: str = "build"
 
     def __post_init__(self) -> None:

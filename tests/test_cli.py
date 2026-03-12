@@ -4,6 +4,7 @@ title: Tests for Typer CLI behavior.
 
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -52,8 +53,13 @@ def test_init_command_creates_project_files(
     result = runner.invoke(app, ["init", "--name", "hello-arx", "--no-pixi"])
 
     assert result.exit_code == 0
-    assert (tmp_path / "arxproj.toml").exists()
-    assert (tmp_path / "src" / "main.arx").exists()
+    manifest_path = tmp_path / "arxproj.toml"
+    assert manifest_path.exists()
+
+    manifest_data = tomllib.loads(manifest_path.read_text(encoding="utf-8"))
+    entry = manifest_data["build"]["entry"]
+    assert isinstance(entry, str)
+    assert (tmp_path / entry).exists()
 
 
 def test_add_command_writes_registry_dependency(

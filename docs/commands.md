@@ -12,7 +12,7 @@ arxpm init --directory ./my-project --no-pixi
 Effects:
 
 - creates `arxproj.toml`
-- creates `src/main.arx`
+- creates `src/main.x`
 - optionally creates/updates `pixi.toml`
 
 ## `arxpm add`

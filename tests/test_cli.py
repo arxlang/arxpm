@@ -5,6 +5,7 @@ title: Tests for Typer CLI behavior.
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from typer.testing import CliRunner
@@ -42,6 +43,29 @@ class PassingRunProjectService:
 
     def run(self, directory: Path) -> None:
         return None
+
+
+class PassingPublishProjectService:
+    """
+    title: Project service that always succeeds on publish.
+    """
+
+    def publish(
+        self,
+        directory: Path,
+        repository_url: str | None = None,
+        skip_existing: bool = False,
+        dry_run: bool = False,
+    ) -> SimpleNamespace:
+        _ = repository_url
+        _ = skip_existing
+        _ = dry_run
+        return SimpleNamespace(
+            artifacts=(
+                directory / "dist" / "demo-0.1.0-py3-none-any.whl",
+                directory / "dist" / "demo-0.1.0.tar.gz",
+            )
+        )
 
 
 def test_init_command_creates_project_files(
@@ -111,6 +135,32 @@ def test_run_command_omits_completion_message(
     result = runner.invoke(app, ["run"])
 
     assert result.exit_code == 0
+
+
+def test_publish_command_reports_artifacts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "arxpm.cli.ProjectService",
+        PassingPublishProjectService,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "publish",
+            "--dry-run",
+            "--repository-url",
+            "https://test.pypi.org/legacy/",
+            "--skip-existing",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Publish dry-run completed." in result.output
+    assert "demo-0.1.0-py3-none-any.whl" in result.output
 
 
 def test_doctor_command_reports_success(

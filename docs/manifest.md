@@ -43,4 +43,6 @@ mylib = { path = "../mylib" }
 utils = { git = "https://example.com/utils.git" }
 ```
 
-Version solving and registry resolution are intentionally out of scope in v0.
+Version solving is intentionally out of scope in v0. During `arxpm install`,
+registry dependencies are installed with `pip install <name>`, path dependencies
+with `pip install <path>`, and git dependencies with `pip install git+<url>`.

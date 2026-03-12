@@ -40,6 +40,16 @@ python -m arxpm build --directory examples
 python -m arxpm run --directory examples
 ```
 
+## Publish Package
+
+Set Twine credentials for your package index (PyPI example):
+
+```bash
+export TWINE_USERNAME=__token__
+export TWINE_PASSWORD=<pypi-token>
+python -m arxpm publish --directory examples
+```
+
 ## Local Quality Gates
 
 ```bash

@@ -23,7 +23,7 @@ only for distributing `arxpm` itself.
 - `src/arxpm/manifest.py`: parse/render `arxproj.toml`.
 - `src/arxpm/_toml.py`: TOML parser compatibility shim (`tomllib`/`tomli`).
 - `src/arxpm/pixi.py`: Pixi detection and partial `pixi.toml` sync.
-- `src/arxpm/project.py`: `init`, `add`, `install`, `build`, `run`.
+- `src/arxpm/project.py`: `init`, `add`, `install`, `build`, `run`, `publish`.
 - `src/arxpm/doctor.py`: environment and manifest checks.
 - `src/arxpm/cli.py`: Typer CLI layer.
 
@@ -35,6 +35,7 @@ arxpm add http
 arxpm install
 arxpm build
 arxpm run
+arxpm publish
 arxpm doctor
 ```
 

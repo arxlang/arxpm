@@ -416,10 +416,43 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#arxpm-compile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        arxpm compile
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#arxpm-run" class="md-nav__link">
     <span class="md-ellipsis">
       
         arxpm run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#arxpm-pack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        arxpm pack
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#arxpm-publish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        arxpm publish
       
     </span>
   </a>
@@ -624,10 +657,43 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#arxpm-compile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        arxpm compile
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#arxpm-run" class="md-nav__link">
     <span class="md-ellipsis">
       
         arxpm run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#arxpm-pack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        arxpm pack
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#arxpm-publish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        arxpm publish
       
     </span>
   </a>
@@ -688,6 +754,12 @@ arxpm<span class="w"> </span>add<span class="w"> </span>utils<span class="w"> </
 <div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>install
 arxpm<span class="w"> </span>install<span class="w"> </span>--directory<span class="w"> </span>examples
 </code></pre></div>
+<p>Dependency entries are installed with pip inside the project pixi env:</p>
+<ul>
+<li>registry: <code class="language-python highlight"><span class="n">pip</span> <span class="n">install</span> <span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span></code></li>
+<li>path: <code class="language-python highlight"><span class="n">pip</span> <span class="n">install</span> <span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;</span></code></li>
+<li>git: <code class="language-python highlight"><span class="n">pip</span> <span class="n">install</span> <span class="n">git</span><span class="o">+&lt;</span><span class="n">url</span><span class="o">&gt;</span></code></li>
+</ul>
 <h2 id="arxpm-build"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">build</span></code><a class="headerlink" href="#arxpm-build" title="Permanent link">&para;</a></h2>
 <p>Compile through Pixi using the configured compiler.</p>
 <div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>build
@@ -696,12 +768,32 @@ arxpm<span class="w"> </span>build<span class="w"> </span>--directory<span class
 <p>Current Arx invocation uses:</p>
 <div class="language-text highlight"><pre><span></span><code>arx &lt;entry&gt; --output-file &lt;out_dir&gt;/&lt;project_name&gt;
 </code></pre></div>
+<h2 id="arxpm-compile"><code class="language-python highlight"><span class="n">arxpm</span> <span class="nb">compile</span></code><a class="headerlink" href="#arxpm-compile" title="Permanent link">&para;</a></h2>
+<p>Compile through Pixi using the configured compiler. This is a clearer alias for
+<code class="language-python highlight"><span class="n">arxpm</span> <span class="n">build</span></code> (which is kept for compatibility).</p>
+<div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>compile
+arxpm<span class="w"> </span>compile<span class="w"> </span>--directory<span class="w"> </span>examples
+</code></pre></div>
 <h2 id="arxpm-run"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">run</span></code><a class="headerlink" href="#arxpm-run" title="Permanent link">&para;</a></h2>
 <p>Build and then run the produced artifact through Pixi.</p>
 <div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>run
 arxpm<span class="w"> </span>run<span class="w"> </span>--directory<span class="w"> </span>examples
 </code></pre></div>
-<p>Build/compiler output and the application stdout/stderr are streamed directly;</p>
+<p>The command shows compiler and program output directly in your terminal.</p>
+<h2 id="arxpm-pack"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">pack</span></code><a class="headerlink" href="#arxpm-pack" title="Permanent link">&para;</a></h2>
+<p>Build package artifacts locally without uploading to a registry.</p>
+<div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>pack
+arxpm<span class="w"> </span>pack<span class="w"> </span>--directory<span class="w"> </span>examples
+</code></pre></div>
+<h2 id="arxpm-publish"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">publish</span></code><a class="headerlink" href="#arxpm-publish" title="Permanent link">&para;</a></h2>
+<p>Build and publish the current project as a Python package that bundles
+<code class="language-python highlight"><span class="n">arxproj</span><span class="o">.</span><span class="n">toml</span></code> and <code class="language-python highlight"><span class="o">*.</span><span class="n">x</span></code>/<code class="language-python highlight"><span class="o">*.</span><span class="n">arx</span></code> sources.</p>
+<div class="language-bash highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">TWINE_USERNAME</span><span class="o">=</span>__token__
+<span class="nb">export</span><span class="w"> </span><span class="nv">TWINE_PASSWORD</span><span class="o">=</span>&lt;pypi-token&gt;
+arxpm<span class="w"> </span>publish
+arxpm<span class="w"> </span>publish<span class="w"> </span>--repository-url<span class="w"> </span>https://test.pypi.org/legacy/
+arxpm<span class="w"> </span>publish<span class="w"> </span>--dry-run
+</code></pre></div>
 <h2 id="arxpm-doctor"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">doctor</span></code><a class="headerlink" href="#arxpm-doctor" title="Permanent link">&para;</a></h2>
 <p>Report environment health and manifest status.</p>
 <div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>doctor

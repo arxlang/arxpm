@@ -389,6 +389,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#publish-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Publish Package
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#local-quality-gates" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -613,6 +624,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#publish-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Publish Package
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#local-quality-gates" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -667,12 +689,18 @@ poetry<span class="w"> </span>install<span class="w"> </span>--with<span class="
 <li>pixi available</li>
 <li><code class="language-python highlight"><span class="n">arxproj</span><span class="o">.</span><span class="n">toml</span></code> found</li>
 <li><code class="language-python highlight"><span class="n">pixi</span><span class="o">.</span><span class="n">toml</span></code> found</li>
-<li><code class="language-python highlight"><span class="n">python</span></code> and <code class="language-python highlight"><span class="n">clang</span></code> declared in <code class="language-python highlight"><span class="n">pixi</span><span class="o">.</span><span class="n">toml</span></code></li>
+<li><code class="language-python highlight"><span class="n">python</span></code>, <code class="language-python highlight"><span class="n">pip</span></code>, and <code class="language-python highlight"><span class="n">clang</span></code> declared in <code class="language-python highlight"><span class="n">pixi</span><span class="o">.</span><span class="n">toml</span></code></li>
 </ul>
 <h2 id="run-example">Run Example<a class="headerlink" href="#run-example" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>arxpm<span class="w"> </span>install<span class="w"> </span>--directory<span class="w"> </span>examples
 python<span class="w"> </span>-m<span class="w"> </span>arxpm<span class="w"> </span>build<span class="w"> </span>--directory<span class="w"> </span>examples
 python<span class="w"> </span>-m<span class="w"> </span>arxpm<span class="w"> </span>run<span class="w"> </span>--directory<span class="w"> </span>examples
+</code></pre></div>
+<h2 id="publish-package">Publish Package<a class="headerlink" href="#publish-package" title="Permanent link">&para;</a></h2>
+<p>Set Twine credentials for your package index (PyPI example):</p>
+<div class="language-bash highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">TWINE_USERNAME</span><span class="o">=</span>__token__
+<span class="nb">export</span><span class="w"> </span><span class="nv">TWINE_PASSWORD</span><span class="o">=</span>&lt;pypi-token&gt;
+python<span class="w"> </span>-m<span class="w"> </span>arxpm<span class="w"> </span>publish<span class="w"> </span>--directory<span class="w"> </span>examples
 </code></pre></div>
 <h2 id="local-quality-gates">Local Quality Gates<a class="headerlink" href="#local-quality-gates" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code>makim<span class="w"> </span>tests.unit

@@ -641,7 +641,8 @@ only for distributing <code class="language-python highlight"><span class="n">ar
 <li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">manifest</span><span class="o">.</span><span class="n">py</span></code>: parse/render <code class="language-python highlight"><span class="n">arxproj</span><span class="o">.</span><span class="n">toml</span></code>.</li>
 <li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">_toml</span><span class="o">.</span><span class="n">py</span></code>: TOML parser compatibility shim (<code class="language-python highlight"><span class="n">tomllib</span></code>/<code class="language-python highlight"><span class="n">tomli</span></code>).</li>
 <li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">pixi</span><span class="o">.</span><span class="n">py</span></code>: Pixi detection and partial <code class="language-python highlight"><span class="n">pixi</span><span class="o">.</span><span class="n">toml</span></code> sync.</li>
-<li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">project</span><span class="o">.</span><span class="n">py</span></code>: <code class="language-python highlight"><span class="n">init</span></code>, <code class="language-python highlight"><span class="n">add</span></code>, <code class="language-python highlight"><span class="n">install</span></code>, <code class="language-python highlight"><span class="n">build</span></code>, <code class="language-python highlight"><span class="n">run</span></code>.</li>
+<li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">project</span><span class="o">.</span><span class="n">py</span></code>: <code class="language-python highlight"><span class="n">init</span></code>, <code class="language-python highlight"><span class="n">add</span></code>, <code class="language-python highlight"><span class="n">install</span></code>, <code class="language-python highlight"><span class="n">build</span></code>, <code class="language-python highlight"><span class="n">run</span></code>, <code class="language-python highlight"><span class="n">pack</span></code>,
+  <code class="language-python highlight"><span class="n">publish</span></code>.</li>
 <li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">doctor</span><span class="o">.</span><span class="n">py</span></code>: environment and manifest checks.</li>
 <li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">cli</span><span class="o">.</span><span class="n">py</span></code>: Typer CLI layer.</li>
 </ul>
@@ -650,7 +651,10 @@ only for distributing <code class="language-python highlight"><span class="n">ar
 arxpm<span class="w"> </span>add<span class="w"> </span>http
 arxpm<span class="w"> </span>install
 arxpm<span class="w"> </span>build
+arxpm<span class="w"> </span>compile
 arxpm<span class="w"> </span>run
+arxpm<span class="w"> </span>pack
+arxpm<span class="w"> </span>publish
 arxpm<span class="w"> </span>doctor
 </code></pre></div>
 <p>See <a href="getting-started/">Getting Started</a> for a full setup and

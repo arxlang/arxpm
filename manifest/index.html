@@ -612,7 +612,9 @@
 </ol>
 <div class="language-toml highlight"><pre><span></span><code><span class="n">utils</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">git</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;https://example.com/utils.git&quot;</span><span class="w"> </span><span class="p">}</span>
 </code></pre></div>
-<p>Version solving and registry resolution are intentionally out of scope in v0.</p>
+<p>Version solving is intentionally out of scope in v0. During <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code>,
+registry dependencies are installed with <code class="language-python highlight"><span class="n">pip</span> <span class="n">install</span> <span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span></code>, path dependencies
+with <code class="language-python highlight"><span class="n">pip</span> <span class="n">install</span> <span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;</span></code>, and git dependencies with <code class="language-python highlight"><span class="n">pip</span> <span class="n">install</span> <span class="n">git</span><span class="o">+&lt;</span><span class="n">url</span><span class="o">&gt;</span></code>.</p>
 
 
 

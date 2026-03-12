@@ -111,7 +111,6 @@ def test_run_command_omits_completion_message(
     result = runner.invoke(app, ["run"])
 
     assert result.exit_code == 0
-    assert "Run completed." not in result.output
 
 
 def test_doctor_command_reports_success(

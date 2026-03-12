@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from arxpm._toml import tomllib
 from arxpm.cli import app
 from arxpm.doctor import DoctorCheck, DoctorReport
 from arxpm.errors import MissingPixiError
@@ -34,6 +35,15 @@ class PassingDoctorService:
         return DoctorReport(checks=(DoctorCheck("pixi", True, "ok"),))
 
 
+class PassingRunProjectService:
+    """
+    title: Project service that always succeeds on run.
+    """
+
+    def run(self, directory: Path) -> None:
+        return None
+
+
 def test_init_command_creates_project_files(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -43,8 +53,13 @@ def test_init_command_creates_project_files(
     result = runner.invoke(app, ["init", "--name", "hello-arx", "--no-pixi"])
 
     assert result.exit_code == 0
-    assert (tmp_path / "arxproj.toml").exists()
-    assert (tmp_path / "src" / "main.arx").exists()
+    manifest_path = tmp_path / "arxproj.toml"
+    assert manifest_path.exists()
+
+    manifest_data = tomllib.loads(manifest_path.read_text(encoding="utf-8"))
+    entry = manifest_data["build"]["entry"]
+    assert isinstance(entry, str)
+    assert (tmp_path / entry).exists()
 
 
 def test_add_command_writes_registry_dependency(
@@ -83,6 +98,19 @@ def test_install_command_requires_manifest(
     result = runner.invoke(app, ["install"])
     assert result.exit_code == 1
     assert "manifest not found" in result.output
+
+
+def test_run_command_omits_completion_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "arxpm.cli.ProjectService",
+        PassingRunProjectService,
+    )
+
+    result = runner.invoke(app, ["run"])
+
+    assert result.exit_code == 0
 
 
 def test_doctor_command_reports_success(

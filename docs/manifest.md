@@ -11,7 +11,7 @@ version = "0.1.0"
 edition = "2026"
 
 [build]
-entry = "src/main.arx"
+entry = "src/main.x"
 out_dir = "build"
 
 [dependencies]

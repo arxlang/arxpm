@@ -5,6 +5,7 @@ title: External process helpers.
 from __future__ import annotations
 
 import subprocess
+import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -89,6 +90,12 @@ def run_command(
         stdout=completed.stdout,
         stderr=completed.stderr,
     )
+
+    if result.stdout:
+        print(result.stdout, end="")
+    if result.stderr:
+        print(result.stderr, end="", file=sys.stderr)
+
     if check and result.returncode != 0:
         raise ExternalCommandError(
             result.command,

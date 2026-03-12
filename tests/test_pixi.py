@@ -4,12 +4,12 @@ title: Tests for pixi adapter behavior.
 
 from __future__ import annotations
 
-import tomllib
 from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 
+from arxpm._toml import tomllib
 from arxpm.errors import MissingPixiError
 from arxpm.external import CommandResult
 from arxpm.pixi import PixiService

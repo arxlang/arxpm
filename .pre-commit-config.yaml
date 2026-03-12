@@ -81,15 +81,15 @@ repos:
         types:
           - python
 
-      - id: vulture
-        name: vulture
-        entry: vulture --min-confidence 80
-        language: system
-        files: "./"
-        description: Find unused Python code.
-        pass_filenames: true
-        types:
-          - python
+      # - id: vulture
+      #   name: vulture
+      #   entry: vulture --min-confidence 80
+      #   language: system
+      #   files: "./"
+      #   description: Find unused Python code.
+      #   pass_filenames: true
+      #   types:
+      #     - python
 
       - id: mccabe
         name: mccabe

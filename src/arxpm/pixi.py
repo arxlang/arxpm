@@ -7,11 +7,11 @@ from __future__ import annotations
 import json
 import re
 import shutil
-import tomllib
 from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
+from arxpm._toml import tomllib
 from arxpm.errors import ManifestError, MissingPixiError
 from arxpm.external import CommandResult, CommandRunner, run_command
 

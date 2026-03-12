@@ -5,10 +5,17 @@
 `arx` stays compiler-only. `arxpm` owns project manifests (`arxproj.toml`),
 workspace lifecycle, Pixi integration, and user-facing workflow commands.
 
+## Compatibility
+
+- Python 3.10+ is supported.
+- On Python 3.10, `arxpm` uses `tomli` as a compatibility fallback for
+  `tomllib`.
+
 ## Architecture
 
 - `models.py`: typed manifest models.
 - `manifest.py`: `arxproj.toml` parsing and rendering.
+- `_toml.py`: TOML parser compatibility shim (`tomllib`/`tomli`).
 - `pixi.py`: Pixi adapter and `pixi.toml` handling.
 - `project.py`: project workflows (`init`, `add`, `install`, `build`, `run`).
 - `doctor.py`: health checks for environment and manifest.

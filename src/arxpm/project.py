@@ -18,7 +18,19 @@ from arxpm.manifest import (
 from arxpm.models import DependencySpec, Manifest
 from arxpm.pixi import PixiService
 
-_MAIN_SOURCE = 'fn main() {\n    print("Hello, Arx!");\n}\n'
+_MAIN_SOURCE = """```
+title: Simple main module
+```
+
+fn main() -> i32:
+  ```
+  title: Print hello world
+  returns:
+    type: i32
+  ```
+  print("Hello, Arx!")
+  return 0
+"""
 
 
 class ProjectPixiAdapter(Protocol):

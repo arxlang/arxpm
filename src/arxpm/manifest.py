@@ -5,9 +5,9 @@ title: Read and write arxproj.toml manifests.
 from __future__ import annotations
 
 import json
-import tomllib
 from pathlib import Path
 
+from arxpm._toml import tomllib
 from arxpm.errors import ManifestError
 from arxpm.models import Manifest
 

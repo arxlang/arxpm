@@ -4,6 +4,7 @@ This guide sets up `arxpm` for local development and smoke testing.
 
 ## Prerequisites
 
+- Python 3.10+
 - Conda or Mamba
 - Poetry
 

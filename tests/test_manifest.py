@@ -25,7 +25,7 @@ def test_manifest_round_trip(tmp_path: Path) -> None:
 
     assert loaded.project.name == "hello-arx"
     assert loaded.project.version == "0.1.0"
-    assert loaded.build.entry == "src/main.arx"
+    assert loaded.build.entry == "src/main.x"
     assert loaded.toolchain.linker == "clang"
 
 
@@ -37,7 +37,7 @@ version = "0.1.0"
 edition = "2026"
 
 [build]
-entry = "src/main.arx"
+entry = "src/main.x"
 out_dir = "build"
 
 [dependencies]
@@ -69,7 +69,7 @@ version = "0.1.0"
 edition = "2026"
 
 [build]
-entry = "src/main.arx"
+entry = "src/main.x"
 out_dir = "build"
 
 [dependencies]

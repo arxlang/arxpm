@@ -30,7 +30,7 @@ The report should show:
 - pixi available
 - `arxproj.toml` found
 - `pixi.toml` found
-- `python` and `clang` declared in `pixi.toml`
+- `python`, `pip`, and `clang` declared in `pixi.toml`
 
 ## Run Example
 

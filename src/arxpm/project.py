@@ -467,7 +467,7 @@ class ProjectService:
 
 
 def _required_pixi_dependencies() -> tuple[str, ...]:
-    return ("clang", "python")
+    return ("clang", "pip", "python")
 
 
 def _dependency_install_target(name: str, spec: DependencySpec) -> str:

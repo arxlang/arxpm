@@ -56,7 +56,7 @@ def test_doctor_reports_requested_health_checks(tmp_path: Path) -> None:
     service = DoctorService(
         pixi=FakePixiService(
             available=True,
-            dependencies={"python", "clang"},
+            dependencies={"python", "pip", "clang"},
         ),
     )
 
@@ -67,19 +67,24 @@ def test_doctor_reports_requested_health_checks(tmp_path: Path) -> None:
     assert checks["arxproj.toml"].ok is True
     assert checks["pixi.toml"].ok is True
     assert checks["python declared"].ok is True
+    assert checks["pip declared"].ok is True
     assert checks["clang declared"].ok is True
 
 
 def test_doctor_reports_missing_pixi_manifest(tmp_path: Path) -> None:
     save_manifest(tmp_path, create_default_manifest("demo"))
     service = DoctorService(
-        pixi=FakePixiService(available=True, dependencies={"python", "clang"}),
+        pixi=FakePixiService(
+            available=True,
+            dependencies={"python", "pip", "clang"},
+        ),
     )
 
     report = service.run(tmp_path)
     checks = {check.name: check for check in report.checks}
     assert checks["pixi.toml"].ok is False
     assert checks["python declared"].ok is False
+    assert checks["pip declared"].ok is False
     assert checks["clang declared"].ok is False
 
 
@@ -93,4 +98,5 @@ def test_doctor_reports_invalid_pixi_file(tmp_path: Path) -> None:
     report = service.run(tmp_path)
     checks = {check.name: check for check in report.checks}
     assert checks["python declared"].ok is False
+    assert checks["pip declared"].ok is False
     assert checks["clang declared"].ok is False

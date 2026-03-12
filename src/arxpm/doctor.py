@@ -145,15 +145,24 @@ class DoctorService:
             )
         )
 
-        python_declared, clang_declared, detail = self._dependency_checks(
-            directory,
-            pixi_file_ok,
+        python_declared, pip_declared, clang_declared, detail = (
+            self._dependency_checks(
+                directory,
+                pixi_file_ok,
+            )
         )
         checks.append(
             DoctorCheck(
                 name="python declared",
                 ok=python_declared,
                 message=detail["python"],
+            )
+        )
+        checks.append(
+            DoctorCheck(
+                name="pip declared",
+                ok=pip_declared,
+                message=detail["pip"],
             )
         )
         checks.append(
@@ -170,24 +179,27 @@ class DoctorService:
         self,
         directory: Path,
         pixi_file_ok: bool,
-    ) -> tuple[bool, bool, dict[str, str]]:
+    ) -> tuple[bool, bool, bool, dict[str, str]]:
         if not pixi_file_ok:
             details = {
                 "python": f"{PIXI_FILENAME} missing",
+                "pip": f"{PIXI_FILENAME} missing",
                 "clang": f"{PIXI_FILENAME} missing",
             }
-            return (False, False, details)
+            return (False, False, False, details)
 
         try:
             dependencies = self._pixi.declared_dependencies(directory)
         except ManifestError as exc:
             details = {
                 "python": str(exc),
+                "pip": str(exc),
                 "clang": str(exc),
             }
-            return (False, False, details)
+            return (False, False, False, details)
 
         python_ok = "python" in dependencies
+        pip_ok = "pip" in dependencies
         clang_ok = "clang" in dependencies
         details = {
             "python": (
@@ -195,10 +207,15 @@ class DoctorService:
                 if python_ok
                 else "python is not declared in pixi.toml"
             ),
+            "pip": (
+                "pip is declared in pixi.toml"
+                if pip_ok
+                else "pip is not declared in pixi.toml"
+            ),
             "clang": (
                 "clang is declared in pixi.toml"
                 if clang_ok
                 else "clang is not declared in pixi.toml"
             ),
         }
-        return (python_ok, clang_ok, details)
+        return (python_ok, pip_ok, clang_ok, details)

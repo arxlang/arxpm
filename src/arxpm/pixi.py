@@ -18,7 +18,7 @@ from arxpm.external import CommandResult, CommandRunner, run_command
 PIXI_FILENAME = "pixi.toml"
 DEFAULT_CHANNELS = ("conda-forge",)
 DEFAULT_PLATFORMS = ("linux-64", "osx-64", "win-64")
-BASE_DEPENDENCIES = ("python", "clang")
+BASE_DEPENDENCIES = ("python", "pip", "clang")
 _SIMPLE_KEY_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 
 

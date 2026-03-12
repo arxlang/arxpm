@@ -6,7 +6,7 @@
 
 `arxpm` does not own all of `pixi.toml`. It only manages:
 
-- required toolchain dependencies (`python`, `clang`)
+- required toolchain dependencies (`python`, `pip`, `clang`)
 - the `tool.arxpm` section used to track managed fields
 
 Unrelated user sections such as tasks and features are preserved.

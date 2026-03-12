@@ -4,12 +4,12 @@ title: Tests for Typer CLI behavior.
 
 from __future__ import annotations
 
-import tomllib
 from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
+from arxpm._toml import tomllib
 from arxpm.cli import app
 from arxpm.doctor import DoctorCheck, DoctorReport
 from arxpm.errors import MissingPixiError

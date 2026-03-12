@@ -13,6 +13,7 @@ authors = [{ name = "Ivan Ogasawara" }]
 dependencies = [
     "typer>=0.12.3,<1.0.0",
     "arxlang >= 0.3.3",
+    "tomli>=2.0.1; python_version < '3.11'",
 ]
 
 [project.scripts]

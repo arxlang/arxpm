@@ -58,6 +58,9 @@ arxpm run
 arxpm run --directory examples
 ```
 
+Build/compiler output and the application stdout/stderr are streamed directly;
+`arxpm run` does not print an extra completion line.
+
 ## `arxpm doctor`
 
 Report environment health and manifest status.

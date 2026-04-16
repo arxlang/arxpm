@@ -15,6 +15,7 @@ from typing import Protocol
 from arxpm.errors import ManifestError, MissingCompilerError
 from arxpm.external import CommandResult
 from arxpm.manifest import (
+    MANIFEST_FILENAME,
     create_default_manifest,
     load_manifest,
     save_manifest,
@@ -186,9 +187,9 @@ class ProjectService:
           type: Manifest
         """
         project_name = name or directory.resolve().name
-        manifest_path = directory / "arxproj.toml"
+        manifest_path = directory / MANIFEST_FILENAME
         if manifest_path.exists():
-            raise ManifestError("arxproj.toml already exists")
+            raise ManifestError(f"{MANIFEST_FILENAME} already exists")
 
         manifest = create_default_manifest(project_name)
         save_manifest(directory, manifest)
@@ -215,7 +216,7 @@ class ProjectService:
         git: str | None = None,
     ) -> Manifest:
         """
-        title: Add or update a dependency in arxproj.toml.
+        title: Add or update a dependency in .arxproject.toml.
         parameters:
           directory:
             type: Path
@@ -503,11 +504,11 @@ def _prepare_publish_workspace(
         target_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source_path, target_path)
 
-    manifest_path = directory / "arxproj.toml"
+    manifest_path = directory / MANIFEST_FILENAME
     if not manifest_path.exists():
         raise ManifestError(f"manifest not found: {manifest_path}")
 
-    shutil.copy2(manifest_path, package_root / "arxproj.toml")
+    shutil.copy2(manifest_path, package_root / MANIFEST_FILENAME)
     (package_root / "__init__.py").write_text(
         _render_package_init(manifest),
         encoding="utf-8",
@@ -588,7 +589,7 @@ def _render_publish_pyproject(
         "include = [",
         f'  "src/{package_name}/**/*.x",',
         f'  "src/{package_name}/**/*.arx",',
-        f'  "src/{package_name}/arxproj.toml",',
+        f'  "src/{package_name}/.arxproject.toml",',
         "]",
         "",
         "[tool.hatch.build.targets.sdist]",
@@ -611,7 +612,7 @@ def _render_publish_readme(manifest: Manifest) -> str:
                 "",
                 "It includes:",
                 "",
-                "- arxproj.toml",
+                "- .arxproject.toml",
                 "- Arx source files (*.x, *.arx)",
             ]
         )

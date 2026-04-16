@@ -115,18 +115,18 @@ class DoctorService:
             DoctorCheck(name="pixi", ok=pixi_ok, message=pixi_message)
         )
 
-        arxproj_path = directory / MANIFEST_FILENAME
-        arxproj_ok = arxproj_path.exists()
-        arxproj_message = (
+        arxproject_path = directory / MANIFEST_FILENAME
+        arxproject_ok = arxproject_path.exists()
+        arxproject_message = (
             f"{MANIFEST_FILENAME} found"
-            if arxproj_ok
+            if arxproject_ok
             else f"{MANIFEST_FILENAME} missing"
         )
         checks.append(
             DoctorCheck(
                 name=MANIFEST_FILENAME,
-                ok=arxproj_ok,
-                message=arxproj_message,
+                ok=arxproject_ok,
+                message=arxproject_message,
             )
         )
 

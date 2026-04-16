@@ -232,7 +232,7 @@ def test_publish_dry_run_skips_upload(tmp_path: Path) -> None:
     assert len(pixi.run_calls) == 2
 
 
-def test_install_requires_arxproj_manifest(tmp_path: Path) -> None:
+def test_install_requires_arxproject_manifest(tmp_path: Path) -> None:
     pixi = FakePixiService()
     service = ProjectService(pixi=pixi)
 

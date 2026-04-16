@@ -64,7 +64,7 @@ def test_doctor_reports_requested_health_checks(tmp_path: Path) -> None:
     checks = {check.name: check for check in report.checks}
 
     assert checks["pixi"].ok is True
-    assert checks["arxproj.toml"].ok is True
+    assert checks[".arxproject.toml"].ok is True
     assert checks["pixi.toml"].ok is True
     assert checks["python declared"].ok is True
     assert checks["pip declared"].ok is True

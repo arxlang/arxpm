@@ -8,8 +8,8 @@
 - `arxpm` is the user-facing workflow tool.
 - Pixi is the environment and toolchain backend.
 
-Arx projects use `arxproj.toml` as their project manifest. Python packaging is
-only for distributing `arxpm` itself.
+Arx projects use `.arxproject.toml` as their project manifest. Python packaging
+is only for distributing `arxpm` itself.
 
 ## Compatibility
 
@@ -20,7 +20,7 @@ only for distributing `arxpm` itself.
 ## Architecture
 
 - `src/arxpm/models.py`: typed manifest models.
-- `src/arxpm/manifest.py`: parse/render `arxproj.toml`.
+- `src/arxpm/manifest.py`: parse/render `.arxproject.toml`.
 - `src/arxpm/_toml.py`: TOML parser compatibility shim (`tomllib`/`tomli`).
 - `src/arxpm/pixi.py`: Pixi detection and partial `pixi.toml` sync.
 - `src/arxpm/project.py`: `init`, `add`, `install`, `build`, `run`, `pack`,

@@ -1,6 +1,6 @@
 # Manifest
 
-Arx projects are described by `arxproj.toml`.
+Arx projects are described by `.arxproject.toml`.
 
 ## Minimal Layout
 

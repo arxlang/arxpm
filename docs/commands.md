@@ -11,13 +11,13 @@ arxpm init --directory ./my-project --no-pixi
 
 Effects:
 
-- creates `arxproj.toml`
+- creates `.arxproject.toml`
 - creates `src/main.x`
 - optionally creates/updates `pixi.toml`
 
 ## `arxpm add`
 
-Add a dependency entry to `arxproj.toml`.
+Add a dependency entry to `.arxproject.toml`.
 
 ```bash
 arxpm add http
@@ -88,7 +88,7 @@ arxpm pack --directory examples
 ## `arxpm publish`
 
 Build and publish the current project as a Python package that bundles
-`arxproj.toml` and `*.x`/`*.arx` sources.
+`.arxproject.toml` and `*.x`/`*.arx` sources.
 
 ```bash
 export TWINE_USERNAME=__token__

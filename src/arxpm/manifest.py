@@ -1,5 +1,5 @@
 """
-title: Read and write arxproj.toml manifests.
+title: Read and write .arxproject.toml manifests.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from arxpm._toml import tomllib
 from arxpm.errors import ManifestError
 from arxpm.models import Manifest
 
-MANIFEST_FILENAME = "arxproj.toml"
+MANIFEST_FILENAME = ".arxproject.toml"
 
 
 def manifest_path(directory: Path) -> Path:

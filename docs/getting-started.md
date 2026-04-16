@@ -28,7 +28,7 @@ python -m arxpm doctor --directory examples
 The report should show:
 
 - pixi available
-- `arxproj.toml` found
+- `.arxproject.toml` found
 - `pixi.toml` found
 - `python`, `pip`, and `clang` declared in `pixi.toml`
 

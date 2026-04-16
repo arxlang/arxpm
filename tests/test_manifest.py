@@ -1,5 +1,5 @@
 """
-title: Tests for arxproj.toml parsing and rendering.
+title: Tests for .arxproject.toml parsing and rendering.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from arxpm.manifest import (
 
 def test_manifest_round_trip(tmp_path: Path) -> None:
     manifest = create_default_manifest("hello-arx")
-    path = tmp_path / "arxproj.toml"
+    path = tmp_path / ".arxproject.toml"
 
     save_manifest_file(manifest, path)
     loaded = load_manifest_file(path)
@@ -49,7 +49,7 @@ utils = { git = "https://example.com/utils.git" }
 compiler = "arx"
 linker = "clang"
 """.strip()
-    path = tmp_path / "arxproj.toml"
+    path = tmp_path / ".arxproject.toml"
     path.write_text(content + "\n", encoding="utf-8")
 
     manifest = load_manifest_file(path)
@@ -79,7 +79,7 @@ http = "oops"
 compiler = "arx"
 linker = "clang"
 """.strip()
-    path = tmp_path / "arxproj.toml"
+    path = tmp_path / ".arxproject.toml"
     path.write_text(content + "\n", encoding="utf-8")
 
     with pytest.raises(ManifestError):

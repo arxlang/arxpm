@@ -109,7 +109,7 @@ def add(
     ] = Path("."),
 ) -> None:
     """
-    title: Add a dependency entry to arxproj.toml.
+    title: Add a dependency entry to .arxproject.toml.
     parameters:
       name:
         type: Annotated[str, typer.Argument(help='Dependency name.')]

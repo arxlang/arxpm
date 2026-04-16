@@ -94,7 +94,7 @@ def test_init_command_creates_project_files(
     result = runner.invoke(app, ["init", "--name", "hello-arx", "--no-pixi"])
 
     assert result.exit_code == 0
-    manifest_path = tmp_path / "arxproj.toml"
+    manifest_path = tmp_path / ".arxproject.toml"
     assert manifest_path.exists()
 
     manifest_data = tomllib.loads(manifest_path.read_text(encoding="utf-8"))
@@ -113,7 +113,7 @@ def test_add_command_writes_registry_dependency(
     result = runner.invoke(app, ["add", "http"])
 
     assert result.exit_code == 0
-    manifest = (tmp_path / "arxproj.toml").read_text(encoding="utf-8")
+    manifest = (tmp_path / ".arxproject.toml").read_text(encoding="utf-8")
     assert '"http" = { source = "registry" }' in manifest
 
 

@@ -2,7 +2,7 @@
 
 `arxpm` is the Arx project manager and workspace tool.
 
-`arx` stays compiler-only. `arxpm` owns project manifests (`arxproj.toml`),
+`arx` stays compiler-only. `arxpm` owns project manifests (`.arxproject.toml`),
 workspace lifecycle, Pixi integration, and user-facing workflow commands.
 
 ## Compatibility
@@ -14,7 +14,7 @@ workspace lifecycle, Pixi integration, and user-facing workflow commands.
 ## Architecture
 
 - `models.py`: typed manifest models.
-- `manifest.py`: `arxproj.toml` parsing and rendering.
+- `manifest.py`: `.arxproject.toml` parsing and rendering.
 - `_toml.py`: TOML parser compatibility shim (`tomllib`/`tomli`).
 - `pixi.py`: Pixi adapter and `pixi.toml` handling.
 - `project.py`: project workflows (`init`, `add`, `install`, `build`, `run`,

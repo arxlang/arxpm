@@ -1,9 +1,12 @@
 [project]
-name = "hello-arx"
+name = "local-consumer"
 version = "0.1.0"
 edition = "2026"
 
-dependencies = []
+dependencies = [
+  "local_lib @ ../local_lib",
+  "pyyaml",
+]
 
 [build]
 src_dir = "src"

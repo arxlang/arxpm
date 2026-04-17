@@ -9,6 +9,7 @@ nav:
   - Commands: commands.md
   - Manifest: manifest.md
   - Multi-file Projects: multi-file-projects.md
+  - Local Packages: local-packages.md
   - Pixi Integration: pixi-integration.md
   - Contributing: contributing.md
   - Changelog: changelog.md

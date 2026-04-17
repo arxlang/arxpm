@@ -74,6 +74,13 @@ def install(
         Path,
         typer.Option("--directory", "-C", help="Project directory."),
     ] = Path("."),
+    dev: Annotated[
+        bool,
+        typer.Option(
+            "--dev/--no-dev",
+            help="Also install entries from [arxpm.dependencies-dev].",
+        ),
+    ] = False,
 ) -> None:
     """
     title: Install project environment with pixi.
@@ -82,10 +89,14 @@ def install(
         type: >-
           Annotated[Path, typer.Option('--directory', '-C', help='Project
           directory.')]
+      dev:
+        type: >-
+          Annotated[bool, typer.Option('--dev/--no-dev', help='Also install
+          entries from [arxpm.dependencies-dev].')]
     """
     project_service = ProjectService()
     try:
-        project_service.install(_resolve(directory))
+        project_service.install(_resolve(directory), dev=dev)
     except ArxpmError as exc:
         _fail(exc)
 

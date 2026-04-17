@@ -44,12 +44,16 @@ pip install pytest
 pytest
 ```
 
-The `examples/` directory ships two sample projects:
+The `examples/` directory ships several sample projects:
 
 - `examples/hello-arx/` — minimal single-file project.
 - `examples/multi-module/` — multi-file project whose `main.x` imports and calls
   functions from sibling `.x` modules. See the
   [Multi-file Projects](docs/multi-file-projects.md) guide.
+- `examples/local_lib/` + `examples/local-consumer/` — a library and a consumer
+  that live side by side on disk so the consumer resolves imports against the
+  library's `.x` files. See [Local Packages](docs/local-packages.md) for the
+  supported layout and the current boundary around pip-installed libraries.
 
 Integration tests that compile and execute both examples live in
 `tests/test_examples_integration.py` and are gated on `arx` and `pixi` being on

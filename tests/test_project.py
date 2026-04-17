@@ -182,7 +182,7 @@ def test_init_is_idempotent_when_manifest_exists(tmp_path: Path) -> None:
     service = ProjectService(pixi=pixi)
 
     first = service.init(tmp_path, name="demo", create_pixi=False)
-    entry_path = tmp_path / first.build.entry
+    entry_path = tmp_path / first.build.source_path
     entry_path.write_text("// existing source\n", encoding="utf-8")
 
     second = service.init(tmp_path, name="ignored", create_pixi=True)
@@ -190,3 +190,63 @@ def test_init_is_idempotent_when_manifest_exists(tmp_path: Path) -> None:
     assert second.project.name == "demo"
     assert entry_path.read_text(encoding="utf-8") == "// existing source\n"
     assert pixi.ensure_manifest_calls
+
+
+def test_install_packs_and_symlinks_arx_path_dependency(
+    tmp_path: Path,
+) -> None:
+    pixi = FakePixiService()
+    service = ProjectService(pixi=pixi)
+
+    library_dir = tmp_path / "mylib"
+    consumer_dir = tmp_path / "app"
+    service.init(library_dir, name="mylib", create_pixi=False)
+    service.init(consumer_dir, name="app", create_pixi=False)
+    service.add_dependency(consumer_dir, "mylib", path=Path("../mylib"))
+
+    fake_install_dir = tmp_path / "fake-site-packages" / "mylib"
+    fake_install_dir.mkdir(parents=True)
+    (fake_install_dir / "main.x").write_text("", encoding="utf-8")
+    pixi.module_install_dirs["mylib"] = fake_install_dir
+
+    service.install(consumer_dir)
+
+    consumer_run_calls = [
+        args for cwd, args in pixi.run_calls if cwd == consumer_dir
+    ]
+    pip_install_commands = [
+        args
+        for args in consumer_run_calls
+        if args[:4] == ["python", "-m", "pip", "install"]
+        and any(str(arg).endswith(".whl") for arg in args)
+    ]
+    assert pip_install_commands, (
+        "expected the consumer to pip-install the library's wheel"
+    )
+    probe_commands = [
+        args
+        for args in consumer_run_calls
+        if args[:2] == ["python", "-c"]
+        and "import mylib" in (args[2] if len(args) > 2 else "")
+    ]
+    assert probe_commands, "expected a python -c probe for the install dir"
+
+    symlink = consumer_dir / "mylib"
+    assert symlink.is_symlink()
+    assert symlink.resolve() == fake_install_dir
+
+
+def test_install_rejects_arx_path_dep_name_mismatch(tmp_path: Path) -> None:
+    pixi = FakePixiService()
+    service = ProjectService(pixi=pixi)
+
+    library_dir = tmp_path / "weird_dir_name"
+    consumer_dir = tmp_path / "app"
+    service.init(library_dir, name="actual_module", create_pixi=False)
+    service.init(consumer_dir, name="app", create_pixi=False)
+    service.add_dependency(
+        consumer_dir, "declared_name", path=Path("../weird_dir_name")
+    )
+
+    with pytest.raises(ManifestError, match="must match the library"):
+        service.install(consumer_dir)

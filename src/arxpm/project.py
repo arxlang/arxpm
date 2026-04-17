@@ -194,7 +194,7 @@ class ProjectService:
             manifest = create_default_manifest(project_name)
             save_manifest(directory, manifest)
 
-        entry_path = directory / manifest.build.entry
+        entry_path = directory / manifest.build.source_path
         entry_path.parent.mkdir(parents=True, exist_ok=True)
         if not entry_path.exists():
             entry_path.write_text(_MAIN_SOURCE, encoding="utf-8")
@@ -248,12 +248,18 @@ class ProjectService:
         save_manifest(directory, manifest)
         return manifest
 
-    def install(self, directory: Path) -> CommandResult:
+    def install(
+        self,
+        directory: Path,
+        dev: bool = False,
+    ) -> CommandResult:
         """
         title: Install or sync environment dependencies via pixi.
         parameters:
           directory:
             type: Path
+          dev:
+            type: bool
         returns:
           type: CommandResult
         """
@@ -265,7 +271,15 @@ class ProjectService:
             required_dependencies=_required_pixi_dependencies(),
         )
         command_result = self._pixi.install(directory)
-        self._install_manifest_dependencies(directory, manifest)
+        self._install_manifest_dependencies(
+            directory,
+            manifest.dependencies,
+        )
+        if dev:
+            self._install_manifest_dependencies(
+                directory,
+                manifest.dev_dependencies,
+            )
         return command_result
 
     def build(self, directory: Path) -> BuildResult:
@@ -284,7 +298,8 @@ class ProjectService:
         if not compiler:
             raise MissingCompilerError("toolchain.compiler cannot be empty")
 
-        entry_path = directory / manifest.build.entry
+        source_path = manifest.build.source_path
+        entry_path = directory / source_path
         if not entry_path.exists():
             raise ManifestError(f"build entry does not exist: {entry_path}")
 
@@ -294,7 +309,7 @@ class ProjectService:
 
         command = [
             compiler,
-            manifest.build.entry,
+            source_path,
             "--output-file",
             str(artifact_rel),
         ]
@@ -450,9 +465,19 @@ class ProjectService:
     def _install_manifest_dependencies(
         self,
         directory: Path,
-        manifest: Manifest,
+        dependencies: dict[str, DependencySpec],
     ) -> None:
-        for dependency_name, spec in sorted(manifest.dependencies.items()):
+        for dependency_name, spec in sorted(dependencies.items()):
+            if spec.path is not None and _is_arx_project(
+                (directory / spec.path).resolve()
+            ):
+                self._install_arx_path_dependency(
+                    directory,
+                    dependency_name,
+                    (directory / spec.path).resolve(),
+                )
+                continue
+
             target = _dependency_install_target(dependency_name, spec)
             self._pixi.run(
                 directory,
@@ -465,6 +490,83 @@ class ProjectService:
                     target,
                 ],
             )
+
+    def _install_arx_path_dependency(
+        self,
+        directory: Path,
+        dependency_name: str,
+        library_directory: Path,
+    ) -> None:
+        """
+        title: Pack, pip-install, and symlink an Arx path dependency.
+        parameters:
+          directory:
+            type: Path
+          dependency_name:
+            type: str
+          library_directory:
+            type: Path
+        """
+        library_manifest = load_manifest(library_directory)
+        module_name = _arx_module_name(library_manifest.project.name)
+        if module_name != dependency_name:
+            raise ManifestError(
+                f"dependency {dependency_name!r} must match the library's "
+                f"Arx module name {module_name!r} "
+                f"(derived from project.name = "
+                f"{library_manifest.project.name!r})"
+            )
+
+        pack_result = self.pack(library_directory)
+        wheels = [
+            artifact
+            for artifact in pack_result.artifacts
+            if artifact.suffix == ".whl"
+        ]
+        if not wheels:
+            raise ManifestError(
+                f"packing {library_directory} produced no wheel artifact"
+            )
+        wheel = wheels[0]
+
+        self._pixi.run(
+            directory,
+            [
+                "python",
+                "-m",
+                "pip",
+                "install",
+                "--disable-pip-version-check",
+                "--force-reinstall",
+                "--no-deps",
+                str(wheel),
+            ],
+        )
+
+        probe = self._pixi.run(
+            directory,
+            [
+                "python",
+                "-c",
+                (
+                    f"import {module_name}, os; "
+                    f"print(os.path.dirname({module_name}.__file__))"
+                ),
+            ],
+        )
+        install_dir = Path(probe.stdout.strip())
+        if not install_dir.is_dir():
+            raise ManifestError(
+                f"installed {module_name!r} directory not found: {install_dir}"
+            )
+
+        link_path = directory / module_name
+        if link_path.is_symlink() or link_path.exists():
+            if link_path.is_symlink() or link_path.is_file():
+                link_path.unlink()
+            else:
+                shutil.rmtree(link_path)
+        link_path.symlink_to(install_dir, target_is_directory=True)
 
 
 def _required_pixi_dependencies() -> tuple[str, ...]:
@@ -488,7 +590,7 @@ def _prepare_publish_workspace(
     manifest: Manifest,
     staging_dir: Path,
 ) -> None:
-    package_name = _distribution_to_package_name(manifest.project.name)
+    package_name = _arx_module_name(manifest.project.name)
     package_root = staging_dir / "src" / package_name
     package_root.mkdir(parents=True, exist_ok=True)
 
@@ -498,9 +600,11 @@ def _prepare_publish_workspace(
             "no Arx source files found to publish (expected .x or .arx)"
         )
 
+    source_root = Path(manifest.build.src_dir)
     for relative_source in source_paths:
         source_path = directory / relative_source
-        target_path = package_root / relative_source
+        bundled_rel = _bundled_source_path(relative_source, source_root)
+        target_path = package_root / bundled_rel
         target_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source_path, target_path)
 
@@ -525,6 +629,25 @@ def _prepare_publish_workspace(
     )
 
 
+def _bundled_source_path(relative_source: Path, source_root: Path) -> Path:
+    """
+    title: Drop the source root prefix so bundled files land at package root.
+    parameters:
+      relative_source:
+        type: Path
+      source_root:
+        type: Path
+    returns:
+      type: Path
+    """
+    if source_root == Path("") or source_root == Path("."):
+        return relative_source
+    try:
+        return relative_source.relative_to(source_root)
+    except ValueError:
+        return relative_source
+
+
 def _discover_arx_sources(directory: Path) -> list[Path]:
     sources: list[Path] = []
     for path in directory.rglob("*"):
@@ -539,14 +662,18 @@ def _discover_arx_sources(directory: Path) -> list[Path]:
     return sorted(sources)
 
 
-def _distribution_to_package_name(project_name: str) -> str:
+def _is_arx_project(path: Path) -> bool:
+    return path.is_dir() and (path / MANIFEST_FILENAME).is_file()
+
+
+def _arx_module_name(project_name: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9]+", "_", project_name).strip("_")
     if not cleaned:
         raise ManifestError("project.name must contain letters or numbers")
 
     if cleaned[0].isdigit():
         cleaned = f"pkg_{cleaned}"
-    return f"arxpkg_{cleaned.lower()}"
+    return cleaned.lower()
 
 
 def _render_package_init(manifest: Manifest) -> str:

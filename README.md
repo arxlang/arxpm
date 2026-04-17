@@ -44,4 +44,17 @@ pip install pytest
 pytest
 ```
 
-Use the `examples/` directory for sample manifest files.
+The `examples/` directory ships two sample projects:
+
+- `examples/hello-arx/` — minimal single-file project.
+- `examples/multi-module/` — multi-file project whose `main.x` imports and calls
+  functions from sibling `.x` modules. See the
+  [Multi-file Projects](docs/multi-file-projects.md) guide.
+
+Integration tests that compile and execute both examples live in
+`tests/test_examples_integration.py` and are gated on `arx` and `pixi` being on
+`PATH`. Run them with:
+
+```bash
+pytest -m integration
+```

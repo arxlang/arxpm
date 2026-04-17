@@ -1,0 +1,10 @@
+[workspace]
+name = "multi-module"
+version = "0.1.0"
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-64", "win-64"]
+
+[dependencies]
+python = "*"
+pip = "*"
+clang = "*"

@@ -8,6 +8,7 @@ nav:
   - Getting Started: getting-started.md
   - Commands: commands.md
   - Manifest: manifest.md
+  - Multi-file Projects: multi-file-projects.md
   - Pixi Integration: pixi-integration.md
   - Contributing: contributing.md
   - Changelog: changelog.md

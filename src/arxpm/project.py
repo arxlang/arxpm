@@ -248,12 +248,18 @@ class ProjectService:
         save_manifest(directory, manifest)
         return manifest
 
-    def install(self, directory: Path) -> CommandResult:
+    def install(
+        self,
+        directory: Path,
+        dev: bool = False,
+    ) -> CommandResult:
         """
         title: Install or sync environment dependencies via pixi.
         parameters:
           directory:
             type: Path
+          dev:
+            type: bool
         returns:
           type: CommandResult
         """
@@ -265,7 +271,15 @@ class ProjectService:
             required_dependencies=_required_pixi_dependencies(),
         )
         command_result = self._pixi.install(directory)
-        self._install_manifest_dependencies(directory, manifest)
+        self._install_manifest_dependencies(
+            directory,
+            manifest.dependencies,
+        )
+        if dev:
+            self._install_manifest_dependencies(
+                directory,
+                manifest.dev_dependencies,
+            )
         return command_result
 
     def build(self, directory: Path) -> BuildResult:
@@ -450,9 +464,9 @@ class ProjectService:
     def _install_manifest_dependencies(
         self,
         directory: Path,
-        manifest: Manifest,
+        dependencies: dict[str, DependencySpec],
     ) -> None:
-        for dependency_name, spec in sorted(manifest.dependencies.items()):
+        for dependency_name, spec in sorted(dependencies.items()):
             if spec.path is not None and _is_arx_project(
                 (directory / spec.path).resolve()
             ):

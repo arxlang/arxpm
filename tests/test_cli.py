@@ -23,7 +23,8 @@ class FailingInstallProjectService:
     title: Project service that fails on install.
     """
 
-    def install(self, directory: Path) -> None:
+    def install(self, directory: Path, dev: bool = False) -> None:
+        _ = dev
         raise MissingPixiError("pixi is missing")
 
 
@@ -114,7 +115,8 @@ def test_add_command_writes_registry_dependency(
 
     assert result.exit_code == 0
     manifest = (tmp_path / ".arxproject.toml").read_text(encoding="utf-8")
-    assert '"http" = { source = "registry" }' in manifest
+    assert '"http",' in manifest
+    assert "[dependencies]" not in manifest
 
 
 def test_install_command_surfaces_human_error(

@@ -34,26 +34,28 @@ name = "local-consumer"
 version = "0.1.0"
 edition = "2026"
 
+dependencies = [
+  "local_lib @ ../local_lib",
+]
+
 [build]
 entry = "src/main.x"
 out_dir = "build"
-
-[dependencies]
-local_lib = { path = "../local_lib" }
 
 [toolchain]
 compiler = "arx"
 linker = "clang"
 ```
 
-The key on the left of `=` **must** match the library's Arx module name (derived
-from its `project.name`, normalized to a Python identifier). `arxpm install`
-rejects mismatched names rather than producing a silent failure at build time.
+The name on the left of `@` **must** match the library's Arx module name
+(derived from its `project.name`, normalized to a Python identifier).
+`arxpm install` rejects mismatched names rather than producing a silent failure
+at build time.
 
 ## What `arxpm install` does for an Arx path dependency
 
-For each `[dependencies]` entry whose `path` points at a directory containing
-`.arxproject.toml`, `arxpm install`:
+For each `project.dependencies` entry of the form `<name> @ <path>` where
+`<path>` points at a directory containing `.arxproject.toml`, `arxpm install`:
 
 1. Packs the library (runs `arxpm pack` on that path) to produce a wheel that
    bundles every `.x` / `.arx` source under the library's module directory.
@@ -95,9 +97,10 @@ Expected stdout: `5`.
   `FileImportResolver` only searches CWD and ancestors of the input files — it
   does not read from `site-packages` directly. The symlink step is what bridges
   the installed wheel back into the consumer's ancestor tree.
-- **Path deps only; no registry or git.** `{ git = ... }` dependencies still go
-  straight through `pip install` and bring no cross-compile support today — only
-  `{ path = ... }` entries trigger the pack/install/link flow.
+- **Path deps only; no registry or git.** `<name> @ git+...` dependencies still
+  go straight through `pip install` and bring no cross-compile support today —
+  only `<name> @ <path>` entries pointing at an Arx project trigger the
+  pack/install/link flow.
 - **No version solving or editable installs.** Every `arxpm install` re-packs
   the library and reinstalls the wheel. For iterative library development, edit
   sources and re-run `arxpm install` in the consumer.

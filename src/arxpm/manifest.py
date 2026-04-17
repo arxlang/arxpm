@@ -9,7 +9,7 @@ from pathlib import Path
 
 from arxpm._toml import tomllib
 from arxpm.errors import ManifestError
-from arxpm.models import Manifest
+from arxpm.models import DependencySpec, Manifest
 
 MANIFEST_FILENAME = ".arxproject.toml"
 
@@ -116,27 +116,55 @@ def render_manifest(manifest: Manifest) -> str:
         f"version = {_quote(manifest.project.version)}",
         f"edition = {_quote(manifest.project.edition)}",
         "",
-        "[build]",
-        f"entry = {_quote(manifest.build.entry)}",
-        f"out_dir = {_quote(manifest.build.out_dir)}",
-        "",
-        "[dependencies]",
     ]
-
-    for name, spec in sorted(manifest.dependencies.items()):
-        payload = spec.to_dict()
-        key, value = next(iter(payload.items()))
-        lines.append(f"{_quote(name)} = {{ {key} = {_quote(value)} }}")
-
+    lines.extend(
+        _render_requirements_array(
+            "dependencies",
+            manifest.dependencies,
+        )
+    )
     lines.extend(
         [
+            "",
+            "[build]",
+            f"entry = {_quote(manifest.build.entry)}",
+            f"out_dir = {_quote(manifest.build.out_dir)}",
             "",
             "[toolchain]",
             f"compiler = {_quote(manifest.toolchain.compiler)}",
             f"linker = {_quote(manifest.toolchain.linker)}",
         ]
     )
+    if manifest.dev_dependencies:
+        lines.extend(
+            [
+                "",
+                "[arxpm.dependencies-dev]",
+            ]
+        )
+        lines.extend(
+            _render_requirements_array(
+                "dependencies",
+                manifest.dev_dependencies,
+            )
+        )
     return "\n".join(lines) + "\n"
+
+
+def _render_requirements_array(
+    key: str,
+    entries: dict[str, DependencySpec],
+) -> list[str]:
+    if not entries:
+        return [f"{key} = []"]
+    rendered = [
+        _quote(spec.to_requirement_string(name))
+        for name, spec in sorted(entries.items())
+    ]
+    lines = [f"{key} = ["]
+    lines.extend(f"  {value}," for value in rendered)
+    lines.append("]")
+    return lines
 
 
 def _quote(value: str) -> str:

@@ -35,15 +35,15 @@ def test_manifest_parses_all_dependency_forms(tmp_path: Path) -> None:
 name = "hello-arx"
 version = "0.1.0"
 edition = "2026"
+dependencies = [
+  "http",
+  "mylib @ ../mylib",
+  "utils @ git+https://example.com/utils.git",
+]
 
 [build]
 entry = "src/main.x"
 out_dir = "build"
-
-[dependencies]
-http = { source = "registry" }
-mylib = { path = "../mylib" }
-utils = { git = "https://example.com/utils.git" }
 
 [toolchain]
 compiler = "arx"
@@ -61,10 +61,38 @@ linker = "clang"
     )
 
 
-def test_manifest_rejects_invalid_dependency_value(tmp_path: Path) -> None:
+def test_manifest_parses_dev_dependencies(tmp_path: Path) -> None:
     content = """
 [project]
-name = "bad"
+name = "hello-arx"
+version = "0.1.0"
+edition = "2026"
+dependencies = ["pyyaml"]
+
+[build]
+entry = "src/main.x"
+out_dir = "build"
+
+[toolchain]
+compiler = "arx"
+linker = "clang"
+
+[arxpm.dependencies-dev]
+dependencies = ["makim"]
+""".strip()
+    path = tmp_path / ".arxproject.toml"
+    path.write_text(content + "\n", encoding="utf-8")
+
+    manifest = load_manifest_file(path)
+
+    assert manifest.dependencies["pyyaml"].kind == "registry"
+    assert manifest.dev_dependencies["makim"].kind == "registry"
+
+
+def test_manifest_rejects_legacy_dependencies_table(tmp_path: Path) -> None:
+    content = """
+[project]
+name = "legacy"
 version = "0.1.0"
 edition = "2026"
 
@@ -73,7 +101,30 @@ entry = "src/main.x"
 out_dir = "build"
 
 [dependencies]
-http = "oops"
+http = { source = "registry" }
+
+[toolchain]
+compiler = "arx"
+linker = "clang"
+""".strip()
+    path = tmp_path / ".arxproject.toml"
+    path.write_text(content + "\n", encoding="utf-8")
+
+    with pytest.raises(ManifestError, match="no longer supported"):
+        load_manifest_file(path)
+
+
+def test_manifest_rejects_invalid_dependency_value(tmp_path: Path) -> None:
+    content = """
+[project]
+name = "bad"
+version = "0.1.0"
+edition = "2026"
+dependencies = ["bad @"]
+
+[build]
+entry = "src/main.x"
+out_dir = "build"
 
 [toolchain]
 compiler = "arx"
@@ -84,3 +135,27 @@ linker = "clang"
 
     with pytest.raises(ManifestError):
         load_manifest_file(path)
+
+
+def test_manifest_round_trip_preserves_dependencies(tmp_path: Path) -> None:
+    from arxpm.manifest import render_manifest
+    from arxpm.models import DependencySpec, Manifest, ProjectConfig
+
+    manifest = Manifest(
+        project=ProjectConfig(name="demo"),
+        dependencies={
+            "pyyaml": DependencySpec.registry(),
+            "local_lib": DependencySpec.from_path("../local_lib"),
+            "utils": DependencySpec.from_git("https://example.com/utils.git"),
+        },
+        dev_dependencies={"makim": DependencySpec.registry()},
+    )
+    path = tmp_path / ".arxproject.toml"
+    path.write_text(render_manifest(manifest), encoding="utf-8")
+
+    loaded = load_manifest_file(path)
+
+    assert loaded.dependencies["pyyaml"].kind == "registry"
+    assert loaded.dependencies["local_lib"].path == "../local_lib"
+    assert loaded.dependencies["utils"].git == "https://example.com/utils.git"
+    assert loaded.dev_dependencies["makim"].kind == "registry"

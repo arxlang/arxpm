@@ -3,13 +3,14 @@ name = "local-consumer"
 version = "0.1.0"
 edition = "2026"
 
+dependencies = [
+  "local_lib @ ../local_lib",
+  "pyyaml",
+]
+
 [build]
 entry = "src/main.x"
 out_dir = "build"
-
-[dependencies]
-local_lib = { path = "../local_lib" }
-pyyaml = { source = "registry" }
 
 [toolchain]
 compiler = "arx"

@@ -3,11 +3,11 @@ name = "hello-arx"
 version = "0.1.0"
 edition = "2026"
 
+dependencies = []
+
 [build]
 entry = "src/main.x"
 out_dir = "build"
-
-[dependencies]
 
 [toolchain]
 compiler = "arx"

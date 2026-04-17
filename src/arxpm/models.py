@@ -4,11 +4,14 @@ title: Typed data models for Arx project manifests.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
 from arxpm.errors import ManifestError
+
+_NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_\-]*$")
 
 
 @dataclass(slots=True, frozen=True)
@@ -160,60 +163,55 @@ class DependencySpec:
         return cls(git=git)
 
     @classmethod
-    def from_value(cls, name: str, value: Any) -> DependencySpec:
+    def parse_requirement(cls, text: str) -> tuple[str, DependencySpec]:
         """
-        title: Parse a dependency from TOML value.
+        title: Parse a PEP 508-lite requirement string into (name, spec).
+        parameters:
+          text:
+            type: str
+        returns:
+          type: tuple[str, DependencySpec]
+        """
+        if not isinstance(text, str):
+            raise ManifestError(
+                f"dependency entry must be a string, got {type(text).__name__}"
+            )
+        raw = text.strip()
+        if not raw:
+            raise ManifestError("dependency entry must be a non-empty string")
+
+        if "@" in raw:
+            name_part, _, ref_part = raw.partition("@")
+            name = name_part.strip()
+            ref = ref_part.strip()
+            if not ref:
+                raise ManifestError(
+                    f"dependency {text!r} must specify a reference after '@'"
+                )
+            _validate_name(name, text)
+            if ref.startswith("git+"):
+                return name, cls.from_git(ref[len("git+") :])
+            return name, cls.from_path(ref)
+
+        name = raw
+        _validate_name(name, text)
+        return name, cls.registry()
+
+    def to_requirement_string(self, name: str) -> str:
+        """
+        title: Render this spec back to a PEP 508-lite requirement string.
         parameters:
           name:
             type: str
-          value:
-            type: Any
         returns:
-          type: DependencySpec
-        """
-        if not isinstance(value, Mapping):
-            raise ManifestError(f"dependency {name!r} must be a table")
-
-        allowed = {"source", "path", "git"}
-        unknown = [key for key in value if key not in allowed]
-        if unknown:
-            keys = ", ".join(sorted(unknown))
-            raise ManifestError(
-                f"dependency {name!r} has unsupported keys: {keys}"
-            )
-
-        if "source" in value:
-            source = _require_string(value, "source", f"dependency {name!r}")
-            if source != "registry":
-                raise ManifestError(
-                    f"dependency {name!r} source must be 'registry' in v0"
-                )
-            return cls.registry()
-
-        if "path" in value:
-            path = _require_string(value, "path", f"dependency {name!r}")
-            return cls.from_path(path)
-
-        if "git" in value:
-            git = _require_string(value, "git", f"dependency {name!r}")
-            return cls.from_git(git)
-
-        raise ManifestError(
-            f"dependency {name!r} must define one of source, path, or git"
-        )
-
-    def to_dict(self) -> dict[str, str]:
-        """
-        title: Serialize dependency spec to TOML-compatible mapping.
-        returns:
-          type: dict[str, str]
+          type: str
         """
         if self.source is not None:
-            return {"source": self.source}
+            return name
         if self.path is not None:
-            return {"path": self.path}
+            return f"{name} @ {self.path}"
         if self.git is not None:
-            return {"git": self.git}
+            return f"{name} @ git+{self.git}"
         raise ManifestError("invalid dependency state")
 
 
@@ -228,6 +226,8 @@ class Manifest:
         type: BuildConfig
       dependencies:
         type: dict[str, DependencySpec]
+      dev_dependencies:
+        type: dict[str, DependencySpec]
       toolchain:
         type: ToolchainConfig
     """
@@ -235,6 +235,7 @@ class Manifest:
     project: ProjectConfig
     build: BuildConfig = field(default_factory=BuildConfig)
     dependencies: dict[str, DependencySpec] = field(default_factory=dict)
+    dev_dependencies: dict[str, DependencySpec] = field(default_factory=dict)
     toolchain: ToolchainConfig = field(default_factory=ToolchainConfig)
 
     @classmethod
@@ -259,12 +260,17 @@ class Manifest:
         returns:
           type: Manifest
         """
+        if "dependencies" in raw:
+            raise ManifestError(
+                "top-level [dependencies] table is no longer supported; "
+                "move entries into project.dependencies as PEP 508-style "
+                'strings (e.g. dependencies = ["pyyaml", '
+                '"local_lib @ ../local_lib"])'
+            )
+
         project_raw = _require_table(raw, "project")
         build_raw = _require_table(raw, "build")
         toolchain_raw = _require_table(raw, "toolchain")
-        dependencies_raw = raw.get("dependencies", {})
-        if not isinstance(dependencies_raw, Mapping):
-            raise ManifestError("dependencies must be a table")
 
         project = ProjectConfig(
             name=_require_string(project_raw, "name", "project"),
@@ -280,18 +286,27 @@ class Manifest:
             linker=_require_string(toolchain_raw, "linker", "toolchain"),
         )
 
-        dependencies: dict[str, DependencySpec] = {}
-        for key, value in dependencies_raw.items():
-            if not isinstance(key, str) or not key.strip():
-                raise ManifestError(
-                    "dependency name must be a non-empty string"
-                )
-            dependencies[key] = DependencySpec.from_value(key, value)
+        dependencies = _parse_requirements(
+            project_raw.get("dependencies", []),
+            "project.dependencies",
+        )
+
+        arxpm_raw = raw.get("arxpm", {})
+        if arxpm_raw and not isinstance(arxpm_raw, Mapping):
+            raise ManifestError("arxpm must be a table")
+        dev_raw = arxpm_raw.get("dependencies-dev", {}) if arxpm_raw else {}
+        if dev_raw and not isinstance(dev_raw, Mapping):
+            raise ManifestError("arxpm.dependencies-dev must be a table")
+        dev_dependencies = _parse_requirements(
+            dev_raw.get("dependencies", []) if dev_raw else [],
+            "arxpm.dependencies-dev.dependencies",
+        )
 
         return cls(
             project=project,
             build=build,
             dependencies=dependencies,
+            dev_dependencies=dev_dependencies,
             toolchain=toolchain,
         )
 
@@ -301,26 +316,70 @@ class Manifest:
         returns:
           type: dict[str, Any]
         """
-        dependencies = {
-            name: spec.to_dict()
-            for name, spec in sorted(self.dependencies.items())
+        project: dict[str, Any] = {
+            "name": self.project.name,
+            "version": self.project.version,
+            "edition": self.project.edition,
+            "dependencies": [
+                spec.to_requirement_string(name)
+                for name, spec in sorted(self.dependencies.items())
+            ],
         }
-        return {
-            "project": {
-                "name": self.project.name,
-                "version": self.project.version,
-                "edition": self.project.edition,
-            },
+        data: dict[str, Any] = {
+            "project": project,
             "build": {
                 "entry": self.build.entry,
                 "out_dir": self.build.out_dir,
             },
-            "dependencies": dependencies,
             "toolchain": {
                 "compiler": self.toolchain.compiler,
                 "linker": self.toolchain.linker,
             },
         }
+        if self.dev_dependencies:
+            data["arxpm"] = {
+                "dependencies-dev": {
+                    "dependencies": [
+                        spec.to_requirement_string(name)
+                        for name, spec in sorted(self.dev_dependencies.items())
+                    ],
+                },
+            }
+        return data
+
+
+def _parse_requirements(
+    raw: Any,
+    label: str,
+) -> dict[str, DependencySpec]:
+    if isinstance(raw, str) or isinstance(raw, Mapping):
+        raise ManifestError(
+            f"{label} must be an array of strings (e.g. "
+            '["pyyaml", "local_lib @ ../local_lib"])'
+        )
+    if not isinstance(raw, Sequence):
+        raise ManifestError(f"{label} must be an array of strings")
+
+    parsed: dict[str, DependencySpec] = {}
+    for entry in raw:
+        name, spec = DependencySpec.parse_requirement(entry)
+        if name in parsed:
+            raise ManifestError(
+                f"{label} contains duplicate entry for {name!r}"
+            )
+        parsed[name] = spec
+    return parsed
+
+
+def _validate_name(name: str, original: str) -> None:
+    if not name:
+        raise ManifestError(
+            f"dependency {original!r} is missing a name before '@'"
+        )
+    if not _NAME_PATTERN.match(name):
+        raise ManifestError(
+            f"dependency name {name!r} must match [A-Za-z_][A-Za-z0-9_-]*"
+        )
 
 
 def _require_table(raw: Mapping[str, Any], key: str) -> Mapping[str, Any]:

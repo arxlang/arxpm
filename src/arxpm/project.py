@@ -189,10 +189,10 @@ class ProjectService:
         project_name = name or directory.resolve().name
         manifest_path = directory / MANIFEST_FILENAME
         if manifest_path.exists():
-            raise ManifestError(f"{MANIFEST_FILENAME} already exists")
-
-        manifest = create_default_manifest(project_name)
-        save_manifest(directory, manifest)
+            manifest = load_manifest(directory)
+        else:
+            manifest = create_default_manifest(project_name)
+            save_manifest(directory, manifest)
 
         entry_path = directory / manifest.build.entry
         entry_path.parent.mkdir(parents=True, exist_ok=True)

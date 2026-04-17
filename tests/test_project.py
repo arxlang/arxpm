@@ -7,74 +7,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from conftest import FakePixiService
 
 from arxpm.errors import ManifestError
-from arxpm.external import CommandResult
 from arxpm.manifest import load_manifest
 from arxpm.project import ProjectService
-
-ManifestCall = tuple[Path, str, tuple[str, ...]]
-
-
-class FakePixiService:
-    """
-    title: Pixi test double.
-    attributes:
-      ensure_manifest_calls:
-        type: list[ManifestCall]
-      install_calls:
-        type: list[Path]
-      run_calls:
-        type: list[tuple[Path, list[str]]]
-    """
-
-    def __init__(self) -> None:
-        self.ensure_manifest_calls: list[ManifestCall] = []
-        self.install_calls: list[Path] = []
-        self.run_calls: list[tuple[Path, list[str]]] = []
-
-    def ensure_available(self) -> None:
-        return None
-
-    def ensure_manifest(
-        self,
-        directory: Path,
-        project_name: str,
-        required_dependencies: tuple[str, ...],
-    ) -> Path:
-        self.ensure_manifest_calls.append(
-            (directory, project_name, required_dependencies)
-        )
-        return directory / "pixi.toml"
-
-    def install(self, directory: Path) -> CommandResult:
-        self.install_calls.append(directory)
-        return CommandResult(("pixi", "install"), 0, "", "")
-
-    def run(self, directory: Path, args: list[str]) -> CommandResult:
-        self.run_calls.append((directory, args))
-
-        if args[:3] == ["python", "-m", "build"] and "--outdir" in args:
-            outdir_value = Path(args[args.index("--outdir") + 1])
-            if outdir_value.is_absolute():
-                outdir = outdir_value
-            else:
-                outdir = directory / outdir_value
-            outdir.mkdir(parents=True, exist_ok=True)
-
-            manifest = load_manifest(directory)
-            normalized = manifest.project.name.replace("-", "_")
-            version = manifest.project.version
-            (outdir / f"{normalized}-{version}.tar.gz").write_text(
-                "",
-                encoding="utf-8",
-            )
-            (outdir / f"{normalized}-{version}-py3-none-any.whl").write_text(
-                "",
-                encoding="utf-8",
-            )
-
-        return CommandResult(("pixi", "run", *args), 0, "", "")
 
 
 def test_init_and_add_dependency_forms(tmp_path: Path) -> None:
@@ -238,3 +175,18 @@ def test_install_requires_arxproject_manifest(tmp_path: Path) -> None:
 
     with pytest.raises(ManifestError):
         service.install(tmp_path)
+
+
+def test_init_is_idempotent_when_manifest_exists(tmp_path: Path) -> None:
+    pixi = FakePixiService()
+    service = ProjectService(pixi=pixi)
+
+    first = service.init(tmp_path, name="demo", create_pixi=False)
+    entry_path = tmp_path / first.build.entry
+    entry_path.write_text("// existing source\n", encoding="utf-8")
+
+    second = service.init(tmp_path, name="ignored", create_pixi=True)
+
+    assert second.project.name == "demo"
+    assert entry_path.read_text(encoding="utf-8") == "// existing source\n"
+    assert pixi.ensure_manifest_calls

@@ -59,12 +59,20 @@ def test_local_consumer_installs_and_runs_via_path_dep(tmp_path: Path) -> None:
     consumer_dir = tmp_path / "local-consumer"
     shutil.copytree(examples_root / "local-consumer", consumer_dir)
 
-    service = ProjectService(pixi=PixiService())
+    pixi = PixiService()
+    service = ProjectService(pixi=pixi)
     service.install(consumer_dir)
 
     symlink = consumer_dir / "local_lib"
     assert symlink.is_symlink()
     assert (symlink / "stats.x").is_file()
+
+    yaml_probe = pixi.run(
+        consumer_dir,
+        ["python", "-c", "import yaml; print(yaml.__version__)"],
+    )
+    assert yaml_probe.returncode == 0
+    assert yaml_probe.stdout.strip()
 
     result = service.run(consumer_dir)
 

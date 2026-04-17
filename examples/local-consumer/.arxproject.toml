@@ -9,6 +9,7 @@ out_dir = "build"
 
 [dependencies]
 local_lib = { path = "../local_lib" }
+pyyaml = { source = "registry" }
 
 [toolchain]
 compiler = "arx"

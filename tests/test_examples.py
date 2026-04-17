@@ -134,8 +134,8 @@ def test_local_consumer_manifest_declares_local_lib_path_dep(
 
     assert manifest.project.name == "local-consumer"
     assert manifest.build.entry == "src/main.x"
-    assert "local_lib" in manifest.dependencies
     assert manifest.dependencies["local_lib"].path == "../local_lib"
+    assert manifest.dependencies["pyyaml"].kind == "registry"
 
 
 def test_local_consumer_imports_from_local_lib(

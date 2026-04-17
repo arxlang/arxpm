@@ -378,10 +378,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#run-example" class="md-nav__link">
+  <a href="#run-examples" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Run Example
+        Run Examples
       
     </span>
   </a>
@@ -460,6 +460,60 @@
     
   
     Manifest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multi-file-projects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-file Projects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local-packages/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Packages
   
 
     
@@ -613,10 +667,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#run-example" class="md-nav__link">
+  <a href="#run-examples" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Run Example
+        Run Examples
       
     </span>
   </a>
@@ -682,25 +736,39 @@ poetry<span class="w"> </span>config<span class="w"> </span>virtualenvs.create<s
 poetry<span class="w"> </span>install<span class="w"> </span>--with<span class="w"> </span>dev
 </code></pre></div>
 <h2 id="verify-toolchain">Verify Toolchain<a class="headerlink" href="#verify-toolchain" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>arxpm<span class="w"> </span>doctor<span class="w"> </span>--directory<span class="w"> </span>examples
+<div class="language-bash highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>arxpm<span class="w"> </span>doctor<span class="w"> </span>--directory<span class="w"> </span>examples/hello-arx
 </code></pre></div>
 <p>The report should show:</p>
 <ul>
 <li>pixi available</li>
-<li><code class="language-python highlight"><span class="n">arxproj</span><span class="o">.</span><span class="n">toml</span></code> found</li>
+<li><code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code> found</li>
 <li><code class="language-python highlight"><span class="n">pixi</span><span class="o">.</span><span class="n">toml</span></code> found</li>
 <li><code class="language-python highlight"><span class="n">python</span></code>, <code class="language-python highlight"><span class="n">pip</span></code>, and <code class="language-python highlight"><span class="n">clang</span></code> declared in <code class="language-python highlight"><span class="n">pixi</span><span class="o">.</span><span class="n">toml</span></code></li>
 </ul>
-<h2 id="run-example">Run Example<a class="headerlink" href="#run-example" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>arxpm<span class="w"> </span>install<span class="w"> </span>--directory<span class="w"> </span>examples
-python<span class="w"> </span>-m<span class="w"> </span>arxpm<span class="w"> </span>build<span class="w"> </span>--directory<span class="w"> </span>examples
-python<span class="w"> </span>-m<span class="w"> </span>arxpm<span class="w"> </span>run<span class="w"> </span>--directory<span class="w"> </span>examples
+<h2 id="run-examples">Run Examples<a class="headerlink" href="#run-examples" title="Permanent link">&para;</a></h2>
+<p>The <code class="language-python highlight"><span class="n">examples</span><span class="o">/</span></code> directory ships two projects:</p>
+<ul>
+<li><code class="language-python highlight"><span class="n">examples</span><span class="o">/</span><span class="n">hello</span><span class="o">-</span><span class="n">arx</span><span class="o">/</span></code> — single-file project that prints a greeting.</li>
+<li><code class="language-python highlight"><span class="n">examples</span><span class="o">/</span><span class="n">multi</span><span class="o">-</span><span class="n">module</span><span class="o">/</span></code> — multi-file project where <code class="language-python highlight"><span class="n">main</span><span class="o">.</span><span class="n">x</span></code> imports helpers
+  from sibling modules (<code class="language-python highlight"><span class="n">math_utils</span><span class="o">.</span><span class="n">x</span></code>, <code class="language-python highlight"><span class="n">string_utils</span><span class="o">.</span><span class="n">x</span></code>). See
+  <a href="../multi-file-projects/">Multi-file Projects</a> for the layout.</li>
+</ul>
+<div class="language-bash highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>arxpm<span class="w"> </span>install<span class="w"> </span>--directory<span class="w"> </span>examples/hello-arx
+python<span class="w"> </span>-m<span class="w"> </span>arxpm<span class="w"> </span>build<span class="w"> </span>--directory<span class="w"> </span>examples/hello-arx
+python<span class="w"> </span>-m<span class="w"> </span>arxpm<span class="w"> </span>run<span class="w"> </span>--directory<span class="w"> </span>examples/hello-arx
+
+python<span class="w"> </span>-m<span class="w"> </span>arxpm<span class="w"> </span>install<span class="w"> </span>--directory<span class="w"> </span>examples/multi-module
+python<span class="w"> </span>-m<span class="w"> </span>arxpm<span class="w"> </span>run<span class="w"> </span>--directory<span class="w"> </span>examples/multi-module
+</code></pre></div>
+<p>The multi-module run prints:</p>
+<div class="language-text highlight"><pre><span></span><code>Hello, Arx!
+5
 </code></pre></div>
 <h2 id="publish-package">Publish Package<a class="headerlink" href="#publish-package" title="Permanent link">&para;</a></h2>
 <p>Set Twine credentials for your package index (PyPI example):</p>
 <div class="language-bash highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">TWINE_USERNAME</span><span class="o">=</span>__token__
 <span class="nb">export</span><span class="w"> </span><span class="nv">TWINE_PASSWORD</span><span class="o">=</span>&lt;pypi-token&gt;
-python<span class="w"> </span>-m<span class="w"> </span>arxpm<span class="w"> </span>publish<span class="w"> </span>--directory<span class="w"> </span>examples
+python<span class="w"> </span>-m<span class="w"> </span>arxpm<span class="w"> </span>publish<span class="w"> </span>--directory<span class="w"> </span>examples/hello-arx
 </code></pre></div>
 <h2 id="local-quality-gates">Local Quality Gates<a class="headerlink" href="#local-quality-gates" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code>makim<span class="w"> </span>tests.unit

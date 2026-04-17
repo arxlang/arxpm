@@ -12,7 +12,7 @@
         <link rel="prev" href="../commands/">
       
       
-        <link rel="next" href="../pixi-integration/">
+        <link rel="next" href="../multi-file-projects/">
       
       
         
@@ -410,6 +410,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#source-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source Layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#dependency-forms-v0" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -420,10 +431,75 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#dev-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dev Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
       
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multi-file-projects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-file Projects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local-packages/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Packages
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -547,10 +623,32 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#source-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source Layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#dependency-forms-v0" class="md-nav__link">
     <span class="md-ellipsis">
       
         Dependency Forms (v0)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dev-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dev Dependencies
       
     </span>
   </a>
@@ -578,43 +676,70 @@
 
 
 <h1 id="manifest">Manifest<a class="headerlink" href="#manifest" title="Permanent link">&para;</a></h1>
-<p>Arx projects are described by <code class="language-python highlight"><span class="n">arxproj</span><span class="o">.</span><span class="n">toml</span></code>.</p>
+<p>Arx projects are described by <code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code>.</p>
 <h2 id="minimal-layout">Minimal Layout<a class="headerlink" href="#minimal-layout" title="Permanent link">&para;</a></h2>
 <div class="language-toml highlight"><pre><span></span><code><span class="k">[project]</span>
 <span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;hello-arx&quot;</span>
 <span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
 <span class="n">edition</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;2026&quot;</span>
 
-<span class="k">[build]</span>
-<span class="n">entry</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;src/main.x&quot;</span>
-<span class="n">out_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;build&quot;</span>
+<span class="n">dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[]</span>
 
-<span class="k">[dependencies]</span>
+<span class="k">[build]</span>
+<span class="n">src_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;src&quot;</span>
+<span class="n">entry</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;main.x&quot;</span>
+<span class="n">out_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;build&quot;</span>
 
 <span class="k">[toolchain]</span>
 <span class="n">compiler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;arx&quot;</span>
 <span class="n">linker</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;clang&quot;</span>
 </code></pre></div>
+<h2 id="source-layout">Source Layout<a class="headerlink" href="#source-layout" title="Permanent link">&para;</a></h2>
+<p><code class="language-python highlight"><span class="n">build</span><span class="o">.</span><span class="n">src_dir</span></code> names the directory where your <code class="language-python highlight"><span class="o">.</span><span class="n">x</span></code> sources live, relative to
+the project root. It defaults to <code class="language-python highlight"><span class="s2">&quot;src&quot;</span></code> (the recommended layout). <code class="language-python highlight"><span class="n">build</span><span class="o">.</span><span class="n">entry</span></code>
+is <strong>always interpreted relative to <code class="language-python highlight"><span class="n">src_dir</span></code></strong>, so with the default layout a
+file at <code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">main</span><span class="o">.</span><span class="n">x</span></code> is spelled <code class="language-python highlight"><span class="n">entry</span> <span class="o">=</span> <span class="s2">&quot;main.x&quot;</span></code>.</p>
+<p>Override <code class="language-python highlight"><span class="n">src_dir</span></code> when your project uses a different convention — for example,
+<code class="language-python highlight"><span class="n">src_dir</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span></code> to keep sources at the project root, or <code class="language-python highlight"><span class="n">src_dir</span> <span class="o">=</span> <span class="s2">&quot;lib&quot;</span></code> to use
+a <code class="language-python highlight"><span class="n">lib</span><span class="o">/</span></code> folder. Cross-project tooling (<code class="language-python highlight"><span class="n">arxpm</span> <span class="n">build</span></code>, <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">pack</span></code>) uses
+<code class="language-python highlight"><span class="o">&lt;</span><span class="n">src_dir</span><span class="o">&gt;/&lt;</span><span class="n">entry</span><span class="o">&gt;</span></code> internally and strips <code class="language-python highlight"><span class="n">src_dir</span></code> when bundling for
+publication, so published modules always appear flat under their package name.</p>
 <h2 id="dependency-forms-v0">Dependency Forms (v0)<a class="headerlink" href="#dependency-forms-v0" title="Permanent link">&para;</a></h2>
-<p><code class="language-python highlight"><span class="n">arxpm</span></code> supports three dependency shapes:</p>
+<p>Runtime dependencies live in the <code class="language-python highlight"><span class="n">project</span><span class="o">.</span><span class="n">dependencies</span></code> array and use PEP
+508-style strings. <code class="language-python highlight"><span class="n">arxpm</span></code> supports three shapes:</p>
 <ol>
-<li>Registry placeholder:</li>
+<li>Registry (bare name):</li>
 </ol>
-<div class="language-toml highlight"><pre><span></span><code><span class="n">http</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">source</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;registry&quot;</span><span class="w"> </span><span class="p">}</span>
+<div class="language-toml highlight"><pre><span></span><code><span class="n">dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">  </span><span class="s2">&quot;pyyaml&quot;</span><span class="p">,</span>
+<span class="p">]</span>
 </code></pre></div>
 <ol>
 <li>Local path:</li>
 </ol>
-<div class="language-toml highlight"><pre><span></span><code><span class="n">mylib</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">path</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;../mylib&quot;</span><span class="w"> </span><span class="p">}</span>
+<div class="language-toml highlight"><pre><span></span><code><span class="n">dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">  </span><span class="s2">&quot;mylib @ ../mylib&quot;</span><span class="p">,</span>
+<span class="p">]</span>
 </code></pre></div>
 <ol>
 <li>Git:</li>
 </ol>
-<div class="language-toml highlight"><pre><span></span><code><span class="n">utils</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">git</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;https://example.com/utils.git&quot;</span><span class="w"> </span><span class="p">}</span>
+<div class="language-toml highlight"><pre><span></span><code><span class="n">dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">  </span><span class="s2">&quot;utils @ git+https://example.com/utils.git&quot;</span><span class="p">,</span>
+<span class="p">]</span>
 </code></pre></div>
 <p>Version solving is intentionally out of scope in v0. During <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code>,
 registry dependencies are installed with <code class="language-python highlight"><span class="n">pip</span> <span class="n">install</span> <span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span></code>, path dependencies
 with <code class="language-python highlight"><span class="n">pip</span> <span class="n">install</span> <span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;</span></code>, and git dependencies with <code class="language-python highlight"><span class="n">pip</span> <span class="n">install</span> <span class="n">git</span><span class="o">+&lt;</span><span class="n">url</span><span class="o">&gt;</span></code>.</p>
+<h2 id="dev-dependencies">Dev Dependencies<a class="headerlink" href="#dev-dependencies" title="Permanent link">&para;</a></h2>
+<p>Tools that are only needed while developing the project (test runners, task
+runners, linters) go in a dedicated <code class="language-python highlight"><span class="p">[</span><span class="n">arxpm</span><span class="o">.</span><span class="n">dependencies</span><span class="o">-</span><span class="n">dev</span><span class="p">]</span></code> table and are
+only installed when you opt in with <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span> <span class="o">--</span><span class="n">dev</span></code>:</p>
+<div class="language-toml highlight"><pre><span></span><code><span class="k">[arxpm.dependencies-dev]</span>
+<span class="n">dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">  </span><span class="s2">&quot;makim&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+</code></pre></div>
 
 
 

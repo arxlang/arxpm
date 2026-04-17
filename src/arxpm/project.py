@@ -599,9 +599,11 @@ def _prepare_publish_workspace(
             "no Arx source files found to publish (expected .x or .arx)"
         )
 
+    source_root = Path(manifest.build.entry).parent
     for relative_source in source_paths:
         source_path = directory / relative_source
-        target_path = package_root / relative_source
+        bundled_rel = _bundled_source_path(relative_source, source_root)
+        target_path = package_root / bundled_rel
         target_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source_path, target_path)
 
@@ -624,6 +626,25 @@ def _prepare_publish_workspace(
         _render_publish_readme(manifest),
         encoding="utf-8",
     )
+
+
+def _bundled_source_path(relative_source: Path, source_root: Path) -> Path:
+    """
+    title: Drop the source root prefix so bundled files land at package root.
+    parameters:
+      relative_source:
+        type: Path
+      source_root:
+        type: Path
+    returns:
+      type: Path
+    """
+    if source_root == Path("") or source_root == Path("."):
+        return relative_source
+    try:
+        return relative_source.relative_to(source_root)
+    except ValueError:
+        return relative_source
 
 
 def _discover_arx_sources(directory: Path) -> list[Path]:

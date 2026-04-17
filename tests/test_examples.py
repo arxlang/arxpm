@@ -112,7 +112,7 @@ def test_local_lib_manifest_declares_underscore_package(
     manifest = load_manifest(project_dir)
 
     assert manifest.project.name == "local_lib"
-    assert manifest.build.entry == "local_lib.x"
+    assert manifest.build.entry == "src/local_lib.x"
 
 
 def test_local_lib_exposes_stats_module_at_top_level(
@@ -122,7 +122,10 @@ def test_local_lib_exposes_stats_module_at_top_level(
 
     sources = _discover_arx_sources(project_dir)
 
-    assert sources == [Path("local_lib.x"), Path("stats.x")]
+    assert sources == [
+        Path("src/local_lib.x"),
+        Path("src/stats.x"),
+    ]
 
 
 def test_local_consumer_manifest_declares_local_lib_path_dep(

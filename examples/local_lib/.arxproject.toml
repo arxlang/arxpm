@@ -6,7 +6,7 @@ edition = "2026"
 dependencies = []
 
 [build]
-entry = "local_lib.x"
+entry = "src/local_lib.x"
 out_dir = "build"
 
 [toolchain]

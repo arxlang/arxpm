@@ -1,6 +1,13 @@
 # Release Notes
 ---
 
+# [1.2.0](https://github.com/arxlang/arxpm/compare/1.1.0...1.2.0) (2026-04-17)
+
+
+### Features
+
+* Add local package development examples and tests ([#5](https://github.com/arxlang/arxpm/issues/5)) ([ef8d2f3](https://github.com/arxlang/arxpm/commit/ef8d2f3abb024f13ba17cc82685ae78951eb1df3))
+
 # [1.1.0](https://github.com/arxlang/arxpm/compare/1.0.1...1.1.0) (2026-03-12)
 
 

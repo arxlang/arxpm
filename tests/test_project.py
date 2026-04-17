@@ -175,3 +175,18 @@ def test_install_requires_arxproject_manifest(tmp_path: Path) -> None:
 
     with pytest.raises(ManifestError):
         service.install(tmp_path)
+
+
+def test_init_is_idempotent_when_manifest_exists(tmp_path: Path) -> None:
+    pixi = FakePixiService()
+    service = ProjectService(pixi=pixi)
+
+    first = service.init(tmp_path, name="demo", create_pixi=False)
+    entry_path = tmp_path / first.build.entry
+    entry_path.write_text("// existing source\n", encoding="utf-8")
+
+    second = service.init(tmp_path, name="ignored", create_pixi=True)
+
+    assert second.project.name == "demo"
+    assert entry_path.read_text(encoding="utf-8") == "// existing source\n"
+    assert pixi.ensure_manifest_calls

@@ -67,12 +67,17 @@ groups:
           tmp_dir="$(mktemp -d)"
           trap 'rm -rf "${tmp_dir}"' EXIT
 
-          cp -r examples "${tmp_dir}/project"
+          for example_dir in examples/*/; do
+            example_name="$(basename "${example_dir}")"
+            project_dir="${tmp_dir}/${example_name}"
+            echo "=== smoke: ${example_name} ==="
+            cp -r "${example_dir}" "${project_dir}"
 
-          python -m arxpm doctor --directory "${tmp_dir}/project"
-          python -m arxpm install --directory "${tmp_dir}/project"
-          python -m arxpm build --directory "${tmp_dir}/project"
-          python -m arxpm run --directory "${tmp_dir}/project"
+            python -m arxpm doctor --directory "${project_dir}"
+            python -m arxpm install --directory "${project_dir}"
+            python -m arxpm build --directory "${project_dir}"
+            python -m arxpm run --directory "${project_dir}"
+          done
 
       ci:
         help: run the same checks executed on CI

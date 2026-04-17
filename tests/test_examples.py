@@ -11,8 +11,8 @@ from conftest import CopyExample, FakePixiService
 from arxpm.manifest import load_manifest
 from arxpm.project import (
     ProjectService,
+    _arx_module_name,
     _discover_arx_sources,
-    _distribution_to_package_name,
     _prepare_publish_workspace,
 )
 
@@ -125,7 +125,7 @@ def test_local_lib_exposes_stats_module_at_top_level(
     assert sources == [Path("local_lib.x"), Path("stats.x")]
 
 
-def test_local_consumer_manifest_has_empty_dependencies(
+def test_local_consumer_manifest_declares_local_lib_path_dep(
     copy_example: CopyExample,
 ) -> None:
     project_dir = copy_example("local-consumer")
@@ -134,7 +134,8 @@ def test_local_consumer_manifest_has_empty_dependencies(
 
     assert manifest.project.name == "local-consumer"
     assert manifest.build.entry == "src/main.x"
-    assert manifest.dependencies == {}
+    assert "local_lib" in manifest.dependencies
+    assert manifest.dependencies["local_lib"].path == "../local_lib"
 
 
 def test_local_consumer_imports_from_local_lib(
@@ -174,9 +175,9 @@ def test_local_lib_publish_workspace_bundles_all_arx_sources(
 
     _prepare_publish_workspace(project_dir, manifest, staging_dir)
 
-    package_name = _distribution_to_package_name(manifest.project.name)
+    package_name = _arx_module_name(manifest.project.name)
     package_root = staging_dir / "src" / package_name
-    assert package_name == "arxpkg_local_lib"
+    assert package_name == "local_lib"
     assert (package_root / "local_lib.x").is_file()
     assert (package_root / "stats.x").is_file()
     assert (package_root / ".arxproject.toml").is_file()
@@ -185,6 +186,6 @@ def test_local_lib_publish_workspace_bundles_all_arx_sources(
     pyproject_text = (staging_dir / "pyproject.toml").read_text(
         encoding="utf-8"
     )
-    assert f'packages = ["src/{package_name}"]' in pyproject_text
-    assert f'"src/{package_name}/**/*.x"' in pyproject_text
+    assert 'packages = ["src/local_lib"]' in pyproject_text
+    assert '"src/local_lib/**/*.x"' in pyproject_text
     assert 'name = "local_lib"' in pyproject_text

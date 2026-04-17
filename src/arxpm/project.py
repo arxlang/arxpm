@@ -453,6 +453,16 @@ class ProjectService:
         manifest: Manifest,
     ) -> None:
         for dependency_name, spec in sorted(manifest.dependencies.items()):
+            if spec.path is not None and _is_arx_project(
+                (directory / spec.path).resolve()
+            ):
+                self._install_arx_path_dependency(
+                    directory,
+                    dependency_name,
+                    (directory / spec.path).resolve(),
+                )
+                continue
+
             target = _dependency_install_target(dependency_name, spec)
             self._pixi.run(
                 directory,
@@ -465,6 +475,83 @@ class ProjectService:
                     target,
                 ],
             )
+
+    def _install_arx_path_dependency(
+        self,
+        directory: Path,
+        dependency_name: str,
+        library_directory: Path,
+    ) -> None:
+        """
+        title: Pack, pip-install, and symlink an Arx path dependency.
+        parameters:
+          directory:
+            type: Path
+          dependency_name:
+            type: str
+          library_directory:
+            type: Path
+        """
+        library_manifest = load_manifest(library_directory)
+        module_name = _arx_module_name(library_manifest.project.name)
+        if module_name != dependency_name:
+            raise ManifestError(
+                f"dependency {dependency_name!r} must match the library's "
+                f"Arx module name {module_name!r} "
+                f"(derived from project.name = "
+                f"{library_manifest.project.name!r})"
+            )
+
+        pack_result = self.pack(library_directory)
+        wheels = [
+            artifact
+            for artifact in pack_result.artifacts
+            if artifact.suffix == ".whl"
+        ]
+        if not wheels:
+            raise ManifestError(
+                f"packing {library_directory} produced no wheel artifact"
+            )
+        wheel = wheels[0]
+
+        self._pixi.run(
+            directory,
+            [
+                "python",
+                "-m",
+                "pip",
+                "install",
+                "--disable-pip-version-check",
+                "--force-reinstall",
+                "--no-deps",
+                str(wheel),
+            ],
+        )
+
+        probe = self._pixi.run(
+            directory,
+            [
+                "python",
+                "-c",
+                (
+                    f"import {module_name}, os; "
+                    f"print(os.path.dirname({module_name}.__file__))"
+                ),
+            ],
+        )
+        install_dir = Path(probe.stdout.strip())
+        if not install_dir.is_dir():
+            raise ManifestError(
+                f"installed {module_name!r} directory not found: {install_dir}"
+            )
+
+        link_path = directory / module_name
+        if link_path.is_symlink() or link_path.exists():
+            if link_path.is_symlink() or link_path.is_file():
+                link_path.unlink()
+            else:
+                shutil.rmtree(link_path)
+        link_path.symlink_to(install_dir, target_is_directory=True)
 
 
 def _required_pixi_dependencies() -> tuple[str, ...]:
@@ -488,7 +575,7 @@ def _prepare_publish_workspace(
     manifest: Manifest,
     staging_dir: Path,
 ) -> None:
-    package_name = _distribution_to_package_name(manifest.project.name)
+    package_name = _arx_module_name(manifest.project.name)
     package_root = staging_dir / "src" / package_name
     package_root.mkdir(parents=True, exist_ok=True)
 
@@ -539,14 +626,18 @@ def _discover_arx_sources(directory: Path) -> list[Path]:
     return sorted(sources)
 
 
-def _distribution_to_package_name(project_name: str) -> str:
+def _is_arx_project(path: Path) -> bool:
+    return path.is_dir() and (path / MANIFEST_FILENAME).is_file()
+
+
+def _arx_module_name(project_name: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9]+", "_", project_name).strip("_")
     if not cleaned:
         raise ManifestError("project.name must contain letters or numbers")
 
     if cleaned[0].isdigit():
         cleaned = f"pkg_{cleaned}"
-    return f"arxpkg_{cleaned.lower()}"
+    return cleaned.lower()
 
 
 def _render_package_init(manifest: Manifest) -> str:

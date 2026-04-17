@@ -29,12 +29,15 @@ class FakePixiService:
         type: list[Path]
       run_calls:
         type: list[tuple[Path, list[str]]]
+      module_install_dirs:
+        type: dict[str, Path]
     """
 
     def __init__(self) -> None:
         self.ensure_manifest_calls: list[ManifestCall] = []
         self.install_calls: list[Path] = []
         self.run_calls: list[tuple[Path, list[str]]] = []
+        self.module_install_dirs: dict[str, Path] = {}
 
     def ensure_available(self) -> None:
         return None
@@ -76,6 +79,17 @@ class FakePixiService:
                 "",
                 encoding="utf-8",
             )
+
+        if args[:2] == ["python", "-c"]:
+            script = args[2] if len(args) > 2 else ""
+            for module_name, install_dir in self.module_install_dirs.items():
+                if f"import {module_name}" in script:
+                    return CommandResult(
+                        ("pixi", "run", *args),
+                        0,
+                        f"{install_dir}\n",
+                        "",
+                    )
 
         return CommandResult(("pixi", "run", *args), 0, "", "")
 

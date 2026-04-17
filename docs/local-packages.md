@@ -1,11 +1,10 @@
 # Local Packages
 
-A library and its consumer can live side by side during development so the
-consumer imports the library's functions directly. This page describes the
-layout that works with the current Arx toolchain and the boundary that still
-exists around installed packages.
+A library and its consumer can live side by side on disk and be wired together
+with a path dependency. `arxpm install` handles the packaging / install / link
+step so the Arx compiler finds the library's modules at build time.
 
-## Supported layout: sibling workspace
+## Supported layout
 
 ```
 workspace/
@@ -21,46 +20,65 @@ workspace/
         └── main.x
 ```
 
-The library's directory name **must** equal the dotted prefix used by its
-consumers. `import sum2 from local_lib.stats` resolves to
-`<ancestor>/local_lib/stats.x`, so the directory is named `local_lib/` and
-`stats.x` lives at its top level.
+The library's directory name and its `project.name` both become the Arx module
+name used by consumers. `import sum2 from local_lib.stats` resolves to the
+`stats.x` file inside the package directory named `local_lib/`.
 
-`local_lib/stats.x`:
+## Declaring the dependency
+
+`local-consumer/.arxproject.toml`:
+
+```toml
+[project]
+name = "local-consumer"
+version = "0.1.0"
+edition = "2026"
+
+[build]
+entry = "src/main.x"
+out_dir = "build"
+
+[dependencies]
+local_lib = { path = "../local_lib" }
+
+[toolchain]
+compiler = "arx"
+linker = "clang"
+```
+
+The key on the left of `=` **must** match the library's Arx module name (derived
+from its `project.name`, normalized to a Python identifier). `arxpm install`
+rejects mismatched names rather than producing a silent failure at build time.
+
+## What `arxpm install` does for an Arx path dependency
+
+For each `[dependencies]` entry whose `path` points at a directory containing
+`.arxproject.toml`, `arxpm install`:
+
+1. Packs the library (runs `arxpm pack` on that path) to produce a wheel that
+   bundles every `.x` / `.arx` source under the library's module directory.
+2. `pip install`s the wheel into the consumer's Pixi environment, so the library
+   lands at `<env>/lib/pythonX/site-packages/<module_name>/`.
+3. Creates a symlink `<consumer>/<module_name>` pointing at the installed
+   directory. The Arx compiler's resolver walks the ancestors of the entry file
+   looking for `<module_name>/<sub>.x`, so the symlink at the consumer's project
+   root is what lets the import succeed.
+
+Commit the `.arxproject.toml` entry; ignore the generated symlink:
 
 ```
-fn sum2(a: i32, b: i32) -> i32:
-  return a + b;
+# local-consumer/.gitignore
+/local_lib
 ```
 
-`local-consumer/src/main.x`:
+## Example
 
-```
-import sum2 from local_lib.stats
-
-fn main() -> i32:
-  print(sum2(2, 3));
-  return 0;
-```
-
-Running `arxpm run` inside `local-consumer/` prints `5`.
-
-## How resolution actually works
-
-The Arx compiler's file resolver walks the ancestors of the entry file looking
-for the first directory that contains the imported module. For the layout above,
-the ancestors of `local-consumer/src/main.x` include `workspace/`, which is also
-a parent of `local_lib/`. That shared ancestor is what lets the import resolve.
-
-This means cross-project imports work as long as the consumer and the library
-share a common parent directory on disk — a sibling workspace.
-
-## Working examples
+The `examples/` directory ships a working pair:
 
 - [`examples/local_lib/`](https://github.com/arxlang/arxpm/tree/main/examples/local_lib)
 - [`examples/local-consumer/`](https://github.com/arxlang/arxpm/tree/main/examples/local-consumer)
 
-Copy both directories so they sit next to each other, then:
+Copy them so they sit next to each other, then from the consumer:
 
 ```
 cd local-consumer
@@ -73,23 +91,14 @@ Expected stdout: `5`.
 
 ## Current limits
 
-- **No pip-installed library imports.** `arxpm pack` produces a wheel that
-  bundles every `.x` / `.arx` source, and pip-installing that wheel into the
-  consumer's Pixi environment works — but the Arx compiler does not read from
-  Python's `site-packages`. Imports of a library that exists only as an
-  installed wheel will fail with `Unable to resolve module`.
-- **No path-dep bridge.** Declaring `local_lib = { path = "../local_lib" }`
-  under `[dependencies]` causes `arxpm install` to invoke
-  `pip install ../local_lib`, which fails because a vanilla Arx project has no
-  `pyproject.toml`. For now, leave `[dependencies]` empty for local libraries
-  and rely on the sibling workspace layout above.
-- **No version solving or editable installs.** Local development uses files on
-  disk; there is no registry, lockfile, or `-e` workflow today.
-
-## Packaging local libraries
-
-`arxpm pack` and `arxpm publish` still bundle every `.x` / `.arx` file under the
-project root, so libraries can be published to PyPI once the compiler gains a
-`site-packages` search path. Until then, publishing is only useful for
-distribution or archival — consumers building against a wheel today will not
-find the imported modules.
+- **Compiler resolution is local, not site-packages.** The Arx compiler's
+  `FileImportResolver` only searches CWD and ancestors of the input files — it
+  does not read from `site-packages` directly. The symlink step is what bridges
+  the installed wheel back into the consumer's ancestor tree.
+- **Path deps only; no registry or git.** `{ git = ... }` dependencies still go
+  straight through `pip install` and bring no cross-compile support today — only
+  `{ path = ... }` entries trigger the pack/install/link flow.
+- **No version solving or editable installs.** Every `arxpm install` re-packs
+  the library and reinstalls the wheel. For iterative library development, edit
+  sources and re-run `arxpm install` in the consumer.
+- **No circular dependencies.** A and B cannot depend on each other.

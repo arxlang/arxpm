@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pytest
 
-from arxpm.errors import ExternalCommandError
 from arxpm.pixi import PixiService
 from arxpm.project import ProjectService
 
@@ -54,7 +53,7 @@ def test_example_runs_end_to_end(
     not _TOOLCHAIN_AVAILABLE,
     reason="requires arx and pixi on PATH",
 )
-def test_local_consumer_resolves_sibling_library(tmp_path: Path) -> None:
+def test_local_consumer_installs_and_runs_via_path_dep(tmp_path: Path) -> None:
     examples_root = Path(__file__).resolve().parents[1] / "examples"
     shutil.copytree(examples_root / "local_lib", tmp_path / "local_lib")
     consumer_dir = tmp_path / "local-consumer"
@@ -62,24 +61,13 @@ def test_local_consumer_resolves_sibling_library(tmp_path: Path) -> None:
 
     service = ProjectService(pixi=PixiService())
     service.install(consumer_dir)
+
+    symlink = consumer_dir / "local_lib"
+    assert symlink.is_symlink()
+    assert (symlink / "stats.x").is_file()
+
     result = service.run(consumer_dir)
 
     assert result.build_result.command_result.returncode == 0
     assert result.command_result.returncode == 0
     assert "5" in result.command_result.stdout
-
-
-@pytest.mark.skipif(
-    not _TOOLCHAIN_AVAILABLE,
-    reason="requires arx and pixi on PATH",
-)
-def test_local_consumer_fails_without_sibling_library(tmp_path: Path) -> None:
-    examples_root = Path(__file__).resolve().parents[1] / "examples"
-    consumer_dir = tmp_path / "local-consumer"
-    shutil.copytree(examples_root / "local-consumer", consumer_dir)
-
-    service = ProjectService(pixi=PixiService())
-    service.install(consumer_dir)
-
-    with pytest.raises(ExternalCommandError):
-        service.run(consumer_dir)

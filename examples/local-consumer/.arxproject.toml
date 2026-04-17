@@ -8,6 +8,7 @@ entry = "src/main.x"
 out_dir = "build"
 
 [dependencies]
+local_lib = { path = "../local_lib" }
 
 [toolchain]
 compiler = "arx"

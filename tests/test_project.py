@@ -182,7 +182,7 @@ def test_init_is_idempotent_when_manifest_exists(tmp_path: Path) -> None:
     service = ProjectService(pixi=pixi)
 
     first = service.init(tmp_path, name="demo", create_pixi=False)
-    entry_path = tmp_path / first.build.entry
+    entry_path = tmp_path / first.build.source_path
     entry_path.write_text("// existing source\n", encoding="utf-8")
 
     second = service.init(tmp_path, name="ignored", create_pixi=True)

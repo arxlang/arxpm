@@ -99,9 +99,11 @@ def test_init_command_creates_project_files(
     assert manifest_path.exists()
 
     manifest_data = tomllib.loads(manifest_path.read_text(encoding="utf-8"))
+    src_dir = manifest_data["build"]["src_dir"]
     entry = manifest_data["build"]["entry"]
+    assert isinstance(src_dir, str)
     assert isinstance(entry, str)
-    assert (tmp_path / entry).exists()
+    assert (tmp_path / src_dir / entry).exists()
 
 
 def test_add_command_writes_registry_dependency(

@@ -9,7 +9,8 @@ dependencies = [
 ]
 
 [build]
-entry = "src/main.x"
+src_dir = "src"
+entry = "main.x"
 out_dir = "build"
 
 [toolchain]

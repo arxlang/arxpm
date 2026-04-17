@@ -45,20 +45,37 @@ class BuildConfig:
     """
     title: Build configuration.
     attributes:
+      src_dir:
+        type: str
       entry:
         type: str
       out_dir:
         type: str
     """
 
-    entry: str = "src/main.x"
+    src_dir: str = "src"
+    entry: str = "main.x"
     out_dir: str = "build"
 
     def __post_init__(self) -> None:
+        if not self.src_dir.strip():
+            raise ManifestError("build.src_dir must be a non-empty string")
         if not self.entry.strip():
             raise ManifestError("build.entry must be a non-empty string")
         if not self.out_dir.strip():
             raise ManifestError("build.out_dir must be a non-empty string")
+
+    @property
+    def source_path(self) -> str:
+        """
+        title: Entry path relative to the project root (src_dir + entry).
+        returns:
+          type: str
+        """
+        normalized = self.src_dir.strip().strip("/")
+        if not normalized or normalized == ".":
+            return self.entry
+        return f"{normalized}/{self.entry}"
 
 
 @dataclass(slots=True, frozen=True)
@@ -278,6 +295,7 @@ class Manifest:
             edition=_require_string(project_raw, "edition", "project"),
         )
         build = BuildConfig(
+            src_dir=_optional_string(build_raw, "src_dir", "build", "src"),
             entry=_require_string(build_raw, "entry", "build"),
             out_dir=_require_string(build_raw, "out_dir", "build"),
         )
@@ -328,6 +346,7 @@ class Manifest:
         data: dict[str, Any] = {
             "project": project,
             "build": {
+                "src_dir": self.build.src_dir,
                 "entry": self.build.entry,
                 "out_dir": self.build.out_dir,
             },
@@ -394,6 +413,20 @@ def _require_string(
     key: str,
     section: str,
 ) -> str:
+    value = raw.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise ManifestError(f"{section}.{key} must be a non-empty string")
+    return value
+
+
+def _optional_string(
+    raw: Mapping[str, Any],
+    key: str,
+    section: str,
+    default: str,
+) -> str:
+    if key not in raw:
+        return default
     value = raw.get(key)
     if not isinstance(value, str) or not value.strip():
         raise ManifestError(f"{section}.{key} must be a non-empty string")

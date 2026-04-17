@@ -194,7 +194,7 @@ class ProjectService:
             manifest = create_default_manifest(project_name)
             save_manifest(directory, manifest)
 
-        entry_path = directory / manifest.build.entry
+        entry_path = directory / manifest.build.source_path
         entry_path.parent.mkdir(parents=True, exist_ok=True)
         if not entry_path.exists():
             entry_path.write_text(_MAIN_SOURCE, encoding="utf-8")
@@ -298,7 +298,8 @@ class ProjectService:
         if not compiler:
             raise MissingCompilerError("toolchain.compiler cannot be empty")
 
-        entry_path = directory / manifest.build.entry
+        source_path = manifest.build.source_path
+        entry_path = directory / source_path
         if not entry_path.exists():
             raise ManifestError(f"build entry does not exist: {entry_path}")
 
@@ -308,7 +309,7 @@ class ProjectService:
 
         command = [
             compiler,
-            manifest.build.entry,
+            source_path,
             "--output-file",
             str(artifact_rel),
         ]
@@ -599,7 +600,7 @@ def _prepare_publish_workspace(
             "no Arx source files found to publish (expected .x or .arx)"
         )
 
-    source_root = Path(manifest.build.entry).parent
+    source_root = Path(manifest.build.src_dir)
     for relative_source in source_paths:
         source_path = directory / relative_source
         bundled_rel = _bundled_source_path(relative_source, source_root)

@@ -13,13 +13,27 @@ edition = "2026"
 dependencies = []
 
 [build]
-entry = "src/main.x"
+src_dir = "src"
+entry = "main.x"
 out_dir = "build"
 
 [toolchain]
 compiler = "arx"
 linker = "clang"
 ```
+
+## Source Layout
+
+`build.src_dir` names the directory where your `.x` sources live, relative to
+the project root. It defaults to `"src"` (the recommended layout). `build.entry`
+is **always interpreted relative to `src_dir`**, so with the default layout a
+file at `src/main.x` is spelled `entry = "main.x"`.
+
+Override `src_dir` when your project uses a different convention — for example,
+`src_dir = "."` to keep sources at the project root, or `src_dir = "lib"` to use
+a `lib/` folder. Cross-project tooling (`arxpm build`, `arxpm pack`) uses
+`<src_dir>/<entry>` internally and strips `src_dir` when bundling for
+publication, so published modules always appear flat under their package name.
 
 ## Dependency Forms (v0)
 

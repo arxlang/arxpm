@@ -127,6 +127,7 @@ def render_manifest(manifest: Manifest) -> str:
         [
             "",
             "[build]",
+            f"src_dir = {_quote(manifest.build.src_dir)}",
             f"entry = {_quote(manifest.build.entry)}",
             f"out_dir = {_quote(manifest.build.out_dir)}",
             "",

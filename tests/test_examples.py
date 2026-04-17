@@ -23,7 +23,9 @@ def test_hello_arx_manifest_parses(copy_example: CopyExample) -> None:
     manifest = load_manifest(project_dir)
 
     assert manifest.project.name == "hello-arx"
-    assert manifest.build.entry == "src/main.x"
+    assert manifest.build.src_dir == "src"
+    assert manifest.build.entry == "main.x"
+    assert manifest.build.source_path == "src/main.x"
     assert manifest.toolchain.compiler == "arx"
 
 
@@ -58,7 +60,9 @@ def test_multi_module_manifest_parses(copy_example: CopyExample) -> None:
     manifest = load_manifest(project_dir)
 
     assert manifest.project.name == "multi-module"
-    assert manifest.build.entry == "src/main.x"
+    assert manifest.build.src_dir == "src"
+    assert manifest.build.entry == "main.x"
+    assert manifest.build.source_path == "src/main.x"
 
 
 def test_multi_module_build_invokes_arx_with_entry_only(
@@ -112,7 +116,9 @@ def test_local_lib_manifest_declares_underscore_package(
     manifest = load_manifest(project_dir)
 
     assert manifest.project.name == "local_lib"
-    assert manifest.build.entry == "src/local_lib.x"
+    assert manifest.build.src_dir == "src"
+    assert manifest.build.entry == "local_lib.x"
+    assert manifest.build.source_path == "src/local_lib.x"
 
 
 def test_local_lib_exposes_stats_module_at_top_level(
@@ -136,7 +142,9 @@ def test_local_consumer_manifest_declares_local_lib_path_dep(
     manifest = load_manifest(project_dir)
 
     assert manifest.project.name == "local-consumer"
-    assert manifest.build.entry == "src/main.x"
+    assert manifest.build.src_dir == "src"
+    assert manifest.build.entry == "main.x"
+    assert manifest.build.source_path == "src/main.x"
     assert manifest.dependencies["local_lib"].path == "../local_lib"
     assert manifest.dependencies["pyyaml"].kind == "registry"
 

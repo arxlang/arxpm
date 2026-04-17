@@ -1,0 +1,14 @@
+[project]
+name = "local-consumer"
+version = "0.1.0"
+edition = "2026"
+
+[build]
+entry = "src/main.x"
+out_dir = "build"
+
+[dependencies]
+
+[toolchain]
+compiler = "arx"
+linker = "clang"

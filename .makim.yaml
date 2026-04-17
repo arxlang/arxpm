@@ -69,9 +69,13 @@ groups:
 
           for example_dir in examples/*/; do
             example_name="$(basename "${example_dir}")"
+            cp -r "${example_dir}" "${tmp_dir}/${example_name}"
+          done
+
+          for example_dir in examples/*/; do
+            example_name="$(basename "${example_dir}")"
             project_dir="${tmp_dir}/${example_name}"
             echo "=== smoke: ${example_name} ==="
-            cp -r "${example_dir}" "${project_dir}"
 
             python -m arxpm doctor --directory "${project_dir}"
             python -m arxpm install --directory "${project_dir}"

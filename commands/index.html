@@ -460,10 +460,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#arxpm-doctor" class="md-nav__link">
+  <a href="#arxpm-healthcheck" class="md-nav__link">
     <span class="md-ellipsis">
       
-        arxpm doctor
+        arxpm healthcheck
       
     </span>
   </a>
@@ -566,14 +566,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../pixi-integration/" class="md-nav__link">
+      <a href="../environments/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Pixi Integration
+    Environments
   
 
     
@@ -755,10 +755,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#arxpm-doctor" class="md-nav__link">
+  <a href="#arxpm-healthcheck" class="md-nav__link">
     <span class="md-ellipsis">
       
-        arxpm doctor
+        arxpm healthcheck
       
     </span>
   </a>
@@ -789,14 +789,18 @@
 <h2 id="arxpm-init"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">init</span></code><a class="headerlink" href="#arxpm-init" title="Permanent link">&para;</a></h2>
 <p>Create a new project in the target directory.</p>
 <div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>init<span class="w"> </span>--name<span class="w"> </span>hello-arx
-arxpm<span class="w"> </span>init<span class="w"> </span>--directory<span class="w"> </span>./my-project<span class="w"> </span>--no-pixi
+arxpm<span class="w"> </span>init<span class="w"> </span>--directory<span class="w"> </span>./my-project
+arxpm<span class="w"> </span>init<span class="w"> </span>--env-kind<span class="w"> </span>existing-venv<span class="w"> </span>--env-path<span class="w"> </span>./shared-venv
+arxpm<span class="w"> </span>init<span class="w"> </span>--env-kind<span class="w"> </span>conda<span class="w"> </span>--env-name<span class="w"> </span>myproject-env
 </code></pre></div>
 <p>Effects:</p>
 <ul>
 <li>creates <code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code></li>
 <li>creates <code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">main</span><span class="o">.</span><span class="n">x</span></code></li>
-<li>optionally creates/updates <code class="language-python highlight"><span class="n">pixi</span><span class="o">.</span><span class="n">toml</span></code></li>
+<li>writes an explicit <code class="language-python highlight"><span class="p">[</span><span class="n">environment</span><span class="p">]</span></code> block only when <code class="language-python highlight"><span class="o">--</span><span class="n">env</span><span class="o">-</span><span class="n">kind</span></code>, <code class="language-python highlight"><span class="o">--</span><span class="n">env</span><span class="o">-</span><span class="n">path</span></code>,
+  or <code class="language-python highlight"><span class="o">--</span><span class="n">env</span><span class="o">-</span><span class="n">name</span></code> is provided</li>
 </ul>
+<p>See <a href="../environments/">Environments</a> for the supported strategies.</p>
 <h2 id="arxpm-add"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">add</span></code><a class="headerlink" href="#arxpm-add" title="Permanent link">&para;</a></h2>
 <p>Add a dependency entry to <code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code>.</p>
 <div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>add<span class="w"> </span>http
@@ -804,18 +808,21 @@ arxpm<span class="w"> </span>add<span class="w"> </span>mylib<span class="w"> </
 arxpm<span class="w"> </span>add<span class="w"> </span>utils<span class="w"> </span>--git<span class="w"> </span>https://example.com/utils.git
 </code></pre></div>
 <h2 id="arxpm-install"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code><a class="headerlink" href="#arxpm-install" title="Permanent link">&para;</a></h2>
-<p>Validate project metadata, ensure Pixi sync, and run install.</p>
+<p>Validate project metadata, prepare the configured Python environment, and
+install dependencies with <code class="language-python highlight"><span class="n">uv</span></code>.</p>
 <div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>install
 arxpm<span class="w"> </span>install<span class="w"> </span>--directory<span class="w"> </span>examples
+arxpm<span class="w"> </span>install<span class="w"> </span>--dev
 </code></pre></div>
-<p>Dependency entries are installed with pip inside the project pixi env:</p>
+<p>Dependency entries are installed as follows:</p>
 <ul>
-<li>registry: <code class="language-python highlight"><span class="n">pip</span> <span class="n">install</span> <span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span></code></li>
-<li>path: <code class="language-python highlight"><span class="n">pip</span> <span class="n">install</span> <span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;</span></code></li>
-<li>git: <code class="language-python highlight"><span class="n">pip</span> <span class="n">install</span> <span class="n">git</span><span class="o">+&lt;</span><span class="n">url</span><span class="o">&gt;</span></code></li>
+<li>registry: <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span></code></li>
+<li>path: <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;</span></code> (non-Arx paths) or pack+install+symlink flow
+  (Arx libraries with an <code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code>)</li>
+<li>git: <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="n">git</span><span class="o">+&lt;</span><span class="n">url</span><span class="o">&gt;</span></code></li>
 </ul>
 <h2 id="arxpm-build"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">build</span></code><a class="headerlink" href="#arxpm-build" title="Permanent link">&para;</a></h2>
-<p>Compile through Pixi using the configured compiler.</p>
+<p>Invoke the configured Arx compiler directly.</p>
 <div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>build
 arxpm<span class="w"> </span>build<span class="w"> </span>--directory<span class="w"> </span>examples
 </code></pre></div>
@@ -823,13 +830,13 @@ arxpm<span class="w"> </span>build<span class="w"> </span>--directory<span class
 <div class="language-text highlight"><pre><span></span><code>arx &lt;entry&gt; --output-file &lt;out_dir&gt;/&lt;project_name&gt;
 </code></pre></div>
 <h2 id="arxpm-compile"><code class="language-python highlight"><span class="n">arxpm</span> <span class="nb">compile</span></code><a class="headerlink" href="#arxpm-compile" title="Permanent link">&para;</a></h2>
-<p>Compile through Pixi using the configured compiler. This is a clearer alias for
-<code class="language-python highlight"><span class="n">arxpm</span> <span class="n">build</span></code> (which is kept for compatibility).</p>
+<p>Alias for <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">build</span></code>. Clearer name for anyone treating <code class="language-python highlight"><span class="n">build</span></code> as a packaging
+operation.</p>
 <div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>compile
 arxpm<span class="w"> </span>compile<span class="w"> </span>--directory<span class="w"> </span>examples
 </code></pre></div>
 <h2 id="arxpm-run"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">run</span></code><a class="headerlink" href="#arxpm-run" title="Permanent link">&para;</a></h2>
-<p>Build and then run the produced artifact through Pixi.</p>
+<p>Build and then run the produced artifact.</p>
 <div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>run
 arxpm<span class="w"> </span>run<span class="w"> </span>--directory<span class="w"> </span>examples
 </code></pre></div>
@@ -841,17 +848,26 @@ arxpm<span class="w"> </span>pack<span class="w"> </span>--directory<span class=
 </code></pre></div>
 <h2 id="arxpm-publish"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">publish</span></code><a class="headerlink" href="#arxpm-publish" title="Permanent link">&para;</a></h2>
 <p>Build and publish the current project as a Python package that bundles
-<code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code> and <code class="language-python highlight"><span class="o">*.</span><span class="n">x</span></code>/<code class="language-python highlight"><span class="o">*.</span><span class="n">arx</span></code> sources.</p>
+<code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code> and <code class="language-python highlight"><span class="o">*.</span><span class="n">x</span></code>/<code class="language-python highlight"><span class="o">*.</span><span class="n">arx</span></code> sources. Build and upload tools (<code class="language-python highlight"><span class="n">build</span></code>,
+<code class="language-python highlight"><span class="n">twine</span></code>) run from the outer interpreter that is executing <code class="language-python highlight"><span class="n">arxpm</span></code>; they are
+never installed into your project environment.</p>
 <div class="language-bash highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">TWINE_USERNAME</span><span class="o">=</span>__token__
 <span class="nb">export</span><span class="w"> </span><span class="nv">TWINE_PASSWORD</span><span class="o">=</span>&lt;pypi-token&gt;
 arxpm<span class="w"> </span>publish
 arxpm<span class="w"> </span>publish<span class="w"> </span>--repository-url<span class="w"> </span>https://test.pypi.org/legacy/
 arxpm<span class="w"> </span>publish<span class="w"> </span>--dry-run
 </code></pre></div>
-<h2 id="arxpm-doctor"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">doctor</span></code><a class="headerlink" href="#arxpm-doctor" title="Permanent link">&para;</a></h2>
+<h2 id="arxpm-healthcheck"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">healthcheck</span></code><a class="headerlink" href="#arxpm-healthcheck" title="Permanent link">&para;</a></h2>
 <p>Report environment health and manifest status.</p>
-<div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>doctor
+<div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>healthcheck
 </code></pre></div>
+<p>Checks:</p>
+<ul>
+<li><code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code> exists and parses</li>
+<li><code class="language-python highlight"><span class="n">uv</span></code> is on PATH</li>
+<li>the configured compiler (<code class="language-python highlight"><span class="n">toolchain</span><span class="o">.</span><span class="n">compiler</span></code>) is on PATH</li>
+<li>the declared environment is reachable</li>
+</ul>
 
 
 

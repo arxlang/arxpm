@@ -442,6 +442,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -511,14 +522,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../pixi-integration/" class="md-nav__link">
+      <a href="../environments/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Pixi Integration
+    Environments
   
 
     
@@ -655,6 +666,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -729,8 +751,9 @@ publication, so published modules always appear flat under their package name.</
 <span class="p">]</span>
 </code></pre></div>
 <p>Version solving is intentionally out of scope in v0. During <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code>,
-registry dependencies are installed with <code class="language-python highlight"><span class="n">pip</span> <span class="n">install</span> <span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span></code>, path dependencies
-with <code class="language-python highlight"><span class="n">pip</span> <span class="n">install</span> <span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;</span></code>, and git dependencies with <code class="language-python highlight"><span class="n">pip</span> <span class="n">install</span> <span class="n">git</span><span class="o">+&lt;</span><span class="n">url</span><span class="o">&gt;</span></code>.</p>
+registry dependencies are installed with <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span></code>, path
+dependencies with <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;</span></code>, and git dependencies with
+<code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="n">git</span><span class="o">+&lt;</span><span class="n">url</span><span class="o">&gt;</span></code>.</p>
 <h2 id="dev-dependencies">Dev Dependencies<a class="headerlink" href="#dev-dependencies" title="Permanent link">&para;</a></h2>
 <p>Tools that are only needed while developing the project (test runners, task
 runners, linters) go in a dedicated <code class="language-python highlight"><span class="p">[</span><span class="n">arxpm</span><span class="o">.</span><span class="n">dependencies</span><span class="o">-</span><span class="n">dev</span><span class="p">]</span></code> table and are
@@ -740,6 +763,25 @@ only installed when you opt in with <code class="language-python highlight"><spa
 <span class="w">  </span><span class="s2">&quot;makim&quot;</span><span class="p">,</span>
 <span class="p">]</span>
 </code></pre></div>
+<h2 id="environment">Environment<a class="headerlink" href="#environment" title="Permanent link">&para;</a></h2>
+<p>The <code class="language-python highlight"><span class="p">[</span><span class="n">environment</span><span class="p">]</span></code> table controls how <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code> obtains a Python
+environment for the project. It is optional — when absent, <code class="language-python highlight"><span class="n">arxpm</span></code> behaves as if
+<code class="language-python highlight"><span class="n">kind</span> <span class="o">=</span> <span class="s2">&quot;managed-venv&quot;</span></code> with <code class="language-python highlight"><span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;.venv&quot;</span></code> had been declared.</p>
+<div class="language-toml highlight"><pre><span></span><code><span class="k">[environment]</span>
+<span class="n">kind</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;managed-venv&quot;</span><span class="w">      </span><span class="c1"># managed-venv | existing-venv | conda</span>
+<span class="n">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;.venv&quot;</span><span class="w">              </span><span class="c1"># optional for managed-venv and conda</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;my-conda-env&quot;</span><span class="w">       </span><span class="c1"># required when kind = &quot;conda&quot; and no path</span>
+</code></pre></div>
+<p>Validation rules:</p>
+<ul>
+<li><code class="language-python highlight"><span class="n">managed</span><span class="o">-</span><span class="n">venv</span></code>: <code class="language-python highlight"><span class="n">name</span></code> is not allowed. <code class="language-python highlight"><span class="n">path</span></code> defaults to <code class="language-python highlight"><span class="s2">&quot;.venv&quot;</span></code>.</li>
+<li><code class="language-python highlight"><span class="n">existing</span><span class="o">-</span><span class="n">venv</span></code>: <code class="language-python highlight"><span class="n">path</span></code> is required, <code class="language-python highlight"><span class="n">name</span></code> is not allowed. The path must
+  resolve to an existing venv at <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code> time (not at parse time, so
+  manifests stay portable).</li>
+<li><code class="language-python highlight"><span class="n">conda</span></code>: at least one of <code class="language-python highlight"><span class="n">name</span></code> or <code class="language-python highlight"><span class="n">path</span></code> is required.</li>
+<li>Any other <code class="language-python highlight"><span class="n">kind</span></code> value is rejected with a manifest error.</li>
+</ul>
+<p>See <a href="../environments/">Environments</a> for how each strategy behaves at runtime.</p>
 
 
 

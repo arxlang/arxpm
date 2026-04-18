@@ -23,7 +23,7 @@
     
     
       
-        <title>Pixi Integration - ArxPM</title>
+        <title>Environments - ArxPM</title>
       
     
     
@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#pixi-integration" class="md-skip">
+        <a href="#environments" class="md-skip">
           Skip to content
         </a>
       
@@ -110,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Pixi Integration
+              Environments
             
           </span>
         </div>
@@ -436,7 +436,7 @@
   <span class="md-ellipsis">
     
   
-    Pixi Integration
+    Environments
   
 
     
@@ -454,7 +454,7 @@
   <span class="md-ellipsis">
     
   
-    Pixi Integration
+    Environments
   
 
     
@@ -480,10 +480,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#ownership-boundary" class="md-nav__link">
+  <a href="#strategy-1-managed-venv-default" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Ownership Boundary
+        Strategy 1 — Managed venv (default)
       
     </span>
   </a>
@@ -491,10 +491,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#manifest-behavior" class="md-nav__link">
+  <a href="#strategy-2-existing-venv" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Manifest Behavior
+        Strategy 2 — Existing venv
       
     </span>
   </a>
@@ -502,10 +502,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#commands" class="md-nav__link">
+  <a href="#strategy-3-conda-environment" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Commands
+        Strategy 3 — Conda environment
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-uv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why uv?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tooling-not-managed-by-arxpm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tooling not managed by arxpm
       
     </span>
   </a>
@@ -601,10 +623,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#ownership-boundary" class="md-nav__link">
+  <a href="#strategy-1-managed-venv-default" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Ownership Boundary
+        Strategy 1 — Managed venv (default)
       
     </span>
   </a>
@@ -612,10 +634,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#manifest-behavior" class="md-nav__link">
+  <a href="#strategy-2-existing-venv" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Manifest Behavior
+        Strategy 2 — Existing venv
       
     </span>
   </a>
@@ -623,10 +645,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#commands" class="md-nav__link">
+  <a href="#strategy-3-conda-environment" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Commands
+        Strategy 3 — Conda environment
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-uv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why uv?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tooling-not-managed-by-arxpm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tooling not managed by arxpm
       
     </span>
   </a>
@@ -653,28 +697,70 @@
   
 
 
-<h1 id="pixi-integration">Pixi Integration<a class="headerlink" href="#pixi-integration" title="Permanent link">&para;</a></h1>
-<p><code class="language-python highlight"><span class="n">arxpm</span></code> uses Pixi as backend infrastructure and keeps a narrow ownership scope.</p>
-<h2 id="ownership-boundary">Ownership Boundary<a class="headerlink" href="#ownership-boundary" title="Permanent link">&para;</a></h2>
-<p><code class="language-python highlight"><span class="n">arxpm</span></code> does not own all of <code class="language-python highlight"><span class="n">pixi</span><span class="o">.</span><span class="n">toml</span></code>. It only manages:</p>
+<h1 id="environments">Environments<a class="headerlink" href="#environments" title="Permanent link">&para;</a></h1>
+<p><code class="language-python highlight"><span class="n">arxpm</span></code> does not bundle its own Python environment. Every project declares how
+its Python environment should be provided, and <code class="language-python highlight"><span class="n">arxpm</span></code> uses
+<a href="https://github.com/astral-sh/uv"><code class="language-python highlight"><span class="n">uv</span></code></a> to install packages into the interpreter
+you point it at.</p>
+<p>Three strategies are supported out of the box, each declared in
+<code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code> via the <code class="language-python highlight"><span class="p">[</span><span class="n">environment</span><span class="p">]</span></code> table.</p>
+<h2 id="strategy-1-managed-venv-default">Strategy 1 — Managed venv (default)<a class="headerlink" href="#strategy-1-managed-venv-default" title="Permanent link">&para;</a></h2>
+<p><code class="language-python highlight"><span class="n">arxpm</span></code> creates and maintains a project-local virtual environment using
+<code class="language-python highlight"><span class="n">uv</span> <span class="n">venv</span></code>. This is the default when <code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code> has no <code class="language-python highlight"><span class="p">[</span><span class="n">environment</span><span class="p">]</span></code>
+section.</p>
+<div class="language-toml highlight"><pre><span></span><code><span class="k">[environment]</span>
+<span class="n">kind</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;managed-venv&quot;</span>
+<span class="n">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;.venv&quot;</span><span class="w">   </span><span class="c1"># optional; defaults to &quot;.venv&quot;</span>
+</code></pre></div>
+<p>Behavior:</p>
 <ul>
-<li>required toolchain dependencies (<code class="language-python highlight"><span class="n">python</span></code>, <code class="language-python highlight"><span class="n">pip</span></code>, <code class="language-python highlight"><span class="n">clang</span></code>)</li>
-<li>the <code class="language-python highlight"><span class="n">tool</span><span class="o">.</span><span class="n">arxpm</span></code> section used to track managed fields</li>
+<li><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code> runs <code class="language-python highlight"><span class="n">uv</span> <span class="n">venv</span> <span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;</span></code> if the venv does not yet exist, then
+  <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">python</span> <span class="o">&lt;</span><span class="n">venv</span><span class="o">&gt;/</span><span class="nb">bin</span><span class="o">/</span><span class="n">python</span> <span class="o">...</span></code> for your dependencies.</li>
+<li><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">run</span></code> and <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">build</span></code> do not touch the venv; they invoke the <code class="language-python highlight"><span class="n">arx</span></code>
+  compiler directly from the outer PATH.</li>
 </ul>
-<p>Unrelated user sections such as tasks and features are preserved.</p>
-<h2 id="manifest-behavior">Manifest Behavior<a class="headerlink" href="#manifest-behavior" title="Permanent link">&para;</a></h2>
+<p>Omit the whole <code class="language-python highlight"><span class="p">[</span><span class="n">environment</span><span class="p">]</span></code> section for the simplest projects — the defaults
+match what you'd write by hand.</p>
+<h2 id="strategy-2-existing-venv">Strategy 2 — Existing venv<a class="headerlink" href="#strategy-2-existing-venv" title="Permanent link">&para;</a></h2>
+<p>Reuse a virtual environment that you manage yourself (for example, a team-wide
+<code class="language-python highlight"><span class="o">.</span><span class="n">venv</span></code> or an IDE-managed interpreter):</p>
+<div class="language-toml highlight"><pre><span></span><code><span class="k">[environment]</span>
+<span class="n">kind</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;existing-venv&quot;</span>
+<span class="n">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;.venv&quot;</span><span class="w">   </span><span class="c1"># required; relative to the project root or absolute</span>
+</code></pre></div>
+<p>Behavior:</p>
 <ul>
-<li>If <code class="language-python highlight"><span class="n">pixi</span><span class="o">.</span><span class="n">toml</span></code> is missing, <code class="language-python highlight"><span class="n">arxpm</span></code> creates a minimal manifest.</li>
-<li>New manifests use <code class="language-python highlight"><span class="p">[</span><span class="n">workspace</span><span class="p">]</span></code> and include dependencies plus <code class="language-python highlight"><span class="p">[</span><span class="n">tool</span><span class="o">.</span><span class="n">arxpm</span><span class="p">]</span></code>.</li>
-<li>If <code class="language-python highlight"><span class="n">pixi</span><span class="o">.</span><span class="n">toml</span></code> exists, <code class="language-python highlight"><span class="n">arxpm</span></code> updates only missing managed pieces.</li>
+<li><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code> validates that <code class="language-python highlight"><span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;</span></code> is a directory with a usable
+  <code class="language-python highlight"><span class="nb">bin</span><span class="o">/</span><span class="n">python</span></code> (Windows: <code class="language-python highlight"><span class="n">Scripts</span><span class="o">/</span><span class="n">python</span><span class="o">.</span><span class="n">exe</span></code>) and installs packages via
+  <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">python</span> <span class="o">&lt;</span><span class="n">interp</span><span class="o">&gt;</span></code>. It never creates the venv for you.</li>
 </ul>
-<h2 id="commands">Commands<a class="headerlink" href="#commands" title="Permanent link">&para;</a></h2>
-<p>The integration currently shells out to:</p>
+<h2 id="strategy-3-conda-environment">Strategy 3 — Conda environment<a class="headerlink" href="#strategy-3-conda-environment" title="Permanent link">&para;</a></h2>
+<p>Point <code class="language-python highlight"><span class="n">arxpm</span></code> at an existing conda (or mamba) environment by name or prefix:</p>
+<div class="language-toml highlight"><pre><span></span><code><span class="k">[environment]</span>
+<span class="n">kind</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;conda&quot;</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;demo-env&quot;</span>
+<span class="c1"># or</span>
+<span class="c1"># path = &quot;/opt/conda/envs/demo-env&quot;</span>
+</code></pre></div>
+<p>Behavior:</p>
 <ul>
-<li><code class="language-python highlight"><span class="n">pixi</span> <span class="n">install</span></code></li>
-<li><code class="language-python highlight"><span class="n">pixi</span> <span class="n">run</span> <span class="o">...</span></code></li>
+<li>If <code class="language-python highlight"><span class="n">path</span></code> is provided, <code class="language-python highlight"><span class="n">arxpm</span></code> uses <code class="language-python highlight"><span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;/</span><span class="nb">bin</span><span class="o">/</span><span class="n">python</span></code> directly.</li>
+<li>Otherwise <code class="language-python highlight"><span class="n">arxpm</span></code> invokes
+  <code class="language-python highlight"><span class="n">conda</span> <span class="n">run</span> <span class="o">-</span><span class="n">n</span> <span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">python</span> <span class="o">-</span><span class="n">c</span> <span class="s2">&quot;import sys; print(sys.executable)&quot;</span></code> to locate
+  the interpreter, then installs via <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">python</span> <span class="o">&lt;</span><span class="n">interp</span><span class="o">&gt;</span></code>.</li>
+<li><code class="language-python highlight"><span class="n">conda</span></code> must be on PATH when only <code class="language-python highlight"><span class="n">name</span></code> is provided.</li>
 </ul>
-<p>All external command execution is centralized through <code class="language-python highlight"><span class="n">external</span><span class="o">.</span><span class="n">py</span></code>.</p>
+<h2 id="why-uv">Why uv?<a class="headerlink" href="#why-uv" title="Permanent link">&para;</a></h2>
+<p><code class="language-python highlight"><span class="n">uv</span></code> is used as the package installer for every strategy. It is fast, it does
+not require an active venv (it accepts <code class="language-python highlight"><span class="o">--</span><span class="n">python</span> <span class="o">&lt;</span><span class="n">interp</span><span class="o">&gt;</span></code>), and it is a single
+static binary. <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">healthcheck</span></code> reports whether <code class="language-python highlight"><span class="n">uv</span></code> is reachable on your
+PATH.</p>
+<h2 id="tooling-not-managed-by-arxpm">Tooling not managed by arxpm<a class="headerlink" href="#tooling-not-managed-by-arxpm" title="Permanent link">&para;</a></h2>
+<p><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">publish</span></code> and <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">pack</span></code> use <code class="language-python highlight"><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">build</span></code> and <code class="language-python highlight"><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">twine</span></code>
+from the <em>outer</em> interpreter that is running <code class="language-python highlight"><span class="n">arxpm</span></code>. They never install build
+tooling into your project environment. <code class="language-python highlight"><span class="n">build</span></code> and <code class="language-python highlight"><span class="n">twine</span></code> are declared as
+runtime dependencies of <code class="language-python highlight"><span class="n">arxpm</span></code> itself, so they are always available wherever
+<code class="language-python highlight"><span class="n">arxpm</span></code> is installed.</p>
 
 
 

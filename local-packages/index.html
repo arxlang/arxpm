@@ -12,7 +12,7 @@
         <link rel="prev" href="../multi-file-projects/">
       
       
-        <link rel="next" href="../pixi-integration/">
+        <link rel="next" href="../environments/">
       
       
         
@@ -539,14 +539,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../pixi-integration/" class="md-nav__link">
+      <a href="../environments/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Pixi Integration
+    Environments
   
 
     
@@ -742,13 +742,11 @@ declares <code class="language-python highlight"><span class="n">src_dir</span> 
 <div class="language-text highlight"><pre><span></span><code>workspace/
 ├── local_lib/
 │   ├── .arxproject.toml
-│   ├── pixi.toml
 │   └── src/
 │       ├── local_lib.x
 │       └── stats.x
 └── local-consumer/
     ├── .arxproject.toml
-    ├── pixi.toml
     └── src/
         └── main.x
 </code></pre></div>
@@ -794,8 +792,9 @@ at build time.</p>
 <li>Packs the library (runs <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">pack</span></code> on that path) to produce a wheel that
    bundles every <code class="language-python highlight"><span class="o">.</span><span class="n">x</span></code> / <code class="language-python highlight"><span class="o">.</span><span class="n">arx</span></code> source under the library's <code class="language-python highlight"><span class="n">src_dir</span></code>, flattened
    to the package root.</li>
-<li><code class="language-python highlight"><span class="n">pip</span> <span class="n">install</span></code>s the wheel into the consumer's Pixi environment, so the library
-   lands at <code class="language-python highlight"><span class="o">&lt;</span><span class="n">env</span><span class="o">&gt;/</span><span class="n">lib</span><span class="o">/</span><span class="n">pythonX</span><span class="o">/</span><span class="n">site</span><span class="o">-</span><span class="n">packages</span><span class="o">/&lt;</span><span class="n">module_name</span><span class="o">&gt;/</span></code>.</li>
+<li>Installs the wheel into the consumer's Python environment via
+   <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">python</span> <span class="o">&lt;</span><span class="n">interp</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">force</span><span class="o">-</span><span class="n">reinstall</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">deps</span> <span class="o">&lt;</span><span class="n">wheel</span><span class="o">&gt;</span></code>, so
+   the library lands at <code class="language-python highlight"><span class="o">&lt;</span><span class="n">env</span><span class="o">&gt;/</span><span class="n">lib</span><span class="o">/</span><span class="n">pythonX</span><span class="o">/</span><span class="n">site</span><span class="o">-</span><span class="n">packages</span><span class="o">/&lt;</span><span class="n">module_name</span><span class="o">&gt;/</span></code>.</li>
 <li>Creates a symlink <code class="language-python highlight"><span class="o">&lt;</span><span class="n">consumer</span><span class="o">&gt;/&lt;</span><span class="n">module_name</span><span class="o">&gt;</span></code> pointing at the installed
    directory. The Arx compiler's resolver walks the ancestors of the entry file
    looking for <code class="language-python highlight"><span class="o">&lt;</span><span class="n">module_name</span><span class="o">&gt;/&lt;</span><span class="n">sub</span><span class="o">&gt;.</span><span class="n">x</span></code>, so the symlink at the consumer's project
@@ -825,8 +824,8 @@ arxpm run
   does not read from <code class="language-python highlight"><span class="n">site</span><span class="o">-</span><span class="n">packages</span></code> directly. The symlink step is what bridges
   the installed wheel back into the consumer's ancestor tree.</li>
 <li><strong>Path deps only; no registry or git.</strong> <code class="language-python highlight"><span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span> <span class="o">@</span> <span class="n">git</span><span class="o">+...</span></code> dependencies still
-  go straight through <code class="language-python highlight"><span class="n">pip</span> <span class="n">install</span></code> and bring no cross-compile support today —
-  only <code class="language-python highlight"><span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span> <span class="o">@</span> <span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;</span></code> entries pointing at an Arx project trigger the
+  go straight through <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span></code> and bring no cross-compile support today
+  — only <code class="language-python highlight"><span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span> <span class="o">@</span> <span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;</span></code> entries pointing at an Arx project trigger the
   pack/install/link flow.</li>
 <li><strong>No version solving or editable installs.</strong> Every <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code> re-packs
   the library and reinstalls the wheel. For iterative library development, edit

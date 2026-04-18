@@ -511,14 +511,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../pixi-integration/" class="md-nav__link">
+      <a href="../environments/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Pixi Integration
+    Environments
   
 
     
@@ -682,7 +682,6 @@ the compiler discovers sibling modules on the filesystem at build time.</p>
 <h2 id="layout">Layout<a class="headerlink" href="#layout" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code>multi-module/
 ├── .arxproject.toml
-├── pixi.toml
 └── src/
     ├── main.x
     ├── math_utils.x
@@ -749,8 +748,8 @@ fn main() -&gt; i32:
 <a href="https://github.com/arxlang/arxpm/tree/main/examples/multi-module"><code class="language-python highlight"><span class="n">examples</span><span class="o">/</span><span class="n">multi</span><span class="o">-</span><span class="n">module</span><span class="o">/</span></code></a>.</p>
 <h2 id="packaging">Packaging<a class="headerlink" href="#packaging" title="Permanent link">&para;</a></h2>
 <p><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">pack</span></code> and <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">publish</span></code> bundle every <code class="language-python highlight"><span class="o">*.</span><span class="n">x</span></code> / <code class="language-python highlight"><span class="o">*.</span><span class="n">arx</span></code> file under the
-project root (excluding <code class="language-python highlight"><span class="n">build</span><span class="o">/</span></code>, <code class="language-python highlight"><span class="n">dist</span><span class="o">/</span></code>, <code class="language-python highlight"><span class="o">.</span><span class="n">pixi</span><span class="o">/</span></code>, virtualenvs, and caches).
-Multi-file projects publish without additional configuration.</p>
+project root (excluding <code class="language-python highlight"><span class="n">build</span><span class="o">/</span></code>, <code class="language-python highlight"><span class="n">dist</span><span class="o">/</span></code>, virtualenvs, and caches). Multi-file
+projects publish without additional configuration.</p>
 
 
 

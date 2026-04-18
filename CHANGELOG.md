@@ -1,6 +1,13 @@
 # Release Notes
 ---
 
+# [1.4.0](https://github.com/arxlang/arxpm/compare/1.3.0...1.4.0) (2026-04-18)
+
+
+### Features
+
+* Support arxlang >=0.6 ([#7](https://github.com/arxlang/arxpm/issues/7)) ([d99ff8b](https://github.com/arxlang/arxpm/commit/d99ff8b8661b40b9549e85ed952f0ffad57e2d41))
+
 # [1.3.0](https://github.com/arxlang/arxpm/compare/1.2.0...1.3.0) (2026-04-18)
 
 

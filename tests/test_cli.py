@@ -12,8 +12,8 @@ from typer.testing import CliRunner
 
 from arxpm._toml import tomllib
 from arxpm.cli import app
-from arxpm.doctor import DoctorCheck, DoctorReport
-from arxpm.errors import MissingPixiError
+from arxpm.errors import MissingUvError
+from arxpm.healthcheck import HealthCheck, HealthReport
 
 runner = CliRunner()
 
@@ -24,17 +24,28 @@ class FailingInstallProjectService:
     """
 
     def install(self, directory: Path, dev: bool = False) -> None:
-        _ = dev
-        raise MissingPixiError("pixi is missing")
+        _ = directory, dev
+        raise MissingUvError("uv is missing")
 
 
-class PassingDoctorService:
+class PassingHealthcheckService:
     """
-    title: Doctor service that always succeeds.
+    title: Healthcheck service that always succeeds.
     """
 
-    def run(self, directory: Path) -> DoctorReport:
-        return DoctorReport(checks=(DoctorCheck("pixi", True, "ok"),))
+    def run(self, directory: Path) -> HealthReport:
+        _ = directory
+        return HealthReport(checks=(HealthCheck("uv", True, "ok"),))
+
+
+class FailingHealthcheckService:
+    """
+    title: Healthcheck service with a failing check.
+    """
+
+    def run(self, directory: Path) -> HealthReport:
+        _ = directory
+        return HealthReport(checks=(HealthCheck("uv", False, "missing"),))
 
 
 class PassingRunProjectService:
@@ -43,6 +54,7 @@ class PassingRunProjectService:
     """
 
     def run(self, directory: Path) -> None:
+        _ = directory
         return None
 
 
@@ -75,9 +87,7 @@ class PassingPublishProjectService:
         skip_existing: bool = False,
         dry_run: bool = False,
     ) -> SimpleNamespace:
-        _ = repository_url
-        _ = skip_existing
-        _ = dry_run
+        _ = repository_url, skip_existing, dry_run
         return SimpleNamespace(
             artifacts=(
                 directory / "dist" / "demo-0.1.0-py3-none-any.whl",
@@ -92,7 +102,7 @@ def test_init_command_creates_project_files(
 ) -> None:
     monkeypatch.chdir(tmp_path)
 
-    result = runner.invoke(app, ["init", "--name", "hello-arx", "--no-pixi"])
+    result = runner.invoke(app, ["init", "--name", "hello-arx"])
 
     assert result.exit_code == 0
     manifest_path = tmp_path / ".arxproject.toml"
@@ -104,6 +114,34 @@ def test_init_command_creates_project_files(
     assert isinstance(src_dir, str)
     assert isinstance(entry, str)
     assert (tmp_path / src_dir / entry).exists()
+    assert "environment" not in manifest_data
+
+
+def test_init_command_writes_custom_environment(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "init",
+            "--name",
+            "demo",
+            "--env-kind",
+            "existing-venv",
+            "--env-path",
+            "/tmp/demo-env",
+        ],
+    )
+
+    assert result.exit_code == 0
+    manifest_data = tomllib.loads(
+        (tmp_path / ".arxproject.toml").read_text(encoding="utf-8"),
+    )
+    assert manifest_data["environment"]["kind"] == "existing-venv"
+    assert manifest_data["environment"]["path"] == "/tmp/demo-env"
 
 
 def test_add_command_writes_registry_dependency(
@@ -111,7 +149,7 @@ def test_add_command_writes_registry_dependency(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.chdir(tmp_path)
-    runner.invoke(app, ["init", "--name", "demo", "--no-pixi"])
+    runner.invoke(app, ["init", "--name", "demo"])
 
     result = runner.invoke(app, ["add", "http"])
 
@@ -132,7 +170,7 @@ def test_install_command_surfaces_human_error(
     result = runner.invoke(app, ["install"])
 
     assert result.exit_code == 1
-    assert "pixi is missing" in result.output
+    assert "uv is missing" in result.output
 
 
 def test_install_command_requires_manifest(
@@ -217,12 +255,34 @@ def test_publish_command_reports_artifacts(
     assert "demo-0.1.0-py3-none-any.whl" in result.output
 
 
-def test_doctor_command_reports_success(
+def test_healthcheck_command_reports_success(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("arxpm.cli.DoctorService", PassingDoctorService)
+    monkeypatch.setattr(
+        "arxpm.cli.HealthcheckService",
+        PassingHealthcheckService,
+    )
 
-    result = runner.invoke(app, ["doctor"])
+    result = runner.invoke(app, ["healthcheck"])
 
     assert result.exit_code == 0
-    assert "[ok] pixi: ok" in result.output
+    assert "[ok] uv: ok" in result.output
+
+
+def test_healthcheck_command_reports_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "arxpm.cli.HealthcheckService",
+        FailingHealthcheckService,
+    )
+
+    result = runner.invoke(app, ["healthcheck"])
+
+    assert result.exit_code == 1
+    assert "[fail] uv: missing" in result.output
+
+
+def test_doctor_command_is_removed() -> None:
+    result = runner.invoke(app, ["doctor"])
+    assert result.exit_code != 0

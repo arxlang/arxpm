@@ -9,8 +9,9 @@ from typing import Annotated, NoReturn
 
 import typer
 
-from arxpm.doctor import DoctorService
+from arxpm.environment import default_environment_config_from_cli
 from arxpm.errors import ArxpmError
+from arxpm.healthcheck import HealthcheckService
 from arxpm.project import ProjectService
 
 app = typer.Typer(help="Arx project and package manager.")
@@ -31,10 +32,32 @@ def init(
         str | None,
         typer.Option("--name", help="Project name override."),
     ] = None,
-    pixi: Annotated[
-        bool,
-        typer.Option("--pixi/--no-pixi", help="Create or update pixi.toml."),
-    ] = True,
+    env_kind: Annotated[
+        str | None,
+        typer.Option(
+            "--env-kind",
+            help=(
+                "Environment strategy (managed-venv, existing-venv, conda)."
+            ),
+        ),
+    ] = None,
+    env_path: Annotated[
+        str | None,
+        typer.Option(
+            "--env-path",
+            help=(
+                "Filesystem path for the environment "
+                "(venv dir or conda prefix)."
+            ),
+        ),
+    ] = None,
+    env_name: Annotated[
+        str | None,
+        typer.Option(
+            "--env-name",
+            help="Conda environment name (used with --env-kind conda).",
+        ),
+    ] = None,
     directory: Annotated[
         Path,
         typer.Option("--directory", "-C", help="Project directory."),
@@ -47,10 +70,18 @@ def init(
         type: >-
           Annotated[str | None, typer.Option('--name', help='Project name
           override.')]
-      pixi:
+      env_kind:
         type: >-
-          Annotated[bool, typer.Option('--pixi/--no-pixi', help='Create or
-          update pixi.toml.')]
+          Annotated[str | None, typer.Option('--env-kind', help='Environment
+          strategy (managed-venv, existing-venv, conda).')]
+      env_path:
+        type: >-
+          Annotated[str | None, typer.Option('--env-path', help='Filesystem
+          path for the environment (venv dir or conda prefix).')]
+      env_name:
+        type: >-
+          Annotated[str | None, typer.Option('--env-name', help='Conda
+          environment name (used with --env-kind conda).')]
       directory:
         type: >-
           Annotated[Path, typer.Option('--directory', '-C', help='Project
@@ -59,13 +90,20 @@ def init(
     project_service = ProjectService()
     target = _resolve(directory)
     try:
-        manifest = project_service.init(target, name=name, create_pixi=pixi)
+        environment = default_environment_config_from_cli(
+            env_kind,
+            env_path,
+            env_name,
+        )
+        manifest = project_service.init(
+            target,
+            name=name,
+            environment=environment,
+        )
     except ArxpmError as exc:
         _fail(exc)
 
     typer.echo(f"Initialized project {manifest.project.name} at {target}")
-    if pixi:
-        typer.echo("Ensured pixi.toml.")
 
 
 @app.command()
@@ -83,7 +121,7 @@ def install(
     ] = False,
 ) -> None:
     """
-    title: Install project environment with pixi.
+    title: Install project dependencies into the configured environment.
     parameters:
       directory:
         type: >-
@@ -100,7 +138,7 @@ def install(
     except ArxpmError as exc:
         _fail(exc)
 
-    typer.echo("Environment synchronized with pixi.")
+    typer.echo("Environment synchronized.")
 
 
 @app.command()
@@ -170,7 +208,7 @@ def build_command(
     ] = Path("."),
 ) -> None:
     """
-    title: Build project using arx through pixi.
+    title: Build project by invoking the configured Arx compiler.
     parameters:
       directory:
         type: >-
@@ -313,7 +351,7 @@ def publish_command(
 
 
 @app.command()
-def doctor(
+def healthcheck(
     directory: Annotated[
         Path,
         typer.Option("--directory", "-C", help="Project directory."),
@@ -327,8 +365,8 @@ def doctor(
           Annotated[Path, typer.Option('--directory', '-C', help='Project
           directory.')]
     """
-    doctor_service = DoctorService()
-    report = doctor_service.run(_resolve(directory))
+    healthcheck_service = HealthcheckService()
+    report = healthcheck_service.run(_resolve(directory))
 
     for check in report.checks:
         status = "ok" if check.ok else "fail"

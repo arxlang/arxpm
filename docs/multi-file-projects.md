@@ -9,7 +9,6 @@ the compiler discovers sibling modules on the filesystem at build time.
 ```
 multi-module/
 ├── .arxproject.toml
-├── pixi.toml
 └── src/
     ├── main.x
     ├── math_utils.x
@@ -101,5 +100,5 @@ A working copy of this project lives at
 ## Packaging
 
 `arxpm pack` and `arxpm publish` bundle every `*.x` / `*.arx` file under the
-project root (excluding `build/`, `dist/`, `.pixi/`, virtualenvs, and caches).
-Multi-file projects publish without additional configuration.
+project root (excluding `build/`, `dist/`, virtualenvs, and caches). Multi-file
+projects publish without additional configuration.

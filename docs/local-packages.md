@@ -14,13 +14,11 @@ declares `src_dir = "src"` in `[build]`:
 workspace/
 ├── local_lib/
 │   ├── .arxproject.toml
-│   ├── pixi.toml
 │   └── src/
 │       ├── local_lib.x
 │       └── stats.x
 └── local-consumer/
     ├── .arxproject.toml
-    ├── pixi.toml
     └── src/
         └── main.x
 ```
@@ -76,8 +74,9 @@ For each `project.dependencies` entry of the form `<name> @ <path>` where
 1. Packs the library (runs `arxpm pack` on that path) to produce a wheel that
    bundles every `.x` / `.arx` source under the library's `src_dir`, flattened
    to the package root.
-2. `pip install`s the wheel into the consumer's Pixi environment, so the library
-   lands at `<env>/lib/pythonX/site-packages/<module_name>/`.
+2. Installs the wheel into the consumer's Python environment via
+   `uv pip install --python <interp> --force-reinstall --no-deps <wheel>`, so
+   the library lands at `<env>/lib/pythonX/site-packages/<module_name>/`.
 3. Creates a symlink `<consumer>/<module_name>` pointing at the installed
    directory. The Arx compiler's resolver walks the ancestors of the entry file
    looking for `<module_name>/<sub>.x`, so the symlink at the consumer's project
@@ -115,8 +114,8 @@ Expected stdout: `5`.
   does not read from `site-packages` directly. The symlink step is what bridges
   the installed wheel back into the consumer's ancestor tree.
 - **Path deps only; no registry or git.** `<name> @ git+...` dependencies still
-  go straight through `pip install` and bring no cross-compile support today —
-  only `<name> @ <path>` entries pointing at an Arx project trigger the
+  go straight through `uv pip install` and bring no cross-compile support today
+  — only `<name> @ <path>` entries pointing at an Arx project trigger the
   pack/install/link flow.
 - **No version solving or editable installs.** Every `arxpm install` re-packs
   the library and reinstalls the wheel. For iterative library development, edit

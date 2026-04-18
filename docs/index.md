@@ -6,7 +6,9 @@
 
 - `arx` is compiler-only.
 - `arxpm` is the user-facing workflow tool.
-- Pixi is the environment and toolchain backend.
+- Python environments are backend-neutral: a project can use a project-local
+  venv (default), an existing venv, or a conda environment. `uv` is used to
+  install packages in all cases.
 
 Arx projects use `.arxproject.toml` as their project manifest. Python packaging
 is only for distributing `arxpm` itself.
@@ -22,10 +24,11 @@ is only for distributing `arxpm` itself.
 - `src/arxpm/models.py`: typed manifest models.
 - `src/arxpm/manifest.py`: parse/render `.arxproject.toml`.
 - `src/arxpm/_toml.py`: TOML parser compatibility shim (`tomllib`/`tomli`).
-- `src/arxpm/pixi.py`: Pixi detection and partial `pixi.toml` sync.
+- `src/arxpm/environment.py`: environment runtime abstraction and the
+  managed-venv, existing-venv, and conda implementations.
 - `src/arxpm/project.py`: `init`, `add`, `install`, `build`, `run`, `pack`,
   `publish`.
-- `src/arxpm/doctor.py`: environment and manifest checks.
+- `src/arxpm/healthcheck.py`: environment and manifest checks.
 - `src/arxpm/cli.py`: Typer CLI layer.
 
 ## Quick CLI
@@ -39,8 +42,8 @@ arxpm compile
 arxpm run
 arxpm pack
 arxpm publish
-arxpm doctor
+arxpm healthcheck
 ```
 
 See [Getting Started](getting-started.md) for a full setup and
-[Pixi Integration](pixi-integration.md) for ownership boundaries.
+[Environments](environments.md) for the supported environment strategies.

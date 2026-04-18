@@ -5,7 +5,7 @@ title: Shared fixtures for arxpm tests.
 from __future__ import annotations
 
 import shutil
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import pytest
@@ -13,95 +13,143 @@ import pytest
 from arxpm.external import CommandResult
 from arxpm.manifest import load_manifest
 
-ManifestCall = tuple[Path, str, tuple[str, ...]]
 CopyExample = Callable[[str], Path]
+InstallCall = tuple[tuple[str, ...], bool, bool]
 
 _EXAMPLES_ROOT = Path(__file__).resolve().parents[1] / "examples"
 
 
-class FakePixiService:
+class FakeEnvironment:
     """
-    title: Pixi test double.
+    title: Environment runtime test double.
     attributes:
-      ensure_manifest_calls:
-        type: list[ManifestCall]
+      ensure_ready_calls:
+        type: int
       install_calls:
-        type: list[Path]
-      run_calls:
-        type: list[tuple[Path, list[str]]]
+        type: list[InstallCall]
+      python_path:
+        type: Path
       module_install_dirs:
         type: dict[str, Path]
     """
 
-    def __init__(self) -> None:
-        self.ensure_manifest_calls: list[ManifestCall] = []
-        self.install_calls: list[Path] = []
-        self.run_calls: list[tuple[Path, list[str]]] = []
-        self.module_install_dirs: dict[str, Path] = {}
+    ensure_ready_calls: int
+    install_calls: list[InstallCall]
+    python_path: Path
+    module_install_dirs: dict[str, Path]
 
-    def ensure_available(self) -> None:
-        return None
+    def __init__(self, python_path: Path | None = None) -> None:
+        self.ensure_ready_calls = 0
+        self.install_calls = []
+        self.python_path = python_path or Path("/fake/python")
+        self.module_install_dirs = {}
 
-    def ensure_manifest(
+    def ensure_ready(self) -> None:
+        self.ensure_ready_calls += 1
+
+    def python_executable(self) -> Path:
+        return self.python_path
+
+    def install_packages(
         self,
-        directory: Path,
-        project_name: str,
-        required_dependencies: tuple[str, ...],
-    ) -> Path:
-        self.ensure_manifest_calls.append(
-            (directory, project_name, required_dependencies)
+        requirements: Sequence[str],
+        *,
+        force_reinstall: bool = False,
+        no_deps: bool = False,
+    ) -> CommandResult:
+        self.install_calls.append(
+            (tuple(requirements), force_reinstall, no_deps)
         )
-        return directory / "pixi.toml"
+        return CommandResult(("uv", "pip", "install"), 0, "", "")
 
-    def install(self, directory: Path) -> CommandResult:
-        self.install_calls.append(directory)
-        return CommandResult(("pixi", "install"), 0, "", "")
+    def describe(self) -> str:
+        return "fake environment"
 
-    def run(self, directory: Path, args: list[str]) -> CommandResult:
-        self.run_calls.append((directory, args))
 
-        if args[:3] == ["python", "-m", "build"] and "--outdir" in args:
-            outdir_value = Path(args[args.index("--outdir") + 1])
+class FakeRunner:
+    """
+    title: Command runner test double.
+    attributes:
+      calls:
+        type: list[tuple[list[str], Path | None, bool]]
+      module_install_dirs:
+        type: dict[str, Path]
+    """
+
+    calls: list[tuple[list[str], Path | None, bool]]
+    module_install_dirs: dict[str, Path]
+
+    def __init__(
+        self,
+        module_install_dirs: dict[str, Path] | None = None,
+    ) -> None:
+        self.calls = []
+        self.module_install_dirs = module_install_dirs or {}
+
+    def __call__(
+        self,
+        command: Sequence[str],
+        cwd: Path | None = None,
+        check: bool = False,
+    ) -> CommandResult:
+        cmd_list = list(command)
+        self.calls.append((cmd_list, cwd, check))
+
+        if "-m" in cmd_list and "build" in cmd_list and "--outdir" in cmd_list:
+            outdir_value = Path(cmd_list[cmd_list.index("--outdir") + 1])
             if outdir_value.is_absolute():
                 outdir = outdir_value
             else:
-                outdir = directory / outdir_value
+                outdir = (cwd or Path(".")) / outdir_value
             outdir.mkdir(parents=True, exist_ok=True)
 
-            manifest = load_manifest(directory)
-            normalized = manifest.project.name.replace("-", "_")
-            version = manifest.project.version
-            (outdir / f"{normalized}-{version}.tar.gz").write_text(
-                "",
-                encoding="utf-8",
-            )
-            (outdir / f"{normalized}-{version}-py3-none-any.whl").write_text(
-                "",
-                encoding="utf-8",
-            )
+            if cwd is not None:
+                manifest = load_manifest(cwd)
+                normalized = manifest.project.name.replace("-", "_")
+                version = manifest.project.version
+                (outdir / f"{normalized}-{version}.tar.gz").write_text(
+                    "",
+                    encoding="utf-8",
+                )
+                (
+                    outdir / f"{normalized}-{version}-py3-none-any.whl"
+                ).write_text(
+                    "",
+                    encoding="utf-8",
+                )
 
-        if args[:2] == ["python", "-c"]:
-            script = args[2] if len(args) > 2 else ""
+        if len(cmd_list) >= 3 and cmd_list[1] == "-c":
+            script = cmd_list[2]
             for module_name, install_dir in self.module_install_dirs.items():
                 if f"import {module_name}" in script:
                     return CommandResult(
-                        ("pixi", "run", *args),
+                        tuple(cmd_list),
                         0,
                         f"{install_dir}\n",
                         "",
                     )
 
-        return CommandResult(("pixi", "run", *args), 0, "", "")
+        return CommandResult(tuple(cmd_list), 0, "", "")
 
 
 @pytest.fixture
-def fake_pixi() -> FakePixiService:
+def fake_env() -> FakeEnvironment:
     """
-    title: Provide a fresh FakePixiService per test.
+    title: Provide a fresh FakeEnvironment per test.
     returns:
-      type: FakePixiService
+      type: FakeEnvironment
     """
-    return FakePixiService()
+    return FakeEnvironment()
+
+
+@pytest.fixture
+def fake_runner() -> FakeRunner:
+    """
+    title: Provide a fresh FakeRunner per test.
+    returns:
+      type: FakeRunner
+    """
+    return FakeRunner()
 
 
 @pytest.fixture

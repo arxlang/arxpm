@@ -3,7 +3,8 @@
 `arxpm` is the Arx project manager and workspace tool.
 
 `arx` stays compiler-only. `arxpm` owns project manifests (`.arxproject.toml`),
-workspace lifecycle, Pixi integration, and user-facing workflow commands.
+workspace lifecycle, Python environment provisioning (via `uv`), and user-facing
+workflow commands.
 
 ## Compatibility
 
@@ -16,10 +17,12 @@ workspace lifecycle, Pixi integration, and user-facing workflow commands.
 - `models.py`: typed manifest models.
 - `manifest.py`: `.arxproject.toml` parsing and rendering.
 - `_toml.py`: TOML parser compatibility shim (`tomllib`/`tomli`).
-- `pixi.py`: Pixi adapter and `pixi.toml` handling.
+- `environment.py`: backend-neutral environment protocol plus managed-venv,
+  existing-venv, and conda implementations that install packages via
+  `uv pip install --python <interp>`.
 - `project.py`: project workflows (`init`, `add`, `install`, `build`, `run`,
   `pack`, `publish`).
-- `doctor.py`: health checks for environment and manifest.
+- `healthcheck.py`: health checks for environment and manifest.
 - `cli.py`: Typer command layer.
 
 ## Commands (v0)
@@ -32,15 +35,14 @@ workspace lifecycle, Pixi integration, and user-facing workflow commands.
 - `arxpm run`
 - `arxpm pack`
 - `arxpm publish`
-- `arxpm doctor`
+- `arxpm healthcheck`
 
 ## Development
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e .
-pip install pytest
+pip install -e '.[dev]'
 pytest
 ```
 
@@ -53,10 +55,10 @@ The `examples/` directory ships several sample projects:
 - `examples/local_lib/` + `examples/local-consumer/` — a library and a consumer
   that live side by side on disk so the consumer resolves imports against the
   library's `.x` files. See [Local Packages](docs/local-packages.md) for the
-  supported layout and the current boundary around pip-installed libraries.
+  supported layout and the current boundary around installed libraries.
 
-Integration tests that compile and execute both examples live in
-`tests/test_examples_integration.py` and are gated on `arx` and `pixi` being on
+Integration tests that compile and execute the examples live in
+`tests/test_examples_integration.py` and are gated on `arx` and `uv` being on
 `PATH`. Run them with:
 
 ```bash

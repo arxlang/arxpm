@@ -53,14 +53,14 @@ groups:
         run: |
           set -euo pipefail
 
-          if ! command -v pixi >/dev/null 2>&1; then
-            echo "pixi is required for tests.smoke"
+          if ! command -v uv >/dev/null 2>&1; then
+            echo "uv is required for tests.smoke"
             echo "hint: activate/update conda dev env from conda/dev.yaml"
             exit 1
           fi
           if ! command -v arx >/dev/null 2>&1; then
             echo "arx is required for tests.smoke"
-            echo "hint: run poetry install --with dev in the active env"
+            echo "hint: run `poetry install` in the active env"
             exit 1
           fi
 
@@ -77,7 +77,7 @@ groups:
             project_dir="${tmp_dir}/${example_name}"
             echo "=== smoke: ${example_name} ==="
 
-            python -m arxpm doctor --directory "${project_dir}"
+            python -m arxpm healthcheck --directory "${project_dir}"
             python -m arxpm install --directory "${project_dir}"
             python -m arxpm build --directory "${project_dir}"
             python -m arxpm run --directory "${project_dir}"

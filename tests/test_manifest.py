@@ -161,3 +161,142 @@ def test_manifest_round_trip_preserves_dependencies(tmp_path: Path) -> None:
     assert loaded.dependencies["local_lib"].path == "../local_lib"
     assert loaded.dependencies["utils"].git == "https://example.com/utils.git"
     assert loaded.dev_dependencies["makim"].kind == "registry"
+
+
+def _write_manifest(tmp_path: Path, body: str) -> Path:
+    path = tmp_path / ".arxproject.toml"
+    path.write_text(body + "\n", encoding="utf-8")
+    return path
+
+
+_BASE_MANIFEST = """
+[project]
+name = "demo"
+version = "0.1.0"
+edition = "2026"
+dependencies = []
+
+[build]
+entry = "src/main.x"
+out_dir = "build"
+
+[toolchain]
+compiler = "arx"
+linker = "clang"
+""".strip()
+
+
+def test_environment_defaults_when_section_absent(tmp_path: Path) -> None:
+    path = _write_manifest(tmp_path, _BASE_MANIFEST)
+    manifest = load_manifest_file(path)
+
+    assert manifest.environment.is_default()
+    assert manifest.environment.kind == "managed-venv"
+
+
+def test_environment_managed_venv_with_path(tmp_path: Path) -> None:
+    body = f"""{_BASE_MANIFEST}
+
+[environment]
+kind = "managed-venv"
+path = ".venv-custom"
+"""
+    path = _write_manifest(tmp_path, body)
+    manifest = load_manifest_file(path)
+
+    assert manifest.environment.kind == "managed-venv"
+    assert manifest.environment.path == ".venv-custom"
+
+
+def test_environment_existing_venv_requires_path(tmp_path: Path) -> None:
+    body = f"""{_BASE_MANIFEST}
+
+[environment]
+kind = "existing-venv"
+"""
+    path = _write_manifest(tmp_path, body)
+
+    with pytest.raises(ManifestError, match="existing-venv"):
+        load_manifest_file(path)
+
+
+def test_environment_existing_venv_parses_with_path(tmp_path: Path) -> None:
+    body = f"""{_BASE_MANIFEST}
+
+[environment]
+kind = "existing-venv"
+path = "/opt/project/venv"
+"""
+    path = _write_manifest(tmp_path, body)
+    manifest = load_manifest_file(path)
+
+    assert manifest.environment.kind == "existing-venv"
+    assert manifest.environment.path == "/opt/project/venv"
+
+
+def test_environment_conda_requires_name_or_path(tmp_path: Path) -> None:
+    body = f"""{_BASE_MANIFEST}
+
+[environment]
+kind = "conda"
+"""
+    path = _write_manifest(tmp_path, body)
+
+    with pytest.raises(ManifestError, match="conda"):
+        load_manifest_file(path)
+
+
+def test_environment_conda_with_name(tmp_path: Path) -> None:
+    body = f"""{_BASE_MANIFEST}
+
+[environment]
+kind = "conda"
+name = "demo-env"
+"""
+    path = _write_manifest(tmp_path, body)
+    manifest = load_manifest_file(path)
+
+    assert manifest.environment.kind == "conda"
+    assert manifest.environment.name == "demo-env"
+
+
+def test_environment_rejects_unknown_kind(tmp_path: Path) -> None:
+    body = f"""{_BASE_MANIFEST}
+
+[environment]
+kind = "bogus"
+"""
+    path = _write_manifest(tmp_path, body)
+
+    with pytest.raises(ManifestError, match="environment.kind"):
+        load_manifest_file(path)
+
+
+def test_environment_managed_venv_rejects_name(tmp_path: Path) -> None:
+    body = f"""{_BASE_MANIFEST}
+
+[environment]
+kind = "managed-venv"
+name = "nope"
+"""
+    path = _write_manifest(tmp_path, body)
+
+    with pytest.raises(ManifestError, match="managed-venv"):
+        load_manifest_file(path)
+
+
+def test_environment_round_trips_through_render(tmp_path: Path) -> None:
+    from arxpm.manifest import render_manifest
+    from arxpm.models import EnvironmentConfig, Manifest, ProjectConfig
+
+    manifest = Manifest(
+        project=ProjectConfig(name="demo"),
+        environment=EnvironmentConfig(kind="conda", name="demo-env"),
+    )
+    path = tmp_path / ".arxproject.toml"
+    path.write_text(render_manifest(manifest), encoding="utf-8")
+
+    loaded = load_manifest_file(path)
+
+    assert loaded.environment.kind == "conda"
+    assert loaded.environment.name == "demo-env"

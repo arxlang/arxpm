@@ -9,19 +9,20 @@ from pathlib import Path
 
 import pytest
 
-from arxpm.pixi import PixiService
+from arxpm.external import run_command
+from arxpm.manifest import load_manifest
 from arxpm.project import ProjectService
 
 pytestmark = pytest.mark.integration
 
 _TOOLCHAIN_AVAILABLE = (
-    shutil.which("arx") is not None and shutil.which("pixi") is not None
+    shutil.which("arx") is not None and shutil.which("uv") is not None
 )
 
 
 @pytest.mark.skipif(
     not _TOOLCHAIN_AVAILABLE,
-    reason="requires arx and pixi on PATH",
+    reason="requires arx and uv on PATH",
 )
 @pytest.mark.parametrize(
     "example_name, expected_substrings",
@@ -39,7 +40,7 @@ def test_example_runs_end_to_end(
     destination = tmp_path / example_name
     shutil.copytree(source, destination)
 
-    service = ProjectService(pixi=PixiService())
+    service = ProjectService()
     service.install(destination)
     result = service.run(destination)
 
@@ -51,7 +52,7 @@ def test_example_runs_end_to_end(
 
 @pytest.mark.skipif(
     not _TOOLCHAIN_AVAILABLE,
-    reason="requires arx and pixi on PATH",
+    reason="requires arx and uv on PATH",
 )
 def test_local_consumer_installs_and_runs_via_path_dep(tmp_path: Path) -> None:
     examples_root = Path(__file__).resolve().parents[1] / "examples"
@@ -59,17 +60,24 @@ def test_local_consumer_installs_and_runs_via_path_dep(tmp_path: Path) -> None:
     consumer_dir = tmp_path / "local-consumer"
     shutil.copytree(examples_root / "local-consumer", consumer_dir)
 
-    pixi = PixiService()
-    service = ProjectService(pixi=pixi)
+    service = ProjectService()
     service.install(consumer_dir)
 
     symlink = consumer_dir / "local_lib"
     assert symlink.is_symlink()
     assert (symlink / "stats.x").is_file()
 
-    yaml_probe = pixi.run(
-        consumer_dir,
-        ["python", "-c", "import yaml; print(yaml.__version__)"],
+    manifest = load_manifest(consumer_dir)
+    from arxpm.environment import build_environment
+
+    env = build_environment(manifest, consumer_dir)
+    yaml_probe = run_command(
+        [
+            str(env.python_executable()),
+            "-c",
+            "import yaml; print(yaml.__version__)",
+        ],
+        cwd=consumer_dir,
     )
     assert yaml_probe.returncode == 0
     assert yaml_probe.stdout.strip()

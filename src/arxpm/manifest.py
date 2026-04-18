@@ -136,6 +136,18 @@ def render_manifest(manifest: Manifest) -> str:
             f"linker = {_quote(manifest.toolchain.linker)}",
         ]
     )
+    if not manifest.environment.is_default():
+        lines.extend(
+            [
+                "",
+                "[environment]",
+                f"kind = {_quote(manifest.environment.kind)}",
+            ]
+        )
+        if manifest.environment.path is not None:
+            lines.append(f"path = {_quote(manifest.environment.path)}")
+        if manifest.environment.name is not None:
+            lines.append(f"name = {_quote(manifest.environment.name)}")
     if manifest.dev_dependencies:
         lines.extend(
             [

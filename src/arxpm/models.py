@@ -13,6 +13,97 @@ from arxpm.errors import ManifestError
 
 _NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_\-]*$")
 
+ENVIRONMENT_KINDS = ("managed-venv", "existing-venv", "conda")
+DEFAULT_MANAGED_VENV_PATH = ".venv"
+
+
+@dataclass(slots=True, frozen=True)
+class EnvironmentConfig:
+    """
+    title: Environment strategy configuration.
+    attributes:
+      kind:
+        type: str
+      path:
+        type: str | None
+      name:
+        type: str | None
+    """
+
+    kind: str = "managed-venv"
+    path: str | None = None
+    name: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.kind not in ENVIRONMENT_KINDS:
+            allowed = ", ".join(ENVIRONMENT_KINDS)
+            raise ManifestError(
+                f"environment.kind must be one of: {allowed} "
+                f"(got {self.kind!r})"
+            )
+        if self.path is not None and not self.path.strip():
+            raise ManifestError("environment.path must be a non-empty string")
+        if self.name is not None and not self.name.strip():
+            raise ManifestError("environment.name must be a non-empty string")
+
+        if self.kind == "managed-venv":
+            if self.name is not None:
+                raise ManifestError(
+                    "environment.name is not allowed when kind "
+                    "is 'managed-venv'"
+                )
+            return
+
+        if self.kind == "existing-venv":
+            if self.path is None:
+                raise ManifestError(
+                    "environment.path is required when kind is 'existing-venv'"
+                )
+            if self.name is not None:
+                raise ManifestError(
+                    "environment.name is not allowed when kind "
+                    "is 'existing-venv'"
+                )
+            return
+
+        if self.kind == "conda":
+            if self.path is None and self.name is None:
+                raise ManifestError(
+                    "environment requires 'name' or 'path' "
+                    "when kind is 'conda'"
+                )
+
+    @classmethod
+    def default(cls) -> EnvironmentConfig:
+        """
+        title: Default environment configuration (managed local venv).
+        returns:
+          type: EnvironmentConfig
+        """
+        return cls(kind="managed-venv")
+
+    def is_default(self) -> bool:
+        """
+        title: Return True when the config matches the default.
+        returns:
+          type: bool
+        """
+        return (
+            self.kind == "managed-venv"
+            and self.path is None
+            and self.name is None
+        )
+
+    def resolved_path(self) -> str | None:
+        """
+        title: Resolve path with managed-venv default fallback.
+        returns:
+          type: str | None
+        """
+        if self.kind == "managed-venv" and self.path is None:
+            return DEFAULT_MANAGED_VENV_PATH
+        return self.path
+
 
 @dataclass(slots=True, frozen=True)
 class ProjectConfig:
@@ -247,6 +338,8 @@ class Manifest:
         type: dict[str, DependencySpec]
       toolchain:
         type: ToolchainConfig
+      environment:
+        type: EnvironmentConfig
     """
 
     project: ProjectConfig
@@ -254,6 +347,9 @@ class Manifest:
     dependencies: dict[str, DependencySpec] = field(default_factory=dict)
     dev_dependencies: dict[str, DependencySpec] = field(default_factory=dict)
     toolchain: ToolchainConfig = field(default_factory=ToolchainConfig)
+    environment: EnvironmentConfig = field(
+        default_factory=EnvironmentConfig.default,
+    )
 
     @classmethod
     def default(cls, project_name: str) -> Manifest:
@@ -309,6 +405,8 @@ class Manifest:
             "project.dependencies",
         )
 
+        environment = _parse_environment(raw.get("environment"))
+
         arxpm_raw = raw.get("arxpm", {})
         if arxpm_raw and not isinstance(arxpm_raw, Mapping):
             raise ManifestError("arxpm must be a table")
@@ -326,6 +424,7 @@ class Manifest:
             dependencies=dependencies,
             dev_dependencies=dev_dependencies,
             toolchain=toolchain,
+            environment=environment,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -355,6 +454,13 @@ class Manifest:
                 "linker": self.toolchain.linker,
             },
         }
+        if not self.environment.is_default():
+            env_data: dict[str, Any] = {"kind": self.environment.kind}
+            if self.environment.path is not None:
+                env_data["path"] = self.environment.path
+            if self.environment.name is not None:
+                env_data["name"] = self.environment.name
+            data["environment"] = env_data
         if self.dev_dependencies:
             data["arxpm"] = {
                 "dependencies-dev": {
@@ -365,6 +471,49 @@ class Manifest:
                 },
             }
         return data
+
+
+def _parse_environment(raw: Any) -> EnvironmentConfig:
+    if raw is None:
+        return EnvironmentConfig.default()
+    if not isinstance(raw, Mapping):
+        raise ManifestError("environment must be a table")
+
+    allowed = {"kind", "path", "name"}
+    extra = set(raw.keys()) - allowed
+    if extra:
+        unknown = ", ".join(sorted(extra))
+        raise ManifestError(
+            f"environment has unknown keys: {unknown} "
+            f"(allowed: kind, path, name)"
+        )
+
+    kind = raw.get("kind", "managed-venv")
+    if not isinstance(kind, str):
+        raise ManifestError("environment.kind must be a string")
+
+    return EnvironmentConfig(
+        kind=kind,
+        path=_optional_nullable_string(raw, "path", "environment"),
+        name=_optional_nullable_string(raw, "name", "environment"),
+    )
+
+
+def _optional_nullable_string(
+    raw: Mapping[str, Any],
+    key: str,
+    section: str,
+) -> str | None:
+    if key not in raw:
+        return None
+    value = raw.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ManifestError(f"{section}.{key} must be a string")
+    if not value.strip():
+        raise ManifestError(f"{section}.{key} must be a non-empty string")
+    return value
 
 
 def _parse_requirements(

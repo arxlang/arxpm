@@ -6,15 +6,25 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from conftest import CopyExample, FakePixiService
+from conftest import CopyExample, FakeEnvironment, FakeRunner
 
+from arxpm.environment import EnvironmentFactory, EnvironmentRuntime
 from arxpm.manifest import load_manifest
+from arxpm.models import Manifest
 from arxpm.project import (
     ProjectService,
     _arx_module_name,
     _discover_arx_sources,
     _prepare_publish_workspace,
 )
+
+
+def _factory(env: FakeEnvironment) -> EnvironmentFactory:
+    def _build(manifest: Manifest, project_dir: Path) -> EnvironmentRuntime:
+        _ = manifest, project_dir
+        return env
+
+    return _build
 
 
 def test_hello_arx_manifest_parses(copy_example: CopyExample) -> None:
@@ -31,14 +41,18 @@ def test_hello_arx_manifest_parses(copy_example: CopyExample) -> None:
 
 def test_hello_arx_build_invokes_arx_with_entry_only(
     copy_example: CopyExample,
-    fake_pixi: FakePixiService,
+    fake_env: FakeEnvironment,
+    fake_runner: FakeRunner,
 ) -> None:
     project_dir = copy_example("hello-arx")
-    service = ProjectService(pixi=fake_pixi)
+    service = ProjectService(
+        environment_factory=_factory(fake_env),
+        runner=fake_runner,
+    )
 
     service.build(project_dir)
 
-    assert fake_pixi.run_calls[0][1] == [
+    assert fake_runner.calls[0][0] == [
         "arx",
         "src/main.x",
         "--output-file",
@@ -67,14 +81,18 @@ def test_multi_module_manifest_parses(copy_example: CopyExample) -> None:
 
 def test_multi_module_build_invokes_arx_with_entry_only(
     copy_example: CopyExample,
-    fake_pixi: FakePixiService,
+    fake_env: FakeEnvironment,
+    fake_runner: FakeRunner,
 ) -> None:
     project_dir = copy_example("multi-module")
-    service = ProjectService(pixi=fake_pixi)
+    service = ProjectService(
+        environment_factory=_factory(fake_env),
+        runner=fake_runner,
+    )
 
     service.build(project_dir)
 
-    assert fake_pixi.run_calls[0][1] == [
+    assert fake_runner.calls[0][0] == [
         "arx",
         "src/main.x",
         "--output-file",
@@ -161,14 +179,18 @@ def test_local_consumer_imports_from_local_lib(
 
 def test_local_consumer_build_invokes_arx_with_entry_only(
     copy_example: CopyExample,
-    fake_pixi: FakePixiService,
+    fake_env: FakeEnvironment,
+    fake_runner: FakeRunner,
 ) -> None:
     project_dir = copy_example("local-consumer")
-    service = ProjectService(pixi=fake_pixi)
+    service = ProjectService(
+        environment_factory=_factory(fake_env),
+        runner=fake_runner,
+    )
 
     service.build(project_dir)
 
-    assert fake_pixi.run_calls[0][1] == [
+    assert fake_runner.calls[0][0] == [
         "arx",
         "src/main.x",
         "--output-file",

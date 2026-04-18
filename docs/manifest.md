@@ -65,8 +65,9 @@ dependencies = [
 ```
 
 Version solving is intentionally out of scope in v0. During `arxpm install`,
-registry dependencies are installed with `pip install <name>`, path dependencies
-with `pip install <path>`, and git dependencies with `pip install git+<url>`.
+registry dependencies are installed with `uv pip install <name>`, path
+dependencies with `uv pip install <path>`, and git dependencies with
+`uv pip install git+<url>`.
 
 ## Dev Dependencies
 
@@ -80,3 +81,27 @@ dependencies = [
   "makim",
 ]
 ```
+
+## Environment
+
+The `[environment]` table controls how `arxpm install` obtains a Python
+environment for the project. It is optional — when absent, `arxpm` behaves as if
+`kind = "managed-venv"` with `path = ".venv"` had been declared.
+
+```toml
+[environment]
+kind = "managed-venv"      # managed-venv | existing-venv | conda
+path = ".venv"              # optional for managed-venv and conda
+name = "my-conda-env"       # required when kind = "conda" and no path
+```
+
+Validation rules:
+
+- `managed-venv`: `name` is not allowed. `path` defaults to `".venv"`.
+- `existing-venv`: `path` is required, `name` is not allowed. The path must
+  resolve to an existing venv at `arxpm install` time (not at parse time, so
+  manifests stay portable).
+- `conda`: at least one of `name` or `path` is required.
+- Any other `kind` value is rejected with a manifest error.
+
+See [Environments](environments.md) for how each strategy behaves at runtime.

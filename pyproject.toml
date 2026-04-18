@@ -1,6 +1,6 @@
 [build-system]
-requires = ["hatchling>=1.25.0"]
-build-backend = "hatchling.build"
+requires = ["poetry-core>=2.0.0"]
+build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "arxpm"
@@ -14,15 +14,16 @@ dependencies = [
     "typer>=0.12.3,<1.0.0",
     "arxlang >= 0.5.0",
     "tomli>=2.0.1; python_version < '3.11'",
-    "twine (>=6.2.0)",
-    "pip (>=26.0.1)",
+    "twine>=6.2.0",
+    "build>=1.2.0",
+    "uv>=0.5.0",
 ]
 
 [project.scripts]
 arxpm = "arxpm.cli:app"
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/arxpm"]
+[tool.poetry]
+packages = [{include = "arxpm", from = "src"}]
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=7.3.2"
@@ -42,19 +43,19 @@ mkdocs-jupyter = ">=0.24.7"
 mkdocs-literate-nav = ">=0.4.1"
 mkdocs-macros-plugin = ">=0.6.3"
 mkdocs-material = ">=8"
-mkdocstrings = {version=">=0.19.0", extras=["python"]}
+mkdocstrings = { version = ">=0.19.0", extras = ["python"] }
 mkdocstrings-python = "<2"
 mkdocs-gen-files = ">=0.5.0"
 makim = "1.27.0"
 jupyterlab = ">=4.0.7"
 nbmake = ">=1.5.3"
-douki = ">=0.11.0"
+douki = "<0.12.0"
 
 [tool.pytest.ini_options]
 addopts = "-q -p no:cacheprovider"
 testpaths = ["tests"]
 markers = [
-    "integration: end-to-end tests that require arx and pixi on PATH",
+    "integration: end-to-end tests that require arx and uv on PATH",
 ]
 
 [tool.ruff]

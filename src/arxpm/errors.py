@@ -19,15 +19,21 @@ class ManifestError(ArxpmError):
     """
 
 
-class MissingPixiError(ArxpmError):
+class MissingUvError(ArxpmError):
     """
-    title: Pixi executable is missing.
+    title: uv executable is missing.
     """
 
 
 class MissingCompilerError(ArxpmError):
     """
     title: Arx compiler configuration is missing.
+    """
+
+
+class EnvironmentError(ArxpmError):
+    """
+    title: Environment runtime failure (invalid config, unreachable env, etc.).
     """
 
 

@@ -7,21 +7,25 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
 
+from arxpm.environment import (
+    EnvironmentFactory,
+    EnvironmentRuntime,
+    build_environment,
+)
 from arxpm.errors import ManifestError, MissingCompilerError
-from arxpm.external import CommandResult
+from arxpm.external import CommandResult, CommandRunner, run_command
 from arxpm.manifest import (
     MANIFEST_FILENAME,
     create_default_manifest,
     load_manifest,
     save_manifest,
 )
-from arxpm.models import DependencySpec, Manifest
-from arxpm.pixi import PixiService
+from arxpm.models import DependencySpec, EnvironmentConfig, Manifest
 
 _MAIN_SOURCE = """```
 title: Simple main module
@@ -41,7 +45,6 @@ _SOURCE_SUFFIXES = (".x", ".arx")
 _EXCLUDED_SOURCE_DIRS = {
     ".git",
     ".mypy_cache",
-    ".pixi",
     ".pytest_cache",
     ".ruff_cache",
     ".venv",
@@ -50,58 +53,6 @@ _EXCLUDED_SOURCE_DIRS = {
     "dist",
     "venv",
 }
-
-
-class ProjectPixiAdapter(Protocol):
-    """
-    title: Project-level pixi adapter protocol.
-    """
-
-    def ensure_available(self) -> None:
-        """
-        title: Validate pixi availability.
-        """
-
-    def ensure_manifest(
-        self,
-        directory: Path,
-        project_name: str,
-        required_dependencies: tuple[str, ...],
-    ) -> Path:
-        """
-        title: Create or sync project pixi manifest.
-        parameters:
-          directory:
-            type: Path
-          project_name:
-            type: str
-          required_dependencies:
-            type: tuple[str, Ellipsis]
-        returns:
-          type: Path
-        """
-
-    def install(self, directory: Path) -> CommandResult:
-        """
-        title: Install pixi environment.
-        parameters:
-          directory:
-            type: Path
-        returns:
-          type: CommandResult
-        """
-
-    def run(self, directory: Path, args: list[str]) -> CommandResult:
-        """
-        title: Run a command with pixi.
-        parameters:
-          directory:
-            type: Path
-          args:
-            type: list[str]
-        returns:
-          type: CommandResult
-        """
 
 
 @dataclass(slots=True, frozen=True)
@@ -159,20 +110,28 @@ class ProjectService:
     """
     title: High-level project workflows.
     attributes:
-      _pixi:
-        type: ProjectPixiAdapter
+      _environment_factory:
+        type: EnvironmentFactory
+      _runner:
+        type: CommandRunner
     """
 
-    _pixi: ProjectPixiAdapter
+    _environment_factory: EnvironmentFactory
+    _runner: CommandRunner
 
-    def __init__(self, pixi: ProjectPixiAdapter | None = None) -> None:
-        self._pixi = pixi or PixiService()
+    def __init__(
+        self,
+        environment_factory: EnvironmentFactory | None = None,
+        runner: CommandRunner = run_command,
+    ) -> None:
+        self._environment_factory = environment_factory or build_environment
+        self._runner = runner
 
     def init(
         self,
         directory: Path,
         name: str | None = None,
-        create_pixi: bool = True,
+        environment: EnvironmentConfig | None = None,
     ) -> Manifest:
         """
         title: Initialize a new Arx project.
@@ -181,8 +140,8 @@ class ProjectService:
             type: Path
           name:
             type: str | None
-          create_pixi:
-            type: bool
+          environment:
+            type: EnvironmentConfig | None
         returns:
           type: Manifest
         """
@@ -192,19 +151,14 @@ class ProjectService:
             manifest = load_manifest(directory)
         else:
             manifest = create_default_manifest(project_name)
+            if environment is not None:
+                manifest.environment = environment
             save_manifest(directory, manifest)
 
         entry_path = directory / manifest.build.source_path
         entry_path.parent.mkdir(parents=True, exist_ok=True)
         if not entry_path.exists():
             entry_path.write_text(_MAIN_SOURCE, encoding="utf-8")
-
-        if create_pixi:
-            self._pixi.ensure_manifest(
-                directory,
-                manifest.project.name,
-                required_dependencies=_required_pixi_dependencies(),
-            )
 
         return manifest
 
@@ -254,7 +208,7 @@ class ProjectService:
         dev: bool = False,
     ) -> CommandResult:
         """
-        title: Install or sync environment dependencies via pixi.
+        title: Install or sync environment dependencies.
         parameters:
           directory:
             type: Path
@@ -264,27 +218,41 @@ class ProjectService:
           type: CommandResult
         """
         manifest = load_manifest(directory)
-        self._pixi.ensure_available()
-        self._pixi.ensure_manifest(
-            directory,
-            manifest.project.name,
-            required_dependencies=_required_pixi_dependencies(),
-        )
-        command_result = self._pixi.install(directory)
-        self._install_manifest_dependencies(
+        environment = self._environment_factory(manifest, directory)
+        environment.ensure_ready()
+
+        registry_reqs, path_deps = _partition_dependencies(
             directory,
             manifest.dependencies,
         )
+        command_result = environment.install_packages(registry_reqs)
+        for dependency_name, library_directory in path_deps:
+            self._install_arx_path_dependency(
+                directory,
+                environment,
+                dependency_name,
+                library_directory,
+            )
+
         if dev:
-            self._install_manifest_dependencies(
+            dev_registry, dev_paths = _partition_dependencies(
                 directory,
                 manifest.dev_dependencies,
             )
+            environment.install_packages(dev_registry)
+            for dependency_name, library_directory in dev_paths:
+                self._install_arx_path_dependency(
+                    directory,
+                    environment,
+                    dependency_name,
+                    library_directory,
+                )
+
         return command_result
 
     def build(self, directory: Path) -> BuildResult:
         """
-        title: Build a project by calling arx through pixi.
+        title: Build a project by invoking the configured Arx compiler.
         parameters:
           directory:
             type: Path
@@ -292,7 +260,6 @@ class ProjectService:
           type: BuildResult
         """
         manifest = load_manifest(directory)
-        self._pixi.ensure_available()
 
         compiler = manifest.toolchain.compiler.strip()
         if not compiler:
@@ -313,7 +280,7 @@ class ProjectService:
             "--output-file",
             str(artifact_rel),
         ]
-        command_result = self._pixi.run(directory, command)
+        command_result = self._runner(command, cwd=directory, check=True)
 
         return BuildResult(
             manifest=manifest,
@@ -323,7 +290,7 @@ class ProjectService:
 
     def run(self, directory: Path) -> RunResult:
         """
-        title: Build and run the produced artifact through pixi.
+        title: Build and run the produced artifact.
         parameters:
           directory:
             type: Path
@@ -333,7 +300,11 @@ class ProjectService:
         build_result = self.build(directory)
         artifact_rel = Path(build_result.manifest.build.out_dir)
         artifact_rel = artifact_rel / build_result.manifest.project.name
-        command_result = self._pixi.run(directory, [str(artifact_rel)])
+        command_result = self._runner(
+            [str(artifact_rel)],
+            cwd=directory,
+            check=True,
+        )
         return RunResult(
             build_result=build_result,
             command_result=command_result,
@@ -372,31 +343,9 @@ class ProjectService:
           type: PublishResult
         """
         manifest = load_manifest(directory)
-        self._pixi.ensure_available()
-        self._pixi.ensure_manifest(
-            directory,
-            manifest.project.name,
-            required_dependencies=_required_pixi_dependencies(),
-        )
-        self._pixi.install(directory)
 
         if repository_url is not None and not repository_url.strip():
             raise ManifestError("repository URL cannot be empty")
-
-        # Ensure build/upload tooling is present in the active pixi env.
-        self._pixi.run(
-            directory,
-            [
-                "python",
-                "-m",
-                "pip",
-                "install",
-                "--disable-pip-version-check",
-                "--quiet",
-                "build",
-                "twine",
-            ],
-        )
 
         dist_dir = directory / "dist"
         dist_dir.mkdir(parents=True, exist_ok=True)
@@ -407,10 +356,9 @@ class ProjectService:
         with tempfile.TemporaryDirectory(prefix="arxpm-publish-") as temp_dir:
             staging_dir = Path(temp_dir) / "package"
             _prepare_publish_workspace(directory, manifest, staging_dir)
-            self._pixi.run(
-                directory,
+            self._runner(
                 [
-                    "python",
+                    sys.executable,
                     "-m",
                     "build",
                     "--sdist",
@@ -419,6 +367,8 @@ class ProjectService:
                     str(dist_dir),
                     str(staging_dir),
                 ],
+                cwd=directory,
+                check=True,
             )
 
         artifacts = tuple(
@@ -443,7 +393,7 @@ class ProjectService:
             )
 
         upload_cmd = [
-            "python",
+            sys.executable,
             "-m",
             "twine",
             "upload",
@@ -455,53 +405,27 @@ class ProjectService:
             upload_cmd.append("--skip-existing")
         upload_cmd.extend(str(path) for path in artifacts)
 
-        upload_result = self._pixi.run(directory, upload_cmd)
+        upload_result = self._runner(upload_cmd, cwd=directory, check=True)
         return PublishResult(
             manifest=manifest,
             artifacts=artifacts,
             upload_result=upload_result,
         )
 
-    def _install_manifest_dependencies(
-        self,
-        directory: Path,
-        dependencies: dict[str, DependencySpec],
-    ) -> None:
-        for dependency_name, spec in sorted(dependencies.items()):
-            if spec.path is not None and _is_arx_project(
-                (directory / spec.path).resolve()
-            ):
-                self._install_arx_path_dependency(
-                    directory,
-                    dependency_name,
-                    (directory / spec.path).resolve(),
-                )
-                continue
-
-            target = _dependency_install_target(dependency_name, spec)
-            self._pixi.run(
-                directory,
-                [
-                    "python",
-                    "-m",
-                    "pip",
-                    "install",
-                    "--disable-pip-version-check",
-                    target,
-                ],
-            )
-
     def _install_arx_path_dependency(
         self,
         directory: Path,
+        environment: EnvironmentRuntime,
         dependency_name: str,
         library_directory: Path,
     ) -> None:
         """
-        title: Pack, pip-install, and symlink an Arx path dependency.
+        title: Pack, install, and symlink an Arx path dependency.
         parameters:
           directory:
             type: Path
+          environment:
+            type: EnvironmentRuntime
           dependency_name:
             type: str
           library_directory:
@@ -529,32 +453,25 @@ class ProjectService:
             )
         wheel = wheels[0]
 
-        self._pixi.run(
-            directory,
-            [
-                "python",
-                "-m",
-                "pip",
-                "install",
-                "--disable-pip-version-check",
-                "--force-reinstall",
-                "--no-deps",
-                str(wheel),
-            ],
+        environment.install_packages(
+            [str(wheel)],
+            force_reinstall=True,
+            no_deps=True,
         )
 
-        probe = self._pixi.run(
-            directory,
+        probe = self._runner(
             [
-                "python",
+                str(environment.python_executable()),
                 "-c",
                 (
                     f"import {module_name}, os; "
                     f"print(os.path.dirname({module_name}.__file__))"
                 ),
             ],
+            cwd=directory,
+            check=True,
         )
-        install_dir = Path(probe.stdout.strip())
+        install_dir = Path(probe.stdout.strip().splitlines()[-1])
         if not install_dir.is_dir():
             raise ManifestError(
                 f"installed {module_name!r} directory not found: {install_dir}"
@@ -569,8 +486,20 @@ class ProjectService:
         link_path.symlink_to(install_dir, target_is_directory=True)
 
 
-def _required_pixi_dependencies() -> tuple[str, ...]:
-    return ("clang", "pip", "python")
+def _partition_dependencies(
+    directory: Path,
+    dependencies: dict[str, DependencySpec],
+) -> tuple[list[str], list[tuple[str, Path]]]:
+    registry_reqs: list[str] = []
+    path_deps: list[tuple[str, Path]] = []
+    for dependency_name, spec in sorted(dependencies.items()):
+        if spec.path is not None:
+            library_directory = (directory / spec.path).resolve()
+            if _is_arx_project(library_directory):
+                path_deps.append((dependency_name, library_directory))
+                continue
+        registry_reqs.append(_dependency_install_target(dependency_name, spec))
+    return registry_reqs, path_deps
 
 
 def _dependency_install_target(name: str, spec: DependencySpec) -> str:

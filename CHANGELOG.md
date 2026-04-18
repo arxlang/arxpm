@@ -1,6 +1,13 @@
 # Release Notes
 ---
 
+# [1.3.0](https://github.com/arxlang/arxpm/compare/1.2.0...1.3.0) (2026-04-18)
+
+
+### Features
+
+* Replace pixi by uv ([#6](https://github.com/arxlang/arxpm/issues/6)) ([1c0f426](https://github.com/arxlang/arxpm/commit/1c0f4268055431a9a9a69770d1a3eb86f0ed1db0))
+
 # [1.2.0](https://github.com/arxlang/arxpm/compare/1.1.0...1.2.0) (2026-04-17)
 
 

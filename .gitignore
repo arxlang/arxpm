@@ -208,3 +208,8 @@ __marimo__/
 
 # tmp
 PLAN.md
+pytest-*/*
+
+# llm
+.codex
+.claude

@@ -130,7 +130,7 @@ def test_init_command_writes_custom_environment(
             "--name",
             "demo",
             "--env-kind",
-            "existing-venv",
+            "venv",
             "--env-path",
             "/tmp/demo-env",
         ],
@@ -140,7 +140,7 @@ def test_init_command_writes_custom_environment(
     manifest_data = tomllib.loads(
         (tmp_path / ".arxproject.toml").read_text(encoding="utf-8"),
     )
-    assert manifest_data["environment"]["kind"] == "existing-venv"
+    assert manifest_data["environment"]["kind"] == "venv"
     assert manifest_data["environment"]["path"] == "/tmp/demo-env"
 
 

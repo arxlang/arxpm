@@ -167,14 +167,14 @@ nanoarrow = ">=0.8.0,<0.9.0"
 
 [[package]]
 name = "arxlang"
-version = "0.6.0"
+version = "0.9.0"
 description = "Arx is a compiler built with llvm"
 optional = false
 python-versions = "<4,>=3.10"
 groups = ["main"]
 files = [
-    {file = "arxlang-0.6.0-py3-none-any.whl", hash = "sha256:abcc1166c1522e8301fdcd83f2bedf3526cb7077c8b475c14d7e4b7b3f7d9de8"},
-    {file = "arxlang-0.6.0.tar.gz", hash = "sha256:ac6d8f7ebd0e56ed94623917c107c422f6daf1cc40f03ef4fe51d3c5369e0910"},
+    {file = "arxlang-0.9.0-py3-none-any.whl", hash = "sha256:70c77e5849745efd8d191ac74a1f534bc64e8144dd55cd530f3c0f4daeb5b819"},
+    {file = "arxlang-0.9.0.tar.gz", hash = "sha256:9cc4f7322975be06b4e34f5cc6cf5f81ab728d7656edfb1fc116010ab1d5fc43"},
 ]
 
 [package.dependencies]
@@ -182,6 +182,7 @@ astx = ">=0.24.0"
 jsonschema = ">=4.0.0"
 pyirx = "1.11.0"
 pyyaml = ">=4"
+tomli = {version = ">=2.0.0", markers = "python_version < \"3.11\""}
 types-pyyaml = ">=6.0.12.20250516"
 
 [[package]]
@@ -5209,4 +5210,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4"
-content-hash = "827e80616f9c9517cf21f2ea786f4c7dfa440ac66fff33988e09674820b43671"
+content-hash = "1f978b589afb1a4b3d85c66718dd542bbc8b08a4789a92b2f836e109cb6011e6"

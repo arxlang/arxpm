@@ -13,8 +13,9 @@ from arxpm.errors import ManifestError
 
 _NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_\-]*$")
 
-ENVIRONMENT_KINDS = ("managed-venv", "existing-venv", "conda")
-DEFAULT_MANAGED_VENV_PATH = ".venv"
+ENVIRONMENT_KINDS = ("venv", "conda", "system")
+DEFAULT_VENV_PATH = ".venv"
+_DEFAULT_EDITION = "2026"
 
 
 @dataclass(slots=True, frozen=True)
@@ -30,7 +31,7 @@ class EnvironmentConfig:
         type: str | None
     """
 
-    kind: str = "managed-venv"
+    kind: str = "venv"
     path: str | None = None
     name: str | None = None
 
@@ -46,23 +47,10 @@ class EnvironmentConfig:
         if self.name is not None and not self.name.strip():
             raise ManifestError("environment.name must be a non-empty string")
 
-        if self.kind == "managed-venv":
+        if self.kind == "venv":
             if self.name is not None:
                 raise ManifestError(
-                    "environment.name is not allowed when kind "
-                    "is 'managed-venv'"
-                )
-            return
-
-        if self.kind == "existing-venv":
-            if self.path is None:
-                raise ManifestError(
-                    "environment.path is required when kind is 'existing-venv'"
-                )
-            if self.name is not None:
-                raise ManifestError(
-                    "environment.name is not allowed when kind "
-                    "is 'existing-venv'"
+                    "environment.name is not allowed when kind is 'venv'"
                 )
             return
 
@@ -72,15 +60,23 @@ class EnvironmentConfig:
                     "environment requires 'name' or 'path' "
                     "when kind is 'conda'"
                 )
+            return
+
+        if self.kind == "system":
+            if self.path is not None or self.name is not None:
+                raise ManifestError(
+                    "environment.path and environment.name are not "
+                    "allowed when kind is 'system'"
+                )
 
     @classmethod
     def default(cls) -> EnvironmentConfig:
         """
-        title: Default environment configuration (managed local venv).
+        title: Default environment configuration (local venv).
         returns:
           type: EnvironmentConfig
         """
-        return cls(kind="managed-venv")
+        return cls(kind="venv")
 
     def is_default(self) -> bool:
         """
@@ -88,20 +84,16 @@ class EnvironmentConfig:
         returns:
           type: bool
         """
-        return (
-            self.kind == "managed-venv"
-            and self.path is None
-            and self.name is None
-        )
+        return self.kind == "venv" and self.path is None and self.name is None
 
     def resolved_path(self) -> str | None:
         """
-        title: Resolve path with managed-venv default fallback.
+        title: Resolve path with venv default fallback.
         returns:
           type: str | None
         """
-        if self.kind == "managed-venv" and self.path is None:
-            return DEFAULT_MANAGED_VENV_PATH
+        if self.kind == "venv" and self.path is None:
+            return DEFAULT_VENV_PATH
         return self.path
 
 
@@ -380,25 +372,74 @@ class Manifest:
                 'strings (e.g. dependencies = ["pyyaml", '
                 '"local_lib @ ../local_lib"])'
             )
+        if "arxpm" in raw:
+            raise ManifestError(
+                "package-manager-specific [arxpm] tables are not supported; "
+                "move dependencies into project.dependencies"
+            )
 
         project_raw = _require_table(raw, "project")
-        build_raw = _require_table(raw, "build")
-        toolchain_raw = _require_table(raw, "toolchain")
 
         project = ProjectConfig(
             name=_require_string(project_raw, "name", "project"),
             version=_require_string(project_raw, "version", "project"),
-            edition=_require_string(project_raw, "edition", "project"),
+            edition=_optional_string(
+                project_raw,
+                "edition",
+                "project",
+                _DEFAULT_EDITION,
+            ),
         )
-        build = BuildConfig(
-            src_dir=_optional_string(build_raw, "src_dir", "build", "src"),
-            entry=_require_string(build_raw, "entry", "build"),
-            out_dir=_require_string(build_raw, "out_dir", "build"),
-        )
-        toolchain = ToolchainConfig(
-            compiler=_require_string(toolchain_raw, "compiler", "toolchain"),
-            linker=_require_string(toolchain_raw, "linker", "toolchain"),
-        )
+
+        build_raw = raw.get("build")
+        if build_raw is None:
+            build = BuildConfig()
+        else:
+            if not isinstance(build_raw, Mapping):
+                raise ManifestError("build must be a table")
+            build_defaults = BuildConfig()
+            build = BuildConfig(
+                src_dir=_optional_string(
+                    build_raw,
+                    "src_dir",
+                    "build",
+                    build_defaults.src_dir,
+                ),
+                entry=_optional_string(
+                    build_raw,
+                    "entry",
+                    "build",
+                    build_defaults.entry,
+                ),
+                out_dir=_optional_string(
+                    build_raw,
+                    "out_dir",
+                    "build",
+                    build_defaults.out_dir,
+                ),
+            )
+
+        toolchain_raw = raw.get("toolchain")
+        if toolchain_raw is None:
+            toolchain = ToolchainConfig()
+        else:
+            if not isinstance(toolchain_raw, Mapping):
+                raise ManifestError("toolchain must be a table")
+            toolchain_defaults = ToolchainConfig()
+            toolchain = ToolchainConfig(
+                compiler=_optional_string(
+                    toolchain_raw,
+                    "compiler",
+                    "toolchain",
+                    toolchain_defaults.compiler,
+                ),
+                linker=_optional_string(
+                    toolchain_raw,
+                    "linker",
+                    "toolchain",
+                    toolchain_defaults.linker,
+                ),
+            )
 
         dependencies = _parse_requirements(
             project_raw.get("dependencies", []),
@@ -407,22 +448,10 @@ class Manifest:
 
         environment = _parse_environment(raw.get("environment"))
 
-        arxpm_raw = raw.get("arxpm", {})
-        if arxpm_raw and not isinstance(arxpm_raw, Mapping):
-            raise ManifestError("arxpm must be a table")
-        dev_raw = arxpm_raw.get("dependencies-dev", {}) if arxpm_raw else {}
-        if dev_raw and not isinstance(dev_raw, Mapping):
-            raise ManifestError("arxpm.dependencies-dev must be a table")
-        dev_dependencies = _parse_requirements(
-            dev_raw.get("dependencies", []) if dev_raw else [],
-            "arxpm.dependencies-dev.dependencies",
-        )
-
         return cls(
             project=project,
             build=build,
             dependencies=dependencies,
-            dev_dependencies=dev_dependencies,
             toolchain=toolchain,
             environment=environment,
         )
@@ -461,15 +490,6 @@ class Manifest:
             if self.environment.name is not None:
                 env_data["name"] = self.environment.name
             data["environment"] = env_data
-        if self.dev_dependencies:
-            data["arxpm"] = {
-                "dependencies-dev": {
-                    "dependencies": [
-                        spec.to_requirement_string(name)
-                        for name, spec in sorted(self.dev_dependencies.items())
-                    ],
-                },
-            }
         return data
 
 
@@ -488,7 +508,7 @@ def _parse_environment(raw: Any) -> EnvironmentConfig:
             f"(allowed: kind, path, name)"
         )
 
-    kind = raw.get("kind", "managed-venv")
+    kind = raw.get("kind", "venv")
     if not isinstance(kind, str):
         raise ManifestError("environment.kind must be a string")
 

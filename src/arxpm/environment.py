@@ -16,7 +16,7 @@ from arxpm.errors import (
     MissingUvError,
 )
 from arxpm.external import CommandResult, CommandRunner, run_command
-from arxpm.models import DEFAULT_MANAGED_VENV_PATH, EnvironmentConfig, Manifest
+from arxpm.models import DEFAULT_VENV_PATH, EnvironmentConfig, Manifest
 
 WhichFn = Callable[[str], str | None]
 
@@ -144,7 +144,7 @@ class _UvBackend:
 
 class UvManagedEnvironment(_UvBackend):
     """
-    title: Local venv managed by arxpm via uv.
+    title: uv-backed virtual environment managed by arxpm.
     attributes:
       _project_dir:
         type: Path
@@ -161,7 +161,7 @@ class UvManagedEnvironment(_UvBackend):
     def __init__(
         self,
         project_dir: Path,
-        venv_path: str = DEFAULT_MANAGED_VENV_PATH,
+        venv_path: str = DEFAULT_VENV_PATH,
         runner: CommandRunner = run_command,
         which: WhichFn = shutil.which,
     ) -> None:
@@ -213,7 +213,7 @@ class UvManagedEnvironment(_UvBackend):
         )
 
     def describe(self) -> str:
-        return f"managed venv at {self._venv_path}"
+        return f"venv at {self._venv_path}"
 
 
 class ExistingVenvEnvironment(_UvBackend):
@@ -252,12 +252,12 @@ class ExistingVenvEnvironment(_UvBackend):
     def _validate_venv(self) -> None:
         if not self._venv_path.is_dir():
             raise EnvironmentError(
-                f"existing-venv path is not a directory: {self._venv_path}"
+                f"venv path is not a directory: {self._venv_path}"
             )
         interpreter = _interpreter_for(self._venv_path)
         if not interpreter.exists():
             raise EnvironmentError(
-                f"existing-venv at {self._venv_path} has no python "
+                f"venv at {self._venv_path} has no python "
                 f"interpreter ({interpreter} not found)"
             )
 
@@ -279,7 +279,7 @@ class ExistingVenvEnvironment(_UvBackend):
         )
 
     def describe(self) -> str:
-        return f"existing venv at {self._venv_path}"
+        return f"venv at {self._venv_path}"
 
 
 class CondaEnvironment(_UvBackend):
@@ -397,6 +397,50 @@ class CondaEnvironment(_UvBackend):
         return f"conda env {self._env_name!r}"
 
 
+class SystemEnvironment(_UvBackend):
+    """
+    title: Install packages into the current Python environment.
+    attributes:
+      _project_dir:
+        type: Path
+      _runner:
+        type: CommandRunner
+      _which:
+        type: WhichFn
+    """
+
+    def ensure_ready(self) -> None:
+        self._ensure_uv()
+        self.validate()
+
+    def validate(self) -> None:
+        interpreter = self.python_executable()
+        if not interpreter.exists():
+            raise EnvironmentError(
+                f"system python interpreter not found: {interpreter}"
+            )
+
+    def python_executable(self) -> Path:
+        return Path(sys.executable).resolve()
+
+    def install_packages(
+        self,
+        requirements: Sequence[str],
+        *,
+        force_reinstall: bool = False,
+        no_deps: bool = False,
+    ) -> CommandResult:
+        return self._install_with_uv(
+            self.python_executable(),
+            requirements,
+            force_reinstall=force_reinstall,
+            no_deps=no_deps,
+        )
+
+    def describe(self) -> str:
+        return f"system python at {self.python_executable()}"
+
+
 def build_environment(
     manifest: Manifest,
     project_dir: Path,
@@ -418,20 +462,10 @@ def build_environment(
       type: EnvironmentRuntime
     """
     config = manifest.environment
-    if config.kind == "managed-venv":
+    if config.kind == "venv":
         return UvManagedEnvironment(
             project_dir,
-            venv_path=config.resolved_path() or DEFAULT_MANAGED_VENV_PATH,
-            runner=runner,
-            which=which,
-        )
-    if config.kind == "existing-venv":
-        path = config.path
-        if path is None:
-            raise ManifestError("existing-venv environment requires a path")
-        return ExistingVenvEnvironment(
-            project_dir,
-            venv_path=path,
+            venv_path=config.resolved_path() or DEFAULT_VENV_PATH,
             runner=runner,
             which=which,
         )
@@ -440,6 +474,12 @@ def build_environment(
             project_dir,
             name=config.name,
             path=config.path,
+            runner=runner,
+            which=which,
+        )
+    if config.kind == "system":
+        return SystemEnvironment(
+            project_dir,
             runner=runner,
             which=which,
         )
@@ -481,5 +521,5 @@ def default_environment_config_from_cli(
     """
     if kind is None and path is None and name is None:
         return EnvironmentConfig.default()
-    resolved_kind = kind or "managed-venv"
+    resolved_kind = kind or "venv"
     return EnvironmentConfig(kind=resolved_kind, path=path, name=name)

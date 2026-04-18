@@ -7,4 +7,5 @@ dependencies:
   - clangdev 14.*
   - pip
   - python
+  - poetry >=2.0
   - uv

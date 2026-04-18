@@ -40,9 +40,9 @@ workflow commands.
 ## Development
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e '.[dev]'
+mamba env create --file conda/dev.yaml
+conda activate arxpm
+poetry install --with dev
 pytest
 ```
 

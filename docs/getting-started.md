@@ -15,7 +15,7 @@ git clone https://github.com/arxlang/arxpm.git
 cd arxpm
 mamba env create --file conda/dev.yaml
 conda activate arxpm
-pip install -e '.[dev]'
+poetry install --with dev
 ```
 
 ## Verify Toolchain

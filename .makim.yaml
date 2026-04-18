@@ -60,7 +60,7 @@ groups:
           fi
           if ! command -v arx >/dev/null 2>&1; then
             echo "arx is required for tests.smoke"
-            echo "hint: run pip install -e '.[dev]' in the active env"
+            echo "hint: run `poetry install` in the active env"
             exit 1
           fi
 

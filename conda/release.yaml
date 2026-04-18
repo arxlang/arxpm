@@ -6,6 +6,6 @@ dependencies:
   - clang 14.*
   - clangdev 14.*
   - pip
-  - poetry >=1.5
+  - poetry >=2.0
   - python
   - nodejs # used by semantic-release

@@ -1,6 +1,13 @@
 # Release Notes
 ---
 
+# [1.5.0](https://github.com/arxlang/arxpm/compare/1.4.0...1.5.0) (2026-04-18)
+
+
+### Features
+
+* Use arx.settings for handling the .arxproject.toml ([#8](https://github.com/arxlang/arxpm/issues/8)) ([d86f936](https://github.com/arxlang/arxpm/commit/d86f9367eb93be59c8f01b56d68f49ba5edbf164))
+
 # [1.4.0](https://github.com/arxlang/arxpm/compare/1.3.0...1.4.0) (2026-04-18)
 
 

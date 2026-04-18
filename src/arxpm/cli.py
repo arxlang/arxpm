@@ -11,7 +11,7 @@ import typer
 
 from arxpm.environment import default_environment_config_from_cli
 from arxpm.errors import ArxpmError
-from arxpm.healthcheck import HealthcheckService
+from arxpm.healthcheck import HealthCheckService
 from arxpm.project import ProjectService
 
 app = typer.Typer(help="Arx project and package manager.")
@@ -365,7 +365,7 @@ def healthcheck(
           Annotated[Path, typer.Option('--directory', '-C', help='Project
           directory.')]
     """
-    healthcheck_service = HealthcheckService()
+    healthcheck_service = HealthCheckService()
     report = healthcheck_service.run(_resolve(directory))
 
     for check in report.checks:

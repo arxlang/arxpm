@@ -259,7 +259,7 @@ def test_healthcheck_command_reports_success(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "arxpm.cli.HealthcheckService",
+        "arxpm.cli.HealthCheckService",
         PassingHealthcheckService,
     )
 
@@ -273,7 +273,7 @@ def test_healthcheck_command_reports_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "arxpm.cli.HealthcheckService",
+        "arxpm.cli.HealthCheckService",
         FailingHealthcheckService,
     )
 

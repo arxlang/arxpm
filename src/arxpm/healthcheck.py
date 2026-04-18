@@ -55,7 +55,7 @@ class HealthReport:
         return all(check.ok for check in self.checks)
 
 
-class HealthcheckService:
+class HealthCheckService:
     """
     title: Validate project manifest, environment, and toolchain availability.
     attributes:
@@ -157,8 +157,9 @@ class HealthcheckService:
         try:
             environment = self._environment_factory(manifest, directory)
             env_description = environment.describe()
+            environment.validate()
             env_ok = True
-            env_message = f"{env_description} configured"
+            env_message = f"{env_description} reachable"
         except ArxpmError as exc:
             env_ok = False
             env_message = str(exc)

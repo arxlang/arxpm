@@ -31,6 +31,13 @@ class EnvironmentRuntime(Protocol):
         title: Create the environment if managed, or validate it otherwise.
         """
 
+    def validate(self) -> None:
+        """
+        title: Non-mutating check that the environment is reachable.
+        raises:
+          EnvironmentError: when the environment cannot be reached.
+        """
+
     def python_executable(self) -> Path:
         """
         title: Return path to the environment's python interpreter.
@@ -178,6 +185,16 @@ class UvManagedEnvironment(_UvBackend):
                 f"{self._venv_path}"
             )
 
+    def validate(self) -> None:
+        if not self._venv_path.exists():
+            return
+        interpreter = _interpreter_for(self._venv_path)
+        if not interpreter.exists():
+            raise EnvironmentError(
+                f"managed venv at {self._venv_path} exists but has no "
+                f"interpreter ({interpreter} not found)"
+            )
+
     def python_executable(self) -> Path:
         return _interpreter_for(self._venv_path)
 
@@ -227,6 +244,12 @@ class ExistingVenvEnvironment(_UvBackend):
 
     def ensure_ready(self) -> None:
         self._ensure_uv()
+        self._validate_venv()
+
+    def validate(self) -> None:
+        self._validate_venv()
+
+    def _validate_venv(self) -> None:
         if not self._venv_path.is_dir():
             raise EnvironmentError(
                 f"existing-venv path is not a directory: {self._venv_path}"
@@ -302,6 +325,12 @@ class CondaEnvironment(_UvBackend):
 
     def ensure_ready(self) -> None:
         self._ensure_uv()
+        self._validate_interpreter()
+
+    def validate(self) -> None:
+        self._validate_interpreter()
+
+    def _validate_interpreter(self) -> None:
         interpreter = self.python_executable()
         if not interpreter.exists():
             raise EnvironmentError(

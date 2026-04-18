@@ -241,6 +241,63 @@ def test_conda_environment_requires_name_or_path(tmp_path: Path) -> None:
         )
 
 
+def test_uv_managed_environment_validate_is_noop_when_absent(
+    tmp_path: Path,
+) -> None:
+    env = UvManagedEnvironment(
+        tmp_path,
+        venv_path=".venv",
+        runner=Recorder(),
+        which=lambda _: None,
+    )
+
+    env.validate()
+
+
+def test_uv_managed_environment_validate_rejects_broken_venv(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / ".venv").mkdir()
+
+    env = UvManagedEnvironment(
+        tmp_path,
+        venv_path=".venv",
+        runner=Recorder(),
+        which=lambda _: "/usr/bin/uv",
+    )
+
+    with pytest.raises(EnvironmentError):
+        env.validate()
+
+
+def test_existing_venv_environment_validate_rejects_missing(
+    tmp_path: Path,
+) -> None:
+    env = ExistingVenvEnvironment(
+        tmp_path,
+        venv_path="missing",
+        runner=Recorder(),
+        which=lambda _: "/usr/bin/uv",
+    )
+
+    with pytest.raises(EnvironmentError):
+        env.validate()
+
+
+def test_conda_environment_validate_rejects_missing_interpreter(
+    tmp_path: Path,
+) -> None:
+    env = CondaEnvironment(
+        tmp_path,
+        path=str(tmp_path / "does-not-exist"),
+        runner=Recorder(),
+        which=lambda _: "/usr/bin/uv",
+    )
+
+    with pytest.raises(EnvironmentError):
+        env.validate()
+
+
 def _manifest_with_environment(config: EnvironmentConfig) -> Manifest:
     return Manifest(
         project=ProjectConfig(name="demo"),

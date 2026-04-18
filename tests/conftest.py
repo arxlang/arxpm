@@ -47,6 +47,9 @@ class FakeEnvironment:
     def ensure_ready(self) -> None:
         self.ensure_ready_calls += 1
 
+    def validate(self) -> None:
+        pass
+
     def python_executable(self) -> Path:
         return self.python_path
 

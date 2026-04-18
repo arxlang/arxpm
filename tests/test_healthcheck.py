@@ -9,9 +9,9 @@ from pathlib import Path
 from arxpm.environment import EnvironmentFactory, EnvironmentRuntime
 from arxpm.errors import EnvironmentError
 from arxpm.external import CommandResult
-from arxpm.healthcheck import HealthcheckService
+from arxpm.healthcheck import HealthCheckService
 from arxpm.manifest import create_default_manifest, save_manifest
-from arxpm.models import Manifest
+from arxpm.models import EnvironmentConfig, Manifest
 
 
 class StubEnvironment:
@@ -34,6 +34,10 @@ class StubEnvironment:
     def ensure_ready(self) -> None:
         if self._fail:
             raise EnvironmentError("cannot create env")
+
+    def validate(self) -> None:
+        if self._fail:
+            raise EnvironmentError("environment not reachable")
 
     def python_executable(self) -> Path:
         return Path("/fake/python")
@@ -71,7 +75,7 @@ def _which_none(tool: str) -> str | None:
 
 def test_healthcheck_reports_success(tmp_path: Path) -> None:
     save_manifest(tmp_path, create_default_manifest("demo"))
-    service = HealthcheckService(
+    service = HealthCheckService(
         environment_factory=_stub_factory("managed venv at /tmp/.venv"),
         which=_which_all,
     )
@@ -85,10 +89,11 @@ def test_healthcheck_reports_success(tmp_path: Path) -> None:
     assert checks["uv"].ok is True
     assert checks["compiler (arx)"].ok is True
     assert checks["environment"].ok is True
+    assert "reachable" in checks["environment"].message
 
 
 def test_healthcheck_reports_missing_manifest(tmp_path: Path) -> None:
-    service = HealthcheckService(
+    service = HealthCheckService(
         environment_factory=_stub_factory("managed venv"),
         which=_which_all,
     )
@@ -109,7 +114,7 @@ def test_healthcheck_reports_missing_uv(tmp_path: Path) -> None:
             return None
         return f"/usr/bin/{tool}"
 
-    service = HealthcheckService(
+    service = HealthCheckService(
         environment_factory=_stub_factory("managed venv"),
         which=_which,
     )
@@ -129,7 +134,7 @@ def test_healthcheck_reports_missing_compiler(tmp_path: Path) -> None:
             return None
         return f"/usr/bin/{tool}"
 
-    service = HealthcheckService(
+    service = HealthCheckService(
         environment_factory=_stub_factory("managed venv"),
         which=_which,
     )
@@ -140,12 +145,43 @@ def test_healthcheck_reports_missing_compiler(tmp_path: Path) -> None:
     assert checks["compiler (arx)"].ok is False
 
 
-def test_healthcheck_reports_invalid_environment(tmp_path: Path) -> None:
+def test_healthcheck_reports_unreachable_environment(
+    tmp_path: Path,
+) -> None:
     save_manifest(tmp_path, create_default_manifest("demo"))
-    service = HealthcheckService(
-        environment_factory=_stub_factory("managed venv", fail=False),
-        which=_which_none,
+    service = HealthCheckService(
+        environment_factory=_stub_factory("managed venv", fail=True),
+        which=_which_all,
     )
 
     report = service.run(tmp_path)
+    checks = {check.name: check for check in report.checks}
+
     assert report.ok is False
+    assert checks["environment"].ok is False
+    assert "environment not reachable" in checks["environment"].message
+
+
+def test_healthcheck_reports_missing_existing_venv(tmp_path: Path) -> None:
+    manifest = create_default_manifest("demo")
+    missing = tmp_path / "not-a-real-venv"
+    manifest_with_env = Manifest(
+        project=manifest.project,
+        build=manifest.build,
+        dependencies=manifest.dependencies,
+        dev_dependencies=manifest.dev_dependencies,
+        toolchain=manifest.toolchain,
+        environment=EnvironmentConfig(
+            kind="existing-venv",
+            path=str(missing),
+        ),
+    )
+    save_manifest(tmp_path, manifest_with_env)
+    service = HealthCheckService(which=_which_all)
+
+    report = service.run(tmp_path)
+    checks = {check.name: check for check in report.checks}
+
+    assert report.ok is False
+    assert checks["environment"].ok is False
+    assert "existing-venv" in checks["environment"].message

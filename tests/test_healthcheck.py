@@ -76,7 +76,7 @@ def _which_none(tool: str) -> str | None:
 def test_healthcheck_reports_success(tmp_path: Path) -> None:
     save_manifest(tmp_path, create_default_manifest("demo"))
     service = HealthCheckService(
-        environment_factory=_stub_factory("managed venv at /tmp/.venv"),
+        environment_factory=_stub_factory("venv at /tmp/.venv"),
         which=_which_all,
     )
 
@@ -94,7 +94,7 @@ def test_healthcheck_reports_success(tmp_path: Path) -> None:
 
 def test_healthcheck_reports_missing_manifest(tmp_path: Path) -> None:
     service = HealthCheckService(
-        environment_factory=_stub_factory("managed venv"),
+        environment_factory=_stub_factory("venv"),
         which=_which_all,
     )
 
@@ -115,7 +115,7 @@ def test_healthcheck_reports_missing_uv(tmp_path: Path) -> None:
         return f"/usr/bin/{tool}"
 
     service = HealthCheckService(
-        environment_factory=_stub_factory("managed venv"),
+        environment_factory=_stub_factory("venv"),
         which=_which,
     )
 
@@ -135,7 +135,7 @@ def test_healthcheck_reports_missing_compiler(tmp_path: Path) -> None:
         return f"/usr/bin/{tool}"
 
     service = HealthCheckService(
-        environment_factory=_stub_factory("managed venv"),
+        environment_factory=_stub_factory("venv"),
         which=_which,
     )
 
@@ -150,7 +150,7 @@ def test_healthcheck_reports_unreachable_environment(
 ) -> None:
     save_manifest(tmp_path, create_default_manifest("demo"))
     service = HealthCheckService(
-        environment_factory=_stub_factory("managed venv", fail=True),
+        environment_factory=_stub_factory("venv", fail=True),
         which=_which_all,
     )
 
@@ -162,9 +162,10 @@ def test_healthcheck_reports_unreachable_environment(
     assert "environment not reachable" in checks["environment"].message
 
 
-def test_healthcheck_reports_missing_existing_venv(tmp_path: Path) -> None:
+def test_healthcheck_reports_broken_venv(tmp_path: Path) -> None:
     manifest = create_default_manifest("demo")
-    missing = tmp_path / "not-a-real-venv"
+    broken = tmp_path / "broken-venv"
+    broken.mkdir()
     manifest_with_env = Manifest(
         project=manifest.project,
         build=manifest.build,
@@ -172,8 +173,8 @@ def test_healthcheck_reports_missing_existing_venv(tmp_path: Path) -> None:
         dev_dependencies=manifest.dev_dependencies,
         toolchain=manifest.toolchain,
         environment=EnvironmentConfig(
-            kind="existing-venv",
-            path=str(missing),
+            kind="venv",
+            path=str(broken),
         ),
     )
     save_manifest(tmp_path, manifest_with_env)
@@ -184,4 +185,4 @@ def test_healthcheck_reports_missing_existing_venv(tmp_path: Path) -> None:
 
     assert report.ok is False
     assert checks["environment"].ok is False
-    assert "existing-venv" in checks["environment"].message
+    assert "venv" in checks["environment"].message

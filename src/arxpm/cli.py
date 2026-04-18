@@ -36,9 +36,7 @@ def init(
         str | None,
         typer.Option(
             "--env-kind",
-            help=(
-                "Environment strategy (managed-venv, existing-venv, conda)."
-            ),
+            help=("Environment strategy (venv, conda, system)."),
         ),
     ] = None,
     env_path: Annotated[
@@ -55,7 +53,7 @@ def init(
         str | None,
         typer.Option(
             "--env-name",
-            help="Conda environment name (used with --env-kind conda).",
+            help=("Conda environment name (used with --env-kind conda)."),
         ),
     ] = None,
     directory: Annotated[
@@ -73,7 +71,7 @@ def init(
       env_kind:
         type: >-
           Annotated[str | None, typer.Option('--env-kind', help='Environment
-          strategy (managed-venv, existing-venv, conda).')]
+          strategy (venv, conda, system).')]
       env_path:
         type: >-
           Annotated[str | None, typer.Option('--env-path', help='Filesystem
@@ -116,7 +114,7 @@ def install(
         bool,
         typer.Option(
             "--dev/--no-dev",
-            help="Also install entries from [arxpm.dependencies-dev].",
+            help="Reserved for future use; currently has no effect.",
         ),
     ] = False,
 ) -> None:
@@ -129,8 +127,8 @@ def install(
           directory.')]
       dev:
         type: >-
-          Annotated[bool, typer.Option('--dev/--no-dev', help='Also install
-          entries from [arxpm.dependencies-dev].')]
+          Annotated[bool, typer.Option('--dev/--no-dev', help='Reserved for
+          future use; currently has no effect.')]
     """
     project_service = ProjectService()
     try:

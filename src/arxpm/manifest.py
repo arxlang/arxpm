@@ -6,12 +6,48 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any, Protocol, cast
 
 from arxpm._toml import tomllib
 from arxpm.errors import ManifestError
-from arxpm.models import DependencySpec, Manifest
+from arxpm.models import (
+    BuildConfig,
+    DependencySpec,
+    EnvironmentConfig,
+    Manifest,
+    ProjectConfig,
+    ToolchainConfig,
+)
 
-MANIFEST_FILENAME = ".arxproject.toml"
+ArxProject = Any
+
+
+class _SettingsLoader(Protocol):
+    def __call__(
+        self,
+        content: str,
+        source_path: Path | None = None,
+    ) -> ArxProject: ...
+
+
+try:
+    from arx.settings import (
+        DEFAULT_CONFIG_FILENAME as _DEFAULT_CONFIG_FILENAME,
+    )
+    from arx.settings import ArxProjectError as _ArxProjectError
+    from arx.settings import (
+        load_settings_from_text as _load_settings_from_text,
+    )
+except ImportError:  # pragma: no cover - compatibility fallback
+    MANIFEST_FILENAME = ".arxproject.toml"
+    ArxProjectError: type[Exception] = Exception
+    load_settings_from_text: _SettingsLoader | None = None
+else:
+    MANIFEST_FILENAME = _DEFAULT_CONFIG_FILENAME
+    ArxProjectError = cast(type[Exception], _ArxProjectError)
+    load_settings_from_text = cast(_SettingsLoader, _load_settings_from_text)
+
+_DEFAULT_EDITION = "2026"
 
 
 def manifest_path(directory: Path) -> Path:
@@ -61,6 +97,15 @@ def load_manifest_file(path: Path) -> Manifest:
     """
     if not path.exists():
         raise ManifestError(f"manifest not found: {path}")
+
+    raw = _load_raw_manifest(path)
+    manifest = _load_manifest_with_arx_settings(path)
+    if manifest is not None:
+        return manifest
+    return Manifest.from_dict(raw)
+
+
+def _load_raw_manifest(path: Path) -> dict[str, Any]:
     try:
         with path.open("rb") as stream:
             data = tomllib.load(stream)
@@ -69,7 +114,23 @@ def load_manifest_file(path: Path) -> Manifest:
 
     if not isinstance(data, dict):
         raise ManifestError("manifest root must be a TOML table")
-    return Manifest.from_dict(data)
+    return data
+
+
+def _load_manifest_with_arx_settings(path: Path) -> Manifest | None:
+    if load_settings_from_text is None:
+        return None
+
+    content = path.read_text(encoding="utf-8")
+    try:
+        settings = load_settings_from_text(
+            content,
+            source_path=path.resolve(),
+        )
+    except ArxProjectError:
+        return None
+
+    return _manifest_from_settings(settings)
 
 
 def save_manifest(directory: Path, manifest: Manifest) -> Path:
@@ -115,7 +176,6 @@ def render_manifest(manifest: Manifest) -> str:
         f"name = {_quote(manifest.project.name)}",
         f"version = {_quote(manifest.project.version)}",
         f"edition = {_quote(manifest.project.edition)}",
-        "",
     ]
     lines.extend(
         _render_requirements_array(
@@ -148,20 +208,82 @@ def render_manifest(manifest: Manifest) -> str:
             lines.append(f"path = {_quote(manifest.environment.path)}")
         if manifest.environment.name is not None:
             lines.append(f"name = {_quote(manifest.environment.name)}")
-    if manifest.dev_dependencies:
-        lines.extend(
-            [
-                "",
-                "[arxpm.dependencies-dev]",
-            ]
-        )
-        lines.extend(
-            _render_requirements_array(
-                "dependencies",
-                manifest.dev_dependencies,
-            )
-        )
     return "\n".join(lines) + "\n"
+
+
+def _manifest_from_settings(settings: ArxProject) -> Manifest:
+    project = ProjectConfig(
+        name=settings.project.name,
+        version=settings.project.version,
+        edition=settings.project.edition or _DEFAULT_EDITION,
+    )
+
+    build_defaults = BuildConfig()
+    build = BuildConfig(
+        src_dir=(
+            settings.build.src_dir
+            if settings.build is not None
+            and settings.build.src_dir is not None
+            else build_defaults.src_dir
+        ),
+        entry=(
+            settings.build.entry
+            if settings.build is not None and settings.build.entry is not None
+            else build_defaults.entry
+        ),
+        out_dir=(
+            settings.build.out_dir
+            if settings.build is not None
+            and settings.build.out_dir is not None
+            else build_defaults.out_dir
+        ),
+    )
+
+    toolchain_defaults = ToolchainConfig()
+    toolchain = ToolchainConfig(
+        compiler=(
+            settings.toolchain.compiler
+            if settings.toolchain is not None
+            and settings.toolchain.compiler is not None
+            else toolchain_defaults.compiler
+        ),
+        linker=(
+            settings.toolchain.linker
+            if settings.toolchain is not None
+            and settings.toolchain.linker is not None
+            else toolchain_defaults.linker
+        ),
+    )
+
+    environment = EnvironmentConfig.default()
+    if settings.environment is not None:
+        environment = EnvironmentConfig(
+            kind=settings.environment.kind or "venv",
+            path=settings.environment.path,
+            name=settings.environment.name,
+        )
+
+    dependencies = _parse_settings_dependency_group(
+        settings.project.dependencies,
+    )
+
+    return Manifest(
+        project=project,
+        build=build,
+        dependencies=dependencies,
+        toolchain=toolchain,
+        environment=environment,
+    )
+
+
+def _parse_settings_dependency_group(
+    dependencies: tuple[str, ...],
+) -> dict[str, DependencySpec]:
+    parsed: dict[str, DependencySpec] = {}
+    for entry in dependencies:
+        name, spec = DependencySpec.parse_requirement(entry)
+        parsed[name] = spec
+    return parsed
 
 
 def _render_requirements_array(

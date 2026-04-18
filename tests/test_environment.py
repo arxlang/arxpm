@@ -12,16 +12,12 @@ import pytest
 
 from arxpm.environment import (
     CondaEnvironment,
-    ExistingVenvEnvironment,
+    SystemEnvironment,
     UvManagedEnvironment,
     build_environment,
     default_environment_config_from_cli,
 )
-from arxpm.errors import (
-    EnvironmentError,
-    ManifestError,
-    MissingUvError,
-)
+from arxpm.errors import EnvironmentError, ManifestError, MissingUvError
 from arxpm.external import CommandResult
 from arxpm.models import EnvironmentConfig, Manifest, ProjectConfig
 
@@ -151,39 +147,6 @@ def test_uv_managed_environment_empty_requirements_skips(
     assert recorder.calls == []
 
 
-def test_existing_venv_environment_validates_path(tmp_path: Path) -> None:
-    venv_dir = tmp_path / "myenv"
-    (venv_dir / _bin_dir()).mkdir(parents=True)
-    (venv_dir / _bin_dir() / _interpreter_name()).write_text(
-        "",
-        encoding="utf-8",
-    )
-
-    env = ExistingVenvEnvironment(
-        tmp_path,
-        venv_path="myenv",
-        runner=Recorder(),
-        which=lambda _: "/usr/bin/uv",
-    )
-    env.ensure_ready()
-
-    assert env.python_executable() == (
-        venv_dir / _bin_dir() / _interpreter_name()
-    )
-
-
-def test_existing_venv_environment_rejects_missing(tmp_path: Path) -> None:
-    env = ExistingVenvEnvironment(
-        tmp_path,
-        venv_path="missing",
-        runner=Recorder(),
-        which=lambda _: "/usr/bin/uv",
-    )
-
-    with pytest.raises(EnvironmentError):
-        env.ensure_ready()
-
-
 def test_conda_environment_resolves_by_name(tmp_path: Path) -> None:
     calls: list[list[str]] = []
 
@@ -241,6 +204,33 @@ def test_conda_environment_requires_name_or_path(tmp_path: Path) -> None:
         )
 
 
+def test_system_environment_uses_current_python(tmp_path: Path) -> None:
+    env = SystemEnvironment(
+        tmp_path,
+        runner=Recorder(),
+        which=lambda _: "/usr/bin/uv",
+    )
+
+    assert env.python_executable() == Path(sys.executable).resolve()
+
+
+def test_system_environment_install_packages_uses_current_python(
+    tmp_path: Path,
+) -> None:
+    recorder = Recorder()
+    env = SystemEnvironment(
+        tmp_path,
+        runner=recorder,
+        which=lambda _: "/usr/bin/uv",
+    )
+
+    env.install_packages(["pyyaml"])
+
+    cmd = recorder.calls[0][0]
+    assert cmd[:3] == ["uv", "pip", "install"]
+    assert str(Path(sys.executable).resolve()) in cmd
+
+
 def test_uv_managed_environment_validate_is_noop_when_absent(
     tmp_path: Path,
 ) -> None:
@@ -270,20 +260,6 @@ def test_uv_managed_environment_validate_rejects_broken_venv(
         env.validate()
 
 
-def test_existing_venv_environment_validate_rejects_missing(
-    tmp_path: Path,
-) -> None:
-    env = ExistingVenvEnvironment(
-        tmp_path,
-        venv_path="missing",
-        runner=Recorder(),
-        which=lambda _: "/usr/bin/uv",
-    )
-
-    with pytest.raises(EnvironmentError):
-        env.validate()
-
-
 def test_conda_environment_validate_rejects_missing_interpreter(
     tmp_path: Path,
 ) -> None:
@@ -305,7 +281,7 @@ def _manifest_with_environment(config: EnvironmentConfig) -> Manifest:
     )
 
 
-def test_build_environment_dispatches_to_managed_venv(tmp_path: Path) -> None:
+def test_build_environment_dispatches_to_venv(tmp_path: Path) -> None:
     manifest = _manifest_with_environment(EnvironmentConfig.default())
     env = build_environment(
         manifest,
@@ -315,20 +291,6 @@ def test_build_environment_dispatches_to_managed_venv(tmp_path: Path) -> None:
     )
 
     assert isinstance(env, UvManagedEnvironment)
-
-
-def test_build_environment_dispatches_to_existing_venv(tmp_path: Path) -> None:
-    manifest = _manifest_with_environment(
-        EnvironmentConfig(kind="existing-venv", path="/some/venv"),
-    )
-    env = build_environment(
-        manifest,
-        tmp_path,
-        runner=Recorder(),
-        which=lambda _: "/usr/bin/uv",
-    )
-
-    assert isinstance(env, ExistingVenvEnvironment)
 
 
 def test_build_environment_dispatches_to_conda(tmp_path: Path) -> None:
@@ -345,6 +307,20 @@ def test_build_environment_dispatches_to_conda(tmp_path: Path) -> None:
     assert isinstance(env, CondaEnvironment)
 
 
+def test_build_environment_dispatches_to_system(tmp_path: Path) -> None:
+    manifest = _manifest_with_environment(
+        EnvironmentConfig(kind="system"),
+    )
+    env = build_environment(
+        manifest,
+        tmp_path,
+        runner=Recorder(),
+        which=lambda _: "/usr/bin/uv",
+    )
+
+    assert isinstance(env, SystemEnvironment)
+
+
 def test_default_environment_config_from_cli_returns_default_when_empty() -> (
     None
 ):
@@ -352,13 +328,13 @@ def test_default_environment_config_from_cli_returns_default_when_empty() -> (
     assert config.is_default()
 
 
-def test_default_environment_config_from_cli_builds_existing_venv() -> None:
+def test_default_environment_config_from_cli_builds_venv() -> None:
     config = default_environment_config_from_cli(
-        "existing-venv",
+        "venv",
         "/tmp/env",
         None,
     )
-    assert config.kind == "existing-venv"
+    assert config.kind == "venv"
     assert config.path == "/tmp/env"
 
 

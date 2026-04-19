@@ -12,6 +12,7 @@ from arxpm._toml import tomllib
 from arxpm.errors import ManifestError
 from arxpm.models import (
     BuildConfig,
+    DependencyGroupInclude,
     DependencySpec,
     EnvironmentConfig,
     Manifest,
@@ -196,6 +197,10 @@ def render_manifest(manifest: Manifest) -> str:
             f"linker = {_quote(manifest.toolchain.linker)}",
         ]
     )
+    if manifest.dependency_groups:
+        lines.extend(["", "[dependency-groups]"])
+        for group_name, entries in manifest.dependency_groups.items():
+            lines.extend(_render_dependency_group_array(group_name, entries))
     if not manifest.environment.is_default():
         lines.extend(
             [
@@ -271,6 +276,9 @@ def _manifest_from_settings(settings: ArxProject) -> Manifest:
         project=project,
         build=build,
         dependencies=dependencies,
+        dependency_groups=_convert_dependency_groups(
+            settings.dependency_groups,
+        ),
         toolchain=toolchain,
         environment=environment,
     )
@@ -284,6 +292,51 @@ def _parse_settings_dependency_group(
         name, spec = DependencySpec.parse_requirement(entry)
         parsed[name] = spec
     return parsed
+
+
+def _convert_dependency_groups(
+    dependency_groups: dict[str, tuple[object, ...]],
+) -> dict[str, tuple[str | DependencyGroupInclude, ...]]:
+    converted: dict[str, tuple[str | DependencyGroupInclude, ...]] = {}
+    for group_name, entries in dependency_groups.items():
+        resolved_entries: list[str | DependencyGroupInclude] = []
+        for entry in entries:
+            if isinstance(entry, str):
+                resolved_entries.append(entry)
+                continue
+            include_group = getattr(entry, "include_group", None)
+            if isinstance(include_group, str):
+                resolved_entries.append(DependencyGroupInclude(include_group))
+                continue
+            raise ManifestError(
+                "unsupported dependency group entry from arx.settings: "
+                f"{entry!r}"
+            )
+        converted[group_name] = tuple(resolved_entries)
+    return converted
+
+
+def _render_dependency_group_array(
+    name: str,
+    entries: tuple[object, ...],
+) -> list[str]:
+    if not entries:
+        return [f"{name} = []"]
+    lines = [f"{name} = ["]
+    for entry in entries:
+        if isinstance(entry, str):
+            lines.append(f"  {_quote(entry)},")
+            continue
+        if isinstance(entry, DependencyGroupInclude):
+            lines.append(
+                f"  {{ include-group = {_quote(entry.include_group)} }},"
+            )
+            continue
+        raise ManifestError(
+            f"unsupported dependency group entry for {name!r}: {entry!r}"
+        )
+    lines.append("]")
+    return lines
 
 
 def _render_requirements_array(

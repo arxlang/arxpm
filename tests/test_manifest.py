@@ -16,6 +16,7 @@ from arxpm.manifest import (
     save_manifest_file,
 )
 from arxpm.models import (
+    DependencyGroupInclude,
     DependencySpec,
     EnvironmentConfig,
     Manifest,
@@ -137,6 +138,31 @@ def test_manifest_round_trip_preserves_dependencies(tmp_path: Path) -> None:
     assert loaded.dependencies["pyyaml"].kind == "registry"
     assert loaded.dependencies["local_lib"].path == "../local_lib"
     assert loaded.dependencies["utils"].git == "https://example.com/utils.git"
+
+
+def test_manifest_round_trip_preserves_dependency_groups(
+    tmp_path: Path,
+) -> None:
+    manifest = Manifest(
+        project=ProjectConfig(name="demo"),
+        dependency_groups={
+            "lint": ("ruff",),
+            "dev-test": (
+                DependencyGroupInclude("lint"),
+                "pytest",
+            ),
+        },
+    )
+    path = tmp_path / ".arxproject.toml"
+    path.write_text(render_manifest(manifest), encoding="utf-8")
+
+    loaded = load_manifest_file(path)
+
+    assert loaded.dependency_groups["lint"] == ("ruff",)
+    dev_test = loaded.dependency_groups["dev-test"]
+    assert isinstance(dev_test[0], DependencyGroupInclude)
+    assert dev_test[0].include_group == "lint"
+    assert dev_test[1] == "pytest"
 
 
 def _write_manifest(tmp_path: Path, body: str) -> Path:

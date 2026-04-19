@@ -9,6 +9,7 @@ import re
 import shutil
 import sys
 import tempfile
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -25,7 +26,12 @@ from arxpm.manifest import (
     load_manifest,
     save_manifest,
 )
-from arxpm.models import DependencySpec, EnvironmentConfig, Manifest
+from arxpm.models import (
+    DependencyGroupInclude,
+    DependencySpec,
+    EnvironmentConfig,
+    Manifest,
+)
 
 _MAIN_SOURCE = """```
 title: Simple main module
@@ -205,6 +211,7 @@ class ProjectService:
     def install(
         self,
         directory: Path,
+        groups: Sequence[str] = (),
         dev: bool = False,
     ) -> CommandResult:
         """
@@ -212,6 +219,8 @@ class ProjectService:
         parameters:
           directory:
             type: Path
+          groups:
+            type: Sequence[str]
           dev:
             type: bool
         returns:
@@ -221,9 +230,25 @@ class ProjectService:
         environment = self._environment_factory(manifest, directory)
         environment.ensure_ready()
 
+        selected_groups = list(groups)
+        if dev:
+            selected_groups.append("dev")
+
+        dependencies = dict(manifest.dependencies)
+        if selected_groups:
+            grouped_dependencies = _resolve_dependency_group_dependencies(
+                manifest,
+                selected_groups,
+            )
+            dependencies = _merge_dependency_maps(
+                dependencies,
+                grouped_dependencies,
+                label="selected dependency groups",
+            )
+
         registry_reqs, path_deps = _partition_dependencies(
             directory,
-            manifest.dependencies,
+            dependencies,
         )
         command_result = environment.install_packages(registry_reqs)
         for dependency_name, library_directory in path_deps:
@@ -233,20 +258,6 @@ class ProjectService:
                 dependency_name,
                 library_directory,
             )
-
-        if dev:
-            dev_registry, dev_paths = _partition_dependencies(
-                directory,
-                manifest.dev_dependencies,
-            )
-            environment.install_packages(dev_registry)
-            for dependency_name, library_directory in dev_paths:
-                self._install_arx_path_dependency(
-                    directory,
-                    environment,
-                    dependency_name,
-                    library_directory,
-                )
 
         return command_result
 
@@ -678,3 +689,87 @@ def _render_publish_readme(manifest: Manifest) -> str:
 
 def _toml_quote(value: str) -> str:
     return json.dumps(value, ensure_ascii=True)
+
+
+def _resolve_dependency_group_dependencies(
+    manifest: Manifest,
+    requested_groups: Sequence[str],
+) -> dict[str, DependencySpec]:
+    group_map = manifest.dependency_groups
+    normalized_names = {
+        _normalize_group_name(name): name for name in group_map
+    }
+    resolved: dict[str, DependencySpec] = {}
+    visiting: list[str] = []
+    visited: set[str] = set()
+
+    def visit(group_name: str) -> None:
+        normalized_name = _normalize_group_name(group_name)
+        if normalized_name not in normalized_names:
+            raise ManifestError(f"unknown dependency group {group_name!r}")
+
+        canonical_name = normalized_names[normalized_name]
+        if canonical_name in visited:
+            return
+        if canonical_name in visiting:
+            cycle = " -> ".join(visiting + [canonical_name])
+            raise ManifestError(
+                f"dependency group includes must not contain cycles: {cycle}"
+            )
+
+        visiting.append(canonical_name)
+        for entry in group_map[canonical_name]:
+            if isinstance(entry, str):
+                dependency_name, spec = DependencySpec.parse_requirement(entry)
+                _merge_dependency_spec(
+                    resolved,
+                    dependency_name,
+                    spec,
+                    label=f"dependency group {canonical_name!r}",
+                )
+                continue
+            if isinstance(entry, DependencyGroupInclude):
+                visit(entry.include_group)
+                continue
+            raise ManifestError(
+                f"unsupported dependency group entry in {canonical_name!r}: "
+                f"{entry!r}"
+            )
+        visiting.pop()
+        visited.add(canonical_name)
+
+    for group_name in requested_groups:
+        visit(group_name)
+
+    return resolved
+
+
+def _merge_dependency_maps(
+    base: dict[str, DependencySpec],
+    extra: dict[str, DependencySpec],
+    label: str,
+) -> dict[str, DependencySpec]:
+    merged = dict(base)
+    for dependency_name, spec in extra.items():
+        _merge_dependency_spec(merged, dependency_name, spec, label=label)
+    return merged
+
+
+def _merge_dependency_spec(
+    target: dict[str, DependencySpec],
+    dependency_name: str,
+    spec: DependencySpec,
+    label: str,
+) -> None:
+    existing = target.get(dependency_name)
+    if existing is None:
+        target[dependency_name] = spec
+        return
+    if existing != spec:
+        raise ManifestError(
+            f"{label} defines conflicting entries for {dependency_name!r}"
+        )
+
+
+def _normalize_group_name(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name).lower()

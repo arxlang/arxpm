@@ -23,9 +23,34 @@ class FailingInstallProjectService:
     title: Project service that fails on install.
     """
 
-    def install(self, directory: Path, dev: bool = False) -> None:
-        _ = directory, dev
+    def install(
+        self,
+        directory: Path,
+        groups: tuple[str, ...] | list[str] = (),
+        dev: bool = False,
+    ) -> None:
+        _ = directory, groups, dev
         raise MissingUvError("uv is missing")
+
+
+class CapturingInstallProjectService:
+    """
+    title: Project service that records install flags.
+    attributes:
+      last_groups:
+        type: tuple[str, Ellipsis]
+    """
+
+    last_groups: tuple[str, ...] = ()
+
+    def install(
+        self,
+        directory: Path,
+        groups: tuple[str, ...] | list[str] = (),
+        dev: bool = False,
+    ) -> None:
+        _ = directory, dev
+        type(self).last_groups = tuple(groups)
 
 
 class PassingHealthcheckService:
@@ -157,6 +182,28 @@ def test_add_command_writes_registry_dependency(
     manifest = (tmp_path / ".arxproject.toml").read_text(encoding="utf-8")
     assert '"http",' in manifest
     assert "[dependencies]" not in manifest
+
+
+def test_install_command_passes_selected_groups(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "arxpm.cli.ProjectService",
+        CapturingInstallProjectService,
+    )
+
+    result = runner.invoke(
+        app,
+        ["install", "--group", "dev,docs", "--group", "lint", "--dev"],
+    )
+
+    assert result.exit_code == 0
+    assert CapturingInstallProjectService.last_groups == (
+        "dev",
+        "docs",
+        "lint",
+        "dev",
+    )
 
 
 def test_install_command_surfaces_human_error(

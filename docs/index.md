@@ -7,8 +7,8 @@
 - `arx` is compiler-only.
 - `arxpm` is the user-facing workflow tool.
 - Python environments are backend-neutral: a project can use a project-local
-  venv (default), an existing venv, or a conda environment. `uv` is used to
-  install packages in all cases.
+  venv (default), a conda environment, or the current system interpreter. `uv`
+  is used to install packages in all cases.
 
 Arx projects use `.arxproject.toml` as their project manifest. Python packaging
 is only for distributing `arxpm` itself.
@@ -24,8 +24,8 @@ is only for distributing `arxpm` itself.
 - `src/arxpm/models.py`: typed manifest models.
 - `src/arxpm/manifest.py`: parse/render `.arxproject.toml`.
 - `src/arxpm/_toml.py`: TOML parser compatibility shim (`tomllib`/`tomli`).
-- `src/arxpm/environment.py`: environment runtime abstraction and the
-  managed-venv, existing-venv, and conda implementations.
+- `src/arxpm/environment.py`: environment runtime abstraction and the `venv`,
+  `conda`, and `system` implementations.
 - `src/arxpm/project.py`: `init`, `add`, `install`, `build`, `run`, `pack`,
   `publish`.
 - `src/arxpm/healthcheck.py`: environment and manifest checks.
@@ -37,6 +37,7 @@ is only for distributing `arxpm` itself.
 arxpm init --name hello-arx
 arxpm add http
 arxpm install
+arxpm install --group dev
 arxpm build
 arxpm compile
 arxpm run

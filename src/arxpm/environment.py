@@ -28,7 +28,7 @@ class EnvironmentRuntime(Protocol):
 
     def ensure_ready(self) -> None:
         """
-        title: Create the environment if managed, or validate it otherwise.
+        title: Create the environment if needed, or validate it otherwise.
         """
 
     def validate(self) -> None:
@@ -75,7 +75,7 @@ class EnvironmentRuntime(Protocol):
 
 class _UvBackend:
     """
-    title: Shared uv-backed install logic used by every concrete backend.
+    title: Shared uv-backed install logic used by concrete backends.
     attributes:
       _project_dir:
         type: Path
@@ -191,74 +191,8 @@ class UvManagedEnvironment(_UvBackend):
         interpreter = _interpreter_for(self._venv_path)
         if not interpreter.exists():
             raise EnvironmentError(
-                f"managed venv at {self._venv_path} exists but has no "
-                f"interpreter ({interpreter} not found)"
-            )
-
-    def python_executable(self) -> Path:
-        return _interpreter_for(self._venv_path)
-
-    def install_packages(
-        self,
-        requirements: Sequence[str],
-        *,
-        force_reinstall: bool = False,
-        no_deps: bool = False,
-    ) -> CommandResult:
-        return self._install_with_uv(
-            self.python_executable(),
-            requirements,
-            force_reinstall=force_reinstall,
-            no_deps=no_deps,
-        )
-
-    def describe(self) -> str:
-        return f"venv at {self._venv_path}"
-
-
-class ExistingVenvEnvironment(_UvBackend):
-    """
-    title: A pre-existing virtual environment reused by arxpm.
-    attributes:
-      _project_dir:
-        type: Path
-      _runner:
-        type: CommandRunner
-      _which:
-        type: WhichFn
-      _venv_path:
-        type: Path
-    """
-
-    _venv_path: Path
-
-    def __init__(
-        self,
-        project_dir: Path,
-        venv_path: str,
-        runner: CommandRunner = run_command,
-        which: WhichFn = shutil.which,
-    ) -> None:
-        super().__init__(project_dir, runner=runner, which=which)
-        self._venv_path = _resolve_venv_path(project_dir, venv_path)
-
-    def ensure_ready(self) -> None:
-        self._ensure_uv()
-        self._validate_venv()
-
-    def validate(self) -> None:
-        self._validate_venv()
-
-    def _validate_venv(self) -> None:
-        if not self._venv_path.is_dir():
-            raise EnvironmentError(
-                f"venv path is not a directory: {self._venv_path}"
-            )
-        interpreter = _interpreter_for(self._venv_path)
-        if not interpreter.exists():
-            raise EnvironmentError(
-                f"venv at {self._venv_path} has no python "
-                f"interpreter ({interpreter} not found)"
+                f"venv at {self._venv_path} exists but has no interpreter "
+                f"({interpreter} not found)"
             )
 
     def python_executable(self) -> Path:

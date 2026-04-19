@@ -30,7 +30,7 @@ The report should show:
 - manifest parses
 - `uv` is available on PATH
 - the configured compiler (`arx`) is on PATH
-- the environment is configurable (defaults to a managed `.venv`)
+- the environment is configurable (defaults to a project `.venv`)
 
 ## Run Examples
 

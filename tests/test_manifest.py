@@ -79,8 +79,8 @@ name = "legacy"
 version = "0.1.0"
 edition = "2026"
 
-[arxpm.dependencies-dev]
-dependencies = ["makim"]
+[arxpm]
+resolver = "future"
 """.strip()
     path = tmp_path / ".arxproject.toml"
     path.write_text(content + "\n", encoding="utf-8")

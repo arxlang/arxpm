@@ -345,8 +345,6 @@ class Manifest:
         type: dict[str, DependencySpec]
       dependency_groups:
         type: dict[str, tuple[DependencyGroupEntry, Ellipsis]]
-      dev_dependencies:
-        type: dict[str, DependencySpec]
       toolchain:
         type: ToolchainConfig
       environment:
@@ -359,7 +357,6 @@ class Manifest:
     dependency_groups: dict[str, tuple[DependencyGroupEntry, ...]] = field(
         default_factory=dict
     )
-    dev_dependencies: dict[str, DependencySpec] = field(default_factory=dict)
     toolchain: ToolchainConfig = field(default_factory=ToolchainConfig)
     environment: EnvironmentConfig = field(
         default_factory=EnvironmentConfig.default,

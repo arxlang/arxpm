@@ -170,7 +170,6 @@ def test_healthcheck_reports_broken_venv(tmp_path: Path) -> None:
         project=manifest.project,
         build=manifest.build,
         dependencies=manifest.dependencies,
-        dev_dependencies=manifest.dev_dependencies,
         toolchain=manifest.toolchain,
         environment=EnvironmentConfig(
             kind="venv",

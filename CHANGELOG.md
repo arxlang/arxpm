@@ -1,6 +1,13 @@
 # Release Notes
 ---
 
+# [1.6.0](https://github.com/arxlang/arxpm/compare/1.5.0...1.6.0) (2026-04-19)
+
+
+### Features
+
+* Add support for dependence groups ([#9](https://github.com/arxlang/arxpm/issues/9)) ([85db059](https://github.com/arxlang/arxpm/commit/85db059eee9323ecbd050a7617b06ac94dffea1d))
+
 # [1.5.0](https://github.com/arxlang/arxpm/compare/1.4.0...1.5.0) (2026-04-18)
 
 

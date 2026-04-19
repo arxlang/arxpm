@@ -41,7 +41,7 @@ groups:
         run: |
           pytest -vv \
             --cov=arxpm \
-            --cov-fail-under=84 \
+            --cov-fail-under=90 \
             --cov-report=term-missing \
             --no-cov-on-fail \
             ${{ args.path }} \

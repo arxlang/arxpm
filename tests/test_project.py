@@ -276,3 +276,69 @@ def test_install_rejects_arx_path_dep_name_mismatch(tmp_path: Path) -> None:
 
     with pytest.raises(ManifestError, match="must match the library"):
         service.install(consumer_dir)
+
+
+def test_install_rejects_unknown_dependency_group(tmp_path: Path) -> None:
+    env = FakeEnvironment()
+    service = ProjectService(environment_factory=_factory(env))
+    service.init(tmp_path, name="demo")
+
+    with pytest.raises(ManifestError, match="unknown dependency group"):
+        service.install(tmp_path, groups=("docs",))
+
+
+def test_save_manifest_rejects_dependency_group_include_cycles(
+    tmp_path: Path,
+) -> None:
+    env = FakeEnvironment()
+    service = ProjectService(environment_factory=_factory(env))
+    service.init(tmp_path, name="demo")
+
+    manifest = load_manifest(tmp_path)
+    manifest.dependency_groups = {
+        "dev": (DependencyGroupInclude("lint"),),
+        "lint": (DependencyGroupInclude("dev"),),
+    }
+
+    with pytest.raises(ManifestError, match="must not form cycles"):
+        save_manifest(tmp_path, manifest)
+
+
+def test_install_rejects_conflicts_between_base_and_group_dependencies(
+    tmp_path: Path,
+) -> None:
+    env = FakeEnvironment()
+    service = ProjectService(environment_factory=_factory(env))
+    service.init(tmp_path, name="demo")
+    service.add_dependency(tmp_path, "http")
+
+    manifest = load_manifest(tmp_path)
+    manifest.dependency_groups = {
+        "dev": ("http @ ../http-local",),
+    }
+    save_manifest(tmp_path, manifest)
+
+    with pytest.raises(ManifestError, match="defines conflicting entries"):
+        service.install(tmp_path, groups=("dev",))
+
+
+def test_install_rejects_conflicts_across_included_groups(
+    tmp_path: Path,
+) -> None:
+    env = FakeEnvironment()
+    service = ProjectService(environment_factory=_factory(env))
+    service.init(tmp_path, name="demo")
+
+    manifest = load_manifest(tmp_path)
+    manifest.dependency_groups = {
+        "lint": ("ruff",),
+        "docs": ("ruff @ ../ruff-local",),
+        "dev": (
+            DependencyGroupInclude("lint"),
+            DependencyGroupInclude("docs"),
+        ),
+    }
+    save_manifest(tmp_path, manifest)
+
+    with pytest.raises(ManifestError, match="defines conflicting entries"):
+        service.install(tmp_path, groups=("dev",))

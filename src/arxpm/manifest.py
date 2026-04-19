@@ -73,7 +73,7 @@ def load_manifest_file(path: Path) -> Manifest:
     try:
         settings = cast(Any, arx_settings.load_settings(path))
     except arx_settings.ArxProjectError as exc:
-        raise ManifestError(str(exc)) from exc
+        raise ManifestError(_normalize_settings_error(exc, path)) from exc
     return _manifest_from_settings(settings)
 
 
@@ -103,7 +103,10 @@ def save_manifest_file(manifest: Manifest, path: Path) -> None:
         type: Path
     """
     path.parent.mkdir(parents=True, exist_ok=True)
-    arx_settings.write_settings(_settings_from_manifest(manifest), path)
+    try:
+        arx_settings.write_settings(_settings_from_manifest(manifest), path)
+    except arx_settings.ArxProjectError as exc:
+        raise ManifestError(str(exc)) from exc
 
 
 def render_manifest(manifest: Manifest) -> str:
@@ -115,7 +118,21 @@ def render_manifest(manifest: Manifest) -> str:
     returns:
       type: str
     """
-    return arx_settings.dump_settings(_settings_from_manifest(manifest))
+    try:
+        return arx_settings.dump_settings(_settings_from_manifest(manifest))
+    except arx_settings.ArxProjectError as exc:
+        raise ManifestError(str(exc)) from exc
+
+
+def _normalize_settings_error(
+    error: arx_settings.ArxProjectError,
+    path: Path,
+) -> str:
+    message = str(error)
+    not_found_prefix = f"{MANIFEST_FILENAME} not found at "
+    if message.startswith(not_found_prefix):
+        return f"manifest not found: {path}"
+    return message
 
 
 def _manifest_from_settings(settings: Any) -> Manifest:

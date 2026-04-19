@@ -790,8 +790,9 @@
 <p>Create a new project in the target directory.</p>
 <div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>init<span class="w"> </span>--name<span class="w"> </span>hello-arx
 arxpm<span class="w"> </span>init<span class="w"> </span>--directory<span class="w"> </span>./my-project
-arxpm<span class="w"> </span>init<span class="w"> </span>--env-kind<span class="w"> </span>existing-venv<span class="w"> </span>--env-path<span class="w"> </span>./shared-venv
+arxpm<span class="w"> </span>init<span class="w"> </span>--env-kind<span class="w"> </span>venv<span class="w"> </span>--env-path<span class="w"> </span>./shared-venv
 arxpm<span class="w"> </span>init<span class="w"> </span>--env-kind<span class="w"> </span>conda<span class="w"> </span>--env-name<span class="w"> </span>myproject-env
+arxpm<span class="w"> </span>init<span class="w"> </span>--env-kind<span class="w"> </span>system
 </code></pre></div>
 <p>Effects:</p>
 <ul>
@@ -812,6 +813,9 @@ arxpm<span class="w"> </span>add<span class="w"> </span>utils<span class="w"> </
 install dependencies with <code class="language-python highlight"><span class="n">uv</span></code>.</p>
 <div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>install
 arxpm<span class="w"> </span>install<span class="w"> </span>--directory<span class="w"> </span>examples
+arxpm<span class="w"> </span>install<span class="w"> </span>--group<span class="w"> </span>dev
+arxpm<span class="w"> </span>install<span class="w"> </span>--group<span class="w"> </span>dev,docs
+arxpm<span class="w"> </span>install<span class="w"> </span>--group<span class="w"> </span>dev<span class="w"> </span>--group<span class="w"> </span>docs
 arxpm<span class="w"> </span>install<span class="w"> </span>--dev
 </code></pre></div>
 <p>Dependency entries are installed as follows:</p>
@@ -821,6 +825,9 @@ arxpm<span class="w"> </span>install<span class="w"> </span>--dev
   (Arx libraries with an <code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code>)</li>
 <li>git: <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="n">git</span><span class="o">+&lt;</span><span class="n">url</span><span class="o">&gt;</span></code></li>
 </ul>
+<p><code class="language-python highlight"><span class="o">--</span><span class="n">group</span></code> selects one or more dependency groups from <code class="language-python highlight"><span class="p">[</span><span class="n">dependency</span><span class="o">-</span><span class="n">groups</span><span class="p">]</span></code>.
+Repeat the flag or pass comma-separated names. <code class="language-python highlight"><span class="o">--</span><span class="n">dev</span></code> is a convenience alias
+for selecting the <code class="language-python highlight"><span class="n">dev</span></code> group.</p>
 <h2 id="arxpm-build"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">build</span></code><a class="headerlink" href="#arxpm-build" title="Permanent link">&para;</a></h2>
 <p>Invoke the configured Arx compiler directly.</p>
 <div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>build

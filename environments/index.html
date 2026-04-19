@@ -480,10 +480,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#strategy-1-managed-venv-default" class="md-nav__link">
+  <a href="#strategy-1-venv-default" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Strategy 1 — Managed venv (default)
+        Strategy 1 — venv (default)
       
     </span>
   </a>
@@ -491,10 +491,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#strategy-2-existing-venv" class="md-nav__link">
+  <a href="#strategy-2-conda" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Strategy 2 — Existing venv
+        Strategy 2 — conda
       
     </span>
   </a>
@@ -502,10 +502,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#strategy-3-conda-environment" class="md-nav__link">
+  <a href="#strategy-3-system" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Strategy 3 — Conda environment
+        Strategy 3 — system
       
     </span>
   </a>
@@ -623,10 +623,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#strategy-1-managed-venv-default" class="md-nav__link">
+  <a href="#strategy-1-venv-default" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Strategy 1 — Managed venv (default)
+        Strategy 1 — venv (default)
       
     </span>
   </a>
@@ -634,10 +634,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#strategy-2-existing-venv" class="md-nav__link">
+  <a href="#strategy-2-conda" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Strategy 2 — Existing venv
+        Strategy 2 — conda
       
     </span>
   </a>
@@ -645,10 +645,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#strategy-3-conda-environment" class="md-nav__link">
+  <a href="#strategy-3-system" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Strategy 3 — Conda environment
+        Strategy 3 — system
       
     </span>
   </a>
@@ -704,12 +704,12 @@ its Python environment should be provided, and <code class="language-python high
 you point it at.</p>
 <p>Three strategies are supported out of the box, each declared in
 <code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code> via the <code class="language-python highlight"><span class="p">[</span><span class="n">environment</span><span class="p">]</span></code> table.</p>
-<h2 id="strategy-1-managed-venv-default">Strategy 1 — Managed venv (default)<a class="headerlink" href="#strategy-1-managed-venv-default" title="Permanent link">&para;</a></h2>
-<p><code class="language-python highlight"><span class="n">arxpm</span></code> creates and maintains a project-local virtual environment using
-<code class="language-python highlight"><span class="n">uv</span> <span class="n">venv</span></code>. This is the default when <code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code> has no <code class="language-python highlight"><span class="p">[</span><span class="n">environment</span><span class="p">]</span></code>
-section.</p>
+<h2 id="strategy-1-venv-default">Strategy 1 — <code class="language-python highlight"><span class="n">venv</span></code> (default)<a class="headerlink" href="#strategy-1-venv-default" title="Permanent link">&para;</a></h2>
+<p><code class="language-python highlight"><span class="n">arxpm</span></code> uses a virtual environment declared by <code class="language-python highlight"><span class="n">kind</span> <span class="o">=</span> <span class="s2">&quot;venv&quot;</span></code>. When <code class="language-python highlight"><span class="n">path</span></code> is
+omitted, <code class="language-python highlight"><span class="n">arxpm</span></code> treats it as a project-local <code class="language-python highlight"><span class="o">.</span><span class="n">venv</span></code> and creates it with
+<code class="language-python highlight"><span class="n">uv</span> <span class="n">venv</span></code> if needed.</p>
 <div class="language-toml highlight"><pre><span></span><code><span class="k">[environment]</span>
-<span class="n">kind</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;managed-venv&quot;</span>
+<span class="n">kind</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;venv&quot;</span>
 <span class="n">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;.venv&quot;</span><span class="w">   </span><span class="c1"># optional; defaults to &quot;.venv&quot;</span>
 </code></pre></div>
 <p>Behavior:</p>
@@ -721,20 +721,7 @@ section.</p>
 </ul>
 <p>Omit the whole <code class="language-python highlight"><span class="p">[</span><span class="n">environment</span><span class="p">]</span></code> section for the simplest projects — the defaults
 match what you'd write by hand.</p>
-<h2 id="strategy-2-existing-venv">Strategy 2 — Existing venv<a class="headerlink" href="#strategy-2-existing-venv" title="Permanent link">&para;</a></h2>
-<p>Reuse a virtual environment that you manage yourself (for example, a team-wide
-<code class="language-python highlight"><span class="o">.</span><span class="n">venv</span></code> or an IDE-managed interpreter):</p>
-<div class="language-toml highlight"><pre><span></span><code><span class="k">[environment]</span>
-<span class="n">kind</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;existing-venv&quot;</span>
-<span class="n">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;.venv&quot;</span><span class="w">   </span><span class="c1"># required; relative to the project root or absolute</span>
-</code></pre></div>
-<p>Behavior:</p>
-<ul>
-<li><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code> validates that <code class="language-python highlight"><span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;</span></code> is a directory with a usable
-  <code class="language-python highlight"><span class="nb">bin</span><span class="o">/</span><span class="n">python</span></code> (Windows: <code class="language-python highlight"><span class="n">Scripts</span><span class="o">/</span><span class="n">python</span><span class="o">.</span><span class="n">exe</span></code>) and installs packages via
-  <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">python</span> <span class="o">&lt;</span><span class="n">interp</span><span class="o">&gt;</span></code>. It never creates the venv for you.</li>
-</ul>
-<h2 id="strategy-3-conda-environment">Strategy 3 — Conda environment<a class="headerlink" href="#strategy-3-conda-environment" title="Permanent link">&para;</a></h2>
+<h2 id="strategy-2-conda">Strategy 2 — <code class="language-python highlight"><span class="n">conda</span></code><a class="headerlink" href="#strategy-2-conda" title="Permanent link">&para;</a></h2>
 <p>Point <code class="language-python highlight"><span class="n">arxpm</span></code> at an existing conda (or mamba) environment by name or prefix:</p>
 <div class="language-toml highlight"><pre><span></span><code><span class="k">[environment]</span>
 <span class="n">kind</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;conda&quot;</span>
@@ -749,6 +736,17 @@ match what you'd write by hand.</p>
   <code class="language-python highlight"><span class="n">conda</span> <span class="n">run</span> <span class="o">-</span><span class="n">n</span> <span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">python</span> <span class="o">-</span><span class="n">c</span> <span class="s2">&quot;import sys; print(sys.executable)&quot;</span></code> to locate
   the interpreter, then installs via <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">python</span> <span class="o">&lt;</span><span class="n">interp</span><span class="o">&gt;</span></code>.</li>
 <li><code class="language-python highlight"><span class="n">conda</span></code> must be on PATH when only <code class="language-python highlight"><span class="n">name</span></code> is provided.</li>
+</ul>
+<h2 id="strategy-3-system">Strategy 3 — <code class="language-python highlight"><span class="n">system</span></code><a class="headerlink" href="#strategy-3-system" title="Permanent link">&para;</a></h2>
+<p>Use the Python interpreter that is already running <code class="language-python highlight"><span class="n">arxpm</span></code>.</p>
+<div class="language-toml highlight"><pre><span></span><code><span class="k">[environment]</span>
+<span class="n">kind</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;system&quot;</span>
+</code></pre></div>
+<p>Behavior:</p>
+<ul>
+<li><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code> installs packages into the current Python environment using
+  <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">python</span> <span class="o">&lt;</span><span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="o">&gt;</span> <span class="o">...</span></code>.</li>
+<li><code class="language-python highlight"><span class="n">path</span></code> and <code class="language-python highlight"><span class="n">name</span></code> are not allowed for this mode.</li>
 </ul>
 <h2 id="why-uv">Why uv?<a class="headerlink" href="#why-uv" title="Permanent link">&para;</a></h2>
 <p><code class="language-python highlight"><span class="n">uv</span></code> is used as the package installer for every strategy. It is fast, it does

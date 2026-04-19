@@ -680,8 +680,8 @@
 <li><code class="language-python highlight"><span class="n">arx</span></code> is compiler-only.</li>
 <li><code class="language-python highlight"><span class="n">arxpm</span></code> is the user-facing workflow tool.</li>
 <li>Python environments are backend-neutral: a project can use a project-local
-  venv (default), an existing venv, or a conda environment. <code class="language-python highlight"><span class="n">uv</span></code> is used to
-  install packages in all cases.</li>
+  venv (default), a conda environment, or the current system interpreter. <code class="language-python highlight"><span class="n">uv</span></code>
+  is used to install packages in all cases.</li>
 </ul>
 <p>Arx projects use <code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code> as their project manifest. Python packaging
 is only for distributing <code class="language-python highlight"><span class="n">arxpm</span></code> itself.</p>
@@ -696,8 +696,8 @@ is only for distributing <code class="language-python highlight"><span class="n"
 <li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">models</span><span class="o">.</span><span class="n">py</span></code>: typed manifest models.</li>
 <li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">manifest</span><span class="o">.</span><span class="n">py</span></code>: parse/render <code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code>.</li>
 <li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">_toml</span><span class="o">.</span><span class="n">py</span></code>: TOML parser compatibility shim (<code class="language-python highlight"><span class="n">tomllib</span></code>/<code class="language-python highlight"><span class="n">tomli</span></code>).</li>
-<li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">environment</span><span class="o">.</span><span class="n">py</span></code>: environment runtime abstraction and the
-  managed-venv, existing-venv, and conda implementations.</li>
+<li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">environment</span><span class="o">.</span><span class="n">py</span></code>: environment runtime abstraction and the <code class="language-python highlight"><span class="n">venv</span></code>,
+  <code class="language-python highlight"><span class="n">conda</span></code>, and <code class="language-python highlight"><span class="n">system</span></code> implementations.</li>
 <li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">project</span><span class="o">.</span><span class="n">py</span></code>: <code class="language-python highlight"><span class="n">init</span></code>, <code class="language-python highlight"><span class="n">add</span></code>, <code class="language-python highlight"><span class="n">install</span></code>, <code class="language-python highlight"><span class="n">build</span></code>, <code class="language-python highlight"><span class="n">run</span></code>, <code class="language-python highlight"><span class="n">pack</span></code>,
   <code class="language-python highlight"><span class="n">publish</span></code>.</li>
 <li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">healthcheck</span><span class="o">.</span><span class="n">py</span></code>: environment and manifest checks.</li>
@@ -707,6 +707,7 @@ is only for distributing <code class="language-python highlight"><span class="n"
 <div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>init<span class="w"> </span>--name<span class="w"> </span>hello-arx
 arxpm<span class="w"> </span>add<span class="w"> </span>http
 arxpm<span class="w"> </span>install
+arxpm<span class="w"> </span>install<span class="w"> </span>--group<span class="w"> </span>dev
 arxpm<span class="w"> </span>build
 arxpm<span class="w"> </span>compile
 arxpm<span class="w"> </span>run

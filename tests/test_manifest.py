@@ -16,6 +16,7 @@ from arxpm.manifest import (
     save_manifest_file,
 )
 from arxpm.models import (
+    DependencyGroupInclude,
     DependencySpec,
     EnvironmentConfig,
     Manifest,
@@ -71,20 +72,22 @@ linker = "clang"
     )
 
 
-def test_manifest_rejects_arxpm_table(tmp_path: Path) -> None:
+def test_manifest_rejects_unknown_top_level_table(tmp_path: Path) -> None:
     content = """
 [project]
 name = "legacy"
 version = "0.1.0"
 edition = "2026"
 
-[arxpm.dependencies-dev]
-dependencies = ["makim"]
+[arxpm]
+resolver = "future"
 """.strip()
     path = tmp_path / ".arxproject.toml"
     path.write_text(content + "\n", encoding="utf-8")
 
-    with pytest.raises(ManifestError, match="package-manager-specific"):
+    with pytest.raises(
+        ManifestError, match=r"does not support \[arxpm\] sections"
+    ):
         load_manifest_file(path)
 
 
@@ -101,7 +104,9 @@ http = { source = "registry" }
     path = tmp_path / ".arxproject.toml"
     path.write_text(content + "\n", encoding="utf-8")
 
-    with pytest.raises(ManifestError, match="no longer supported"):
+    with pytest.raises(
+        ManifestError, match=r"Additional properties are not allowed"
+    ):
         load_manifest_file(path)
 
 
@@ -137,6 +142,31 @@ def test_manifest_round_trip_preserves_dependencies(tmp_path: Path) -> None:
     assert loaded.dependencies["pyyaml"].kind == "registry"
     assert loaded.dependencies["local_lib"].path == "../local_lib"
     assert loaded.dependencies["utils"].git == "https://example.com/utils.git"
+
+
+def test_manifest_round_trip_preserves_dependency_groups(
+    tmp_path: Path,
+) -> None:
+    manifest = Manifest(
+        project=ProjectConfig(name="demo"),
+        dependency_groups={
+            "lint": ("ruff",),
+            "dev-test": (
+                DependencyGroupInclude("lint"),
+                "pytest",
+            ),
+        },
+    )
+    path = tmp_path / ".arxproject.toml"
+    path.write_text(render_manifest(manifest), encoding="utf-8")
+
+    loaded = load_manifest_file(path)
+
+    assert loaded.dependency_groups["lint"] == ("ruff",)
+    dev_test = loaded.dependency_groups["dev-test"]
+    assert isinstance(dev_test[0], DependencyGroupInclude)
+    assert dev_test[0].include_group == "lint"
+    assert dev_test[1] == "pytest"
 
 
 def _write_manifest(tmp_path: Path, body: str) -> Path:
@@ -193,7 +223,9 @@ name = "nope"
 """
     path = _write_manifest(tmp_path, body)
 
-    with pytest.raises(ManifestError, match="kind is 'venv'"):
+    with pytest.raises(
+        ManifestError, match=r'kind="venv" does not support "name"'
+    ):
         load_manifest_file(path)
 
 
@@ -205,7 +237,10 @@ kind = "conda"
 """
     path = _write_manifest(tmp_path, body)
 
-    with pytest.raises(ManifestError, match="kind is 'conda'"):
+    with pytest.raises(
+        ManifestError,
+        match=r'kind="conda" requires at least one of "name" or "path"',
+    ):
         load_manifest_file(path)
 
 
@@ -232,7 +267,9 @@ path = "/usr/bin/python"
 """
     path = _write_manifest(tmp_path, body)
 
-    with pytest.raises(ManifestError, match="kind is 'system'"):
+    with pytest.raises(
+        ManifestError, match=r'kind="system" does not support "path"'
+    ):
         load_manifest_file(path)
 
 
@@ -258,7 +295,7 @@ kind = "bogus"
 """
     path = _write_manifest(tmp_path, body)
 
-    with pytest.raises(ManifestError, match="environment.kind"):
+    with pytest.raises(ManifestError, match=r"'bogus' is not one of"):
         load_manifest_file(path)
 
 

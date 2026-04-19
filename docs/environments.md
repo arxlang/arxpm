@@ -8,15 +8,15 @@ you point it at.
 Three strategies are supported out of the box, each declared in
 `.arxproject.toml` via the `[environment]` table.
 
-## Strategy 1 — Managed venv (default)
+## Strategy 1 — `venv` (default)
 
-`arxpm` creates and maintains a project-local virtual environment using
-`uv venv`. This is the default when `.arxproject.toml` has no `[environment]`
-section.
+`arxpm` uses a virtual environment declared by `kind = "venv"`. When `path` is
+omitted, `arxpm` treats it as a project-local `.venv` and creates it with
+`uv venv` if needed.
 
 ```toml
 [environment]
-kind = "managed-venv"
+kind = "venv"
 path = ".venv"   # optional; defaults to ".venv"
 ```
 
@@ -30,24 +30,7 @@ Behavior:
 Omit the whole `[environment]` section for the simplest projects — the defaults
 match what you'd write by hand.
 
-## Strategy 2 — Existing venv
-
-Reuse a virtual environment that you manage yourself (for example, a team-wide
-`.venv` or an IDE-managed interpreter):
-
-```toml
-[environment]
-kind = "existing-venv"
-path = ".venv"   # required; relative to the project root or absolute
-```
-
-Behavior:
-
-- `arxpm install` validates that `<path>` is a directory with a usable
-  `bin/python` (Windows: `Scripts/python.exe`) and installs packages via
-  `uv pip install --python <interp>`. It never creates the venv for you.
-
-## Strategy 3 — Conda environment
+## Strategy 2 — `conda`
 
 Point `arxpm` at an existing conda (or mamba) environment by name or prefix:
 
@@ -66,6 +49,21 @@ Behavior:
   `conda run -n <name> python -c "import sys; print(sys.executable)"` to locate
   the interpreter, then installs via `uv pip install --python <interp>`.
 - `conda` must be on PATH when only `name` is provided.
+
+## Strategy 3 — `system`
+
+Use the Python interpreter that is already running `arxpm`.
+
+```toml
+[environment]
+kind = "system"
+```
+
+Behavior:
+
+- `arxpm install` installs packages into the current Python environment using
+  `uv pip install --python <sys.executable> ...`.
+- `path` and `name` are not allowed for this mode.
 
 ## Why uv?
 

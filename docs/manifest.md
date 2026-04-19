@@ -9,7 +9,6 @@ Arx projects are described by `.arxproject.toml`.
 name = "hello-arx"
 version = "0.1.0"
 edition = "2026"
-
 dependencies = []
 
 [build]
@@ -35,7 +34,7 @@ a `lib/` folder. Cross-project tooling (`arxpm build`, `arxpm pack`) uses
 `<src_dir>/<entry>` internally and strips `src_dir` when bundling for
 publication, so published modules always appear flat under their package name.
 
-## Dependency Forms (v0)
+## Runtime Dependencies
 
 Runtime dependencies live in the `project.dependencies` array and use PEP
 508-style strings. `arxpm` supports three shapes:
@@ -69,39 +68,59 @@ registry dependencies are installed with `uv pip install <name>`, path
 dependencies with `uv pip install <path>`, and git dependencies with
 `uv pip install git+<url>`.
 
-## Dev Dependencies
+## Dependency Groups
 
-Tools that are only needed while developing the project (test runners, task
-runners, linters) go in a dedicated `[arxpm.dependencies-dev]` table and are
-only installed when you opt in with `arxpm install --dev`:
+Non-runtime workflow dependencies such as test, lint, and docs tools live in the
+top-level `[dependency-groups]` table.
 
 ```toml
-[arxpm.dependencies-dev]
-dependencies = [
-  "makim",
+[dependency-groups]
+dev = [
+  "pytest",
+  "ruff",
+]
+docs = [
+  "mkdocs",
 ]
 ```
+
+Groups can include other groups using `include-group` entries:
+
+```toml
+[dependency-groups]
+lint = [
+  "ruff",
+  "mypy",
+]
+dev = [
+  { include-group = "lint" },
+  "pytest",
+]
+```
+
+`arxpm install --group dev` resolves the selected group plus any nested
+includes. Group names are matched using the same normalized form as
+`arx.settings`, so names like `Dev_Test`, `dev-test`, and `dev.test` refer to
+the same logical group.
 
 ## Environment
 
 The `[environment]` table controls how `arxpm install` obtains a Python
 environment for the project. It is optional — when absent, `arxpm` behaves as if
-`kind = "managed-venv"` with `path = ".venv"` had been declared.
+`kind = "venv"` with `path = ".venv"` had been declared.
 
 ```toml
 [environment]
-kind = "managed-venv"      # managed-venv | existing-venv | conda
-path = ".venv"              # optional for managed-venv and conda
-name = "my-conda-env"       # required when kind = "conda" and no path
+kind = "venv"               # venv | conda | system
+path = ".venv"              # optional for venv and conda
+name = "my-conda-env"       # optional for conda when path is omitted
 ```
 
 Validation rules:
 
-- `managed-venv`: `name` is not allowed. `path` defaults to `".venv"`.
-- `existing-venv`: `path` is required, `name` is not allowed. The path must
-  resolve to an existing venv at `arxpm install` time (not at parse time, so
-  manifests stay portable).
+- `venv`: `name` is not allowed. `path` defaults to `".venv"`.
 - `conda`: at least one of `name` or `path` is required.
+- `system`: neither `path` nor `name` is allowed.
 - Any other `kind` value is rejected with a manifest error.
 
 See [Environments](environments.md) for how each strategy behaves at runtime.

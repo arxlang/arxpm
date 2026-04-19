@@ -12,6 +12,8 @@ from typing import Any
 from arxpm.errors import ManifestError
 
 _NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_\-]*$")
+_GROUP_NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+_GROUP_NORMALIZE_PATTERN = re.compile(r"[-_.]+")
 
 ENVIRONMENT_KINDS = ("venv", "conda", "system")
 DEFAULT_VENV_PATH = ".venv"
@@ -315,6 +317,21 @@ class DependencySpec:
         raise ManifestError("invalid dependency state")
 
 
+@dataclass(slots=True, frozen=True)
+class DependencyGroupInclude:
+    """
+    title: Include one named dependency group inside another group.
+    attributes:
+      include_group:
+        type: str
+    """
+
+    include_group: str
+
+
+DependencyGroupEntry = str | DependencyGroupInclude
+
+
 @dataclass(slots=True)
 class Manifest:
     """
@@ -326,8 +343,8 @@ class Manifest:
         type: BuildConfig
       dependencies:
         type: dict[str, DependencySpec]
-      dev_dependencies:
-        type: dict[str, DependencySpec]
+      dependency_groups:
+        type: dict[str, tuple[DependencyGroupEntry, Ellipsis]]
       toolchain:
         type: ToolchainConfig
       environment:
@@ -337,7 +354,9 @@ class Manifest:
     project: ProjectConfig
     build: BuildConfig = field(default_factory=BuildConfig)
     dependencies: dict[str, DependencySpec] = field(default_factory=dict)
-    dev_dependencies: dict[str, DependencySpec] = field(default_factory=dict)
+    dependency_groups: dict[str, tuple[DependencyGroupEntry, ...]] = field(
+        default_factory=dict
+    )
     toolchain: ToolchainConfig = field(default_factory=ToolchainConfig)
     environment: EnvironmentConfig = field(
         default_factory=EnvironmentConfig.default,
@@ -372,10 +391,19 @@ class Manifest:
                 'strings (e.g. dependencies = ["pyyaml", '
                 '"local_lib @ ../local_lib"])'
             )
-        if "arxpm" in raw:
+
+        allowed_top_level = {
+            "project",
+            "build",
+            "toolchain",
+            "environment",
+            "dependency-groups",
+        }
+        extra_top_level = set(raw.keys()) - allowed_top_level
+        if extra_top_level:
+            unknown = ", ".join(sorted(extra_top_level))
             raise ManifestError(
-                "package-manager-specific [arxpm] tables are not supported; "
-                "move dependencies into project.dependencies"
+                f"manifest has unknown top-level keys: {unknown}"
             )
 
         project_raw = _require_table(raw, "project")
@@ -446,12 +474,16 @@ class Manifest:
             "project.dependencies",
         )
 
+        dependency_groups = _parse_dependency_groups(
+            raw.get("dependency-groups")
+        )
         environment = _parse_environment(raw.get("environment"))
 
         return cls(
             project=project,
             build=build,
             dependencies=dependencies,
+            dependency_groups=dependency_groups,
             toolchain=toolchain,
             environment=environment,
         )
@@ -483,6 +515,18 @@ class Manifest:
                 "linker": self.toolchain.linker,
             },
         }
+        if self.dependency_groups:
+            data["dependency-groups"] = {
+                name: [
+                    (
+                        {"include-group": entry.include_group}
+                        if isinstance(entry, DependencyGroupInclude)
+                        else entry
+                    )
+                    for entry in entries
+                ]
+                for name, entries in self.dependency_groups.items()
+            }
         if not self.environment.is_default():
             env_data: dict[str, Any] = {"kind": self.environment.kind}
             if self.environment.path is not None:
@@ -600,3 +644,98 @@ def _optional_string(
     if not isinstance(value, str) or not value.strip():
         raise ManifestError(f"{section}.{key} must be a non-empty string")
     return value
+
+
+def _parse_dependency_groups(
+    raw: Any,
+) -> dict[str, tuple[DependencyGroupEntry, ...]]:
+    if raw is None:
+        return {}
+    if not isinstance(raw, Mapping):
+        raise ManifestError("dependency-groups must be a table")
+
+    normalized_names: dict[str, str] = {}
+    parsed: dict[str, tuple[DependencyGroupEntry, ...]] = {}
+    for group_name, raw_entries in raw.items():
+        if not isinstance(group_name, str):
+            raise ManifestError("dependency-groups keys must be strings")
+        _validate_group_name(
+            group_name, f"dependency-groups key {group_name!r}"
+        )
+        normalized = _normalize_group_name(group_name)
+        if normalized in normalized_names:
+            raise ManifestError(
+                "dependency-groups names must be unique after normalization: "
+                f"{group_name!r} conflicts with "
+                f"{normalized_names[normalized]!r}"
+            )
+        normalized_names[normalized] = group_name
+        parsed[group_name] = _parse_dependency_group_entries(
+            group_name,
+            raw_entries,
+        )
+
+    for group_name, entries in parsed.items():
+        for index, entry in enumerate(entries):
+            if not isinstance(entry, DependencyGroupInclude):
+                continue
+            normalized = _normalize_group_name(entry.include_group)
+            if normalized not in normalized_names:
+                raise ManifestError(
+                    "dependency-groups."
+                    f"{group_name}[{index}] includes unknown group "
+                    f"{entry.include_group!r}"
+                )
+
+    return parsed
+
+
+def _parse_dependency_group_entries(
+    group_name: str,
+    raw: Any,
+) -> tuple[DependencyGroupEntry, ...]:
+    if isinstance(raw, str) or isinstance(raw, Mapping):
+        raise ManifestError(f"dependency-groups.{group_name} must be an array")
+    if not isinstance(raw, Sequence):
+        raise ManifestError(f"dependency-groups.{group_name} must be an array")
+
+    entries: list[DependencyGroupEntry] = []
+    for index, entry in enumerate(raw):
+        if isinstance(entry, str):
+            DependencySpec.parse_requirement(entry)
+            entries.append(entry)
+            continue
+        if not isinstance(entry, Mapping):
+            raise ManifestError(
+                "dependency-groups."
+                f"{group_name}[{index}] must be a string or "
+                '{"include-group" = "name"}'
+            )
+        keys = set(entry.keys())
+        if keys != {"include-group"}:
+            raise ManifestError(
+                "dependency-groups."
+                f"{group_name}[{index}] must only use include-group"
+            )
+        include_group = entry.get("include-group")
+        if not isinstance(include_group, str):
+            raise ManifestError(
+                "dependency-groups."
+                f"{group_name}[{index}].include-group must be a string"
+            )
+        _validate_group_name(
+            include_group,
+            f"dependency-groups.{group_name}[{index}].include-group",
+        )
+        entries.append(DependencyGroupInclude(include_group))
+    return tuple(entries)
+
+
+def _validate_group_name(name: str, location: str) -> None:
+    if _GROUP_NAME_PATTERN.fullmatch(name) is not None:
+        return
+    raise ManifestError(f"{location} must match [A-Za-z0-9][A-Za-z0-9._-]*")
+
+
+def _normalize_group_name(name: str) -> str:
+    return _GROUP_NORMALIZE_PATTERN.sub("-", name).lower()

@@ -22,6 +22,21 @@ def _fail(error: Exception) -> NoReturn:
     raise typer.Exit(code=1)
 
 
+def _parse_group_options(
+    group: list[str] | None,
+    dev: bool,
+) -> list[str]:
+    selected: list[str] = []
+    for raw_value in group or []:
+        for item in raw_value.split(","):
+            name = item.strip()
+            if name:
+                selected.append(name)
+    if dev:
+        selected.append("dev")
+    return selected
+
+
 def _resolve(directory: Path) -> Path:
     return directory.resolve()
 
@@ -110,11 +125,21 @@ def install(
         Path,
         typer.Option("--directory", "-C", help="Project directory."),
     ] = Path("."),
+    group: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--group",
+            help=(
+                "Install one or more dependency groups. Repeat the flag "
+                "or use comma-separated names."
+            ),
+        ),
+    ] = None,
     dev: Annotated[
         bool,
         typer.Option(
             "--dev/--no-dev",
-            help="Reserved for future use; currently has no effect.",
+            help="Alias for --group dev.",
         ),
     ] = False,
 ) -> None:
@@ -125,14 +150,22 @@ def install(
         type: >-
           Annotated[Path, typer.Option('--directory', '-C', help='Project
           directory.')]
+      group:
+        type: >-
+          Annotated[list[str] | None, typer.Option('--group', help='Install one
+          or more dependency groups. Repeat the flag or use comma-separated
+          names.')]
       dev:
         type: >-
-          Annotated[bool, typer.Option('--dev/--no-dev', help='Reserved for
-          future use; currently has no effect.')]
+          Annotated[bool, typer.Option('--dev/--no-dev', help='Alias for
+          --group dev.')]
     """
     project_service = ProjectService()
     try:
-        project_service.install(_resolve(directory), dev=dev)
+        project_service.install(
+            _resolve(directory),
+            groups=_parse_group_options(group, dev),
+        )
     except ArxpmError as exc:
         _fail(exc)
 

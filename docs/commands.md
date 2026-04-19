@@ -7,8 +7,9 @@ Create a new project in the target directory.
 ```bash
 arxpm init --name hello-arx
 arxpm init --directory ./my-project
-arxpm init --env-kind existing-venv --env-path ./shared-venv
+arxpm init --env-kind venv --env-path ./shared-venv
 arxpm init --env-kind conda --env-name myproject-env
+arxpm init --env-kind system
 ```
 
 Effects:
@@ -38,6 +39,9 @@ install dependencies with `uv`.
 ```bash
 arxpm install
 arxpm install --directory examples
+arxpm install --group dev
+arxpm install --group dev,docs
+arxpm install --group dev --group docs
 arxpm install --dev
 ```
 
@@ -47,6 +51,10 @@ Dependency entries are installed as follows:
 - path: `uv pip install <path>` (non-Arx paths) or pack+install+symlink flow
   (Arx libraries with an `.arxproject.toml`)
 - git: `uv pip install git+<url>`
+
+`--group` selects one or more dependency groups from `[dependency-groups]`.
+Repeat the flag or pass comma-separated names. `--dev` is a convenience alias
+for selecting the `dev` group.
 
 ## `arxpm build`
 

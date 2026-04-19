@@ -170,7 +170,6 @@ def test_healthcheck_reports_broken_venv(tmp_path: Path) -> None:
         project=manifest.project,
         build=manifest.build,
         dependencies=manifest.dependencies,
-        dev_dependencies=manifest.dev_dependencies,
         toolchain=manifest.toolchain,
         environment=EnvironmentConfig(
             kind="venv",
@@ -186,3 +185,22 @@ def test_healthcheck_reports_broken_venv(tmp_path: Path) -> None:
     assert report.ok is False
     assert checks["environment"].ok is False
     assert "venv" in checks["environment"].message
+
+
+def test_healthcheck_reports_manifest_parse_failure(tmp_path: Path) -> None:
+    (tmp_path / ".arxproject.toml").write_text(
+        '[project]\nname = "demo"\n',
+        encoding="utf-8",
+    )
+    service = HealthCheckService(
+        environment_factory=_stub_factory("venv"),
+        which=_which_all,
+    )
+
+    report = service.run(tmp_path)
+    checks = {check.name: check for check in report.checks}
+
+    assert report.ok is False
+    assert checks[".arxproject.toml"].ok is True
+    assert checks["manifest parsing"].ok is False
+    assert "version" in checks["manifest parsing"].message

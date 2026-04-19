@@ -12,8 +12,8 @@ from conftest import FakeEnvironment, FakeRunner
 
 from arxpm.environment import EnvironmentFactory, EnvironmentRuntime
 from arxpm.errors import ManifestError
-from arxpm.manifest import load_manifest
-from arxpm.models import Manifest
+from arxpm.manifest import load_manifest, save_manifest
+from arxpm.models import DependencyGroupInclude, Manifest
 from arxpm.project import ProjectService
 
 
@@ -91,6 +91,41 @@ def test_install_dispatches_dependencies_through_environment(
     assert requirements == [
         ("http", "git+https://example.com/utils.git"),
     ]
+
+
+def test_install_includes_selected_dependency_groups(
+    tmp_path: Path,
+) -> None:
+    env = FakeEnvironment()
+    service = ProjectService(environment_factory=_factory(env))
+    service.init(tmp_path, name="demo")
+
+    manifest = load_manifest(tmp_path)
+    manifest.dependency_groups = {
+        "lint": ("ruff",),
+        "Dev_Test": (DependencyGroupInclude("lint"), "pytest"),
+    }
+    save_manifest(tmp_path, manifest)
+
+    service.install(tmp_path, groups=("dev-test",))
+
+    requirements = [call[0] for call in env.install_calls]
+    assert requirements == [("pytest", "ruff")]
+
+
+def test_install_dev_alias_selects_dev_group(tmp_path: Path) -> None:
+    env = FakeEnvironment()
+    service = ProjectService(environment_factory=_factory(env))
+    service.init(tmp_path, name="demo")
+
+    manifest = load_manifest(tmp_path)
+    manifest.dependency_groups = {"dev": ("pytest",)}
+    save_manifest(tmp_path, manifest)
+
+    service.install(tmp_path, dev=True)
+
+    requirements = [call[0] for call in env.install_calls]
+    assert requirements == [("pytest",)]
 
 
 def test_publish_builds_and_uploads_artifacts(tmp_path: Path) -> None:
@@ -241,3 +276,69 @@ def test_install_rejects_arx_path_dep_name_mismatch(tmp_path: Path) -> None:
 
     with pytest.raises(ManifestError, match="must match the library"):
         service.install(consumer_dir)
+
+
+def test_install_rejects_unknown_dependency_group(tmp_path: Path) -> None:
+    env = FakeEnvironment()
+    service = ProjectService(environment_factory=_factory(env))
+    service.init(tmp_path, name="demo")
+
+    with pytest.raises(ManifestError, match="unknown dependency group"):
+        service.install(tmp_path, groups=("docs",))
+
+
+def test_save_manifest_rejects_dependency_group_include_cycles(
+    tmp_path: Path,
+) -> None:
+    env = FakeEnvironment()
+    service = ProjectService(environment_factory=_factory(env))
+    service.init(tmp_path, name="demo")
+
+    manifest = load_manifest(tmp_path)
+    manifest.dependency_groups = {
+        "dev": (DependencyGroupInclude("lint"),),
+        "lint": (DependencyGroupInclude("dev"),),
+    }
+
+    with pytest.raises(ManifestError, match="must not form cycles"):
+        save_manifest(tmp_path, manifest)
+
+
+def test_install_rejects_conflicts_between_base_and_group_dependencies(
+    tmp_path: Path,
+) -> None:
+    env = FakeEnvironment()
+    service = ProjectService(environment_factory=_factory(env))
+    service.init(tmp_path, name="demo")
+    service.add_dependency(tmp_path, "http")
+
+    manifest = load_manifest(tmp_path)
+    manifest.dependency_groups = {
+        "dev": ("http @ ../http-local",),
+    }
+    save_manifest(tmp_path, manifest)
+
+    with pytest.raises(ManifestError, match="defines conflicting entries"):
+        service.install(tmp_path, groups=("dev",))
+
+
+def test_install_rejects_conflicts_across_included_groups(
+    tmp_path: Path,
+) -> None:
+    env = FakeEnvironment()
+    service = ProjectService(environment_factory=_factory(env))
+    service.init(tmp_path, name="demo")
+
+    manifest = load_manifest(tmp_path)
+    manifest.dependency_groups = {
+        "lint": ("ruff",),
+        "docs": ("ruff @ ../ruff-local",),
+        "dev": (
+            DependencyGroupInclude("lint"),
+            DependencyGroupInclude("docs"),
+        ),
+    }
+    save_manifest(tmp_path, manifest)
+
+    with pytest.raises(ManifestError, match="defines conflicting entries"):
+        service.install(tmp_path, groups=("dev",))

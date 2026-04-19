@@ -4,11 +4,12 @@ title: Read and write .arxproject.toml manifests.
 
 from __future__ import annotations
 
-import json
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Protocol, cast
+from typing import Any, cast
 
-from arxpm._toml import tomllib
+import arx.settings as arx_settings
+
 from arxpm.errors import ManifestError
 from arxpm.models import (
     BuildConfig,
@@ -20,34 +21,7 @@ from arxpm.models import (
     ToolchainConfig,
 )
 
-ArxProject = Any
-
-
-class _SettingsLoader(Protocol):
-    def __call__(
-        self,
-        content: str,
-        source_path: Path | None = None,
-    ) -> ArxProject: ...
-
-
-try:
-    from arx.settings import (
-        DEFAULT_CONFIG_FILENAME as _DEFAULT_CONFIG_FILENAME,
-    )
-    from arx.settings import ArxProjectError as _ArxProjectError
-    from arx.settings import (
-        load_settings_from_text as _load_settings_from_text,
-    )
-except ImportError:  # pragma: no cover - compatibility fallback
-    MANIFEST_FILENAME = ".arxproject.toml"
-    ArxProjectError: type[Exception] = Exception
-    load_settings_from_text: _SettingsLoader | None = None
-else:
-    MANIFEST_FILENAME = _DEFAULT_CONFIG_FILENAME
-    ArxProjectError = cast(type[Exception], _ArxProjectError)
-    load_settings_from_text = cast(_SettingsLoader, _load_settings_from_text)
-
+MANIFEST_FILENAME = arx_settings.DEFAULT_CONFIG_FILENAME
 _DEFAULT_EDITION = "2026"
 
 
@@ -96,41 +70,10 @@ def load_manifest_file(path: Path) -> Manifest:
     returns:
       type: Manifest
     """
-    if not path.exists():
-        raise ManifestError(f"manifest not found: {path}")
-
-    raw = _load_raw_manifest(path)
-    manifest = _load_manifest_with_arx_settings(path)
-    if manifest is not None:
-        return manifest
-    return Manifest.from_dict(raw)
-
-
-def _load_raw_manifest(path: Path) -> dict[str, Any]:
     try:
-        with path.open("rb") as stream:
-            data = tomllib.load(stream)
-    except tomllib.TOMLDecodeError as exc:
-        raise ManifestError(f"invalid TOML in {path}: {exc}") from exc
-
-    if not isinstance(data, dict):
-        raise ManifestError("manifest root must be a TOML table")
-    return data
-
-
-def _load_manifest_with_arx_settings(path: Path) -> Manifest | None:
-    if load_settings_from_text is None:
-        return None
-
-    content = path.read_text(encoding="utf-8")
-    try:
-        settings = load_settings_from_text(
-            content,
-            source_path=path.resolve(),
-        )
-    except ArxProjectError:
-        return None
-
+        settings = cast(Any, arx_settings.load_settings(path))
+    except arx_settings.ArxProjectError as exc:
+        raise ManifestError(str(exc)) from exc
     return _manifest_from_settings(settings)
 
 
@@ -160,7 +103,7 @@ def save_manifest_file(manifest: Manifest, path: Path) -> None:
         type: Path
     """
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(render_manifest(manifest), encoding="utf-8")
+    arx_settings.write_settings(_settings_from_manifest(manifest), path)
 
 
 def render_manifest(manifest: Manifest) -> str:
@@ -172,51 +115,10 @@ def render_manifest(manifest: Manifest) -> str:
     returns:
       type: str
     """
-    lines: list[str] = [
-        "[project]",
-        f"name = {_quote(manifest.project.name)}",
-        f"version = {_quote(manifest.project.version)}",
-        f"edition = {_quote(manifest.project.edition)}",
-    ]
-    lines.extend(
-        _render_requirements_array(
-            "dependencies",
-            manifest.dependencies,
-        )
-    )
-    lines.extend(
-        [
-            "",
-            "[build]",
-            f"src_dir = {_quote(manifest.build.src_dir)}",
-            f"entry = {_quote(manifest.build.entry)}",
-            f"out_dir = {_quote(manifest.build.out_dir)}",
-            "",
-            "[toolchain]",
-            f"compiler = {_quote(manifest.toolchain.compiler)}",
-            f"linker = {_quote(manifest.toolchain.linker)}",
-        ]
-    )
-    if manifest.dependency_groups:
-        lines.extend(["", "[dependency-groups]"])
-        for group_name, entries in manifest.dependency_groups.items():
-            lines.extend(_render_dependency_group_array(group_name, entries))
-    if not manifest.environment.is_default():
-        lines.extend(
-            [
-                "",
-                "[environment]",
-                f"kind = {_quote(manifest.environment.kind)}",
-            ]
-        )
-        if manifest.environment.path is not None:
-            lines.append(f"path = {_quote(manifest.environment.path)}")
-        if manifest.environment.name is not None:
-            lines.append(f"name = {_quote(manifest.environment.name)}")
-    return "\n".join(lines) + "\n"
+    return arx_settings.dump_settings(_settings_from_manifest(manifest))
 
 
-def _manifest_from_settings(settings: ArxProject) -> Manifest:
+def _manifest_from_settings(settings: Any) -> Manifest:
     project = ProjectConfig(
         name=settings.project.name,
         version=settings.project.version,
@@ -268,7 +170,7 @@ def _manifest_from_settings(settings: ArxProject) -> Manifest:
             name=settings.environment.name,
         )
 
-    dependencies = _parse_settings_dependency_group(
+    dependencies = _parse_settings_dependencies(
         settings.project.dependencies,
     )
 
@@ -277,14 +179,64 @@ def _manifest_from_settings(settings: ArxProject) -> Manifest:
         build=build,
         dependencies=dependencies,
         dependency_groups=_convert_dependency_groups(
-            settings.dependency_groups,
+            cast(
+                dict[str, tuple[object, ...]],
+                getattr(settings, "dependency_groups", {}),
+            ),
         ),
         toolchain=toolchain,
         environment=environment,
     )
 
 
-def _parse_settings_dependency_group(
+def _settings_from_manifest(manifest: Manifest) -> Any:
+    project = cast(Any, arx_settings.Project)(
+        name=manifest.project.name,
+        version=manifest.project.version,
+        edition=manifest.project.edition,
+        dependencies=tuple(
+            spec.to_requirement_string(name)
+            for name, spec in sorted(manifest.dependencies.items())
+        ),
+    )
+
+    build = cast(Any, arx_settings.Build)(
+        src_dir=manifest.build.src_dir,
+        entry=manifest.build.entry,
+        out_dir=manifest.build.out_dir,
+    )
+    toolchain = cast(Any, arx_settings.Toolchain)(
+        compiler=manifest.toolchain.compiler,
+        linker=manifest.toolchain.linker,
+    )
+
+    environment: Any | None = None
+    if not manifest.environment.is_default():
+        environment = cast(Any, arx_settings.Environment)(
+            kind=manifest.environment.kind,
+            path=manifest.environment.path,
+            name=manifest.environment.name,
+        )
+
+    project_kwargs: dict[str, Any] = {
+        "project": project,
+        "build": build,
+        "toolchain": toolchain,
+        "environment": environment,
+    }
+    if manifest.dependency_groups:
+        if not _supports_settings_dependency_groups():
+            raise ManifestError(
+                "installed arx.settings does not support dependency-groups"
+            )
+        project_kwargs["dependency_groups"] = _settings_dependency_groups(
+            manifest.dependency_groups,
+        )
+
+    return cast(Any, arx_settings.ArxProject)(**project_kwargs)
+
+
+def _parse_settings_dependencies(
     dependencies: tuple[str, ...],
 ) -> dict[str, DependencySpec]:
     parsed: dict[str, DependencySpec] = {}
@@ -316,44 +268,40 @@ def _convert_dependency_groups(
     return converted
 
 
-def _render_dependency_group_array(
-    name: str,
-    entries: tuple[object, ...],
-) -> list[str]:
-    if not entries:
-        return [f"{name} = []"]
-    lines = [f"{name} = ["]
-    for entry in entries:
-        if isinstance(entry, str):
-            lines.append(f"  {_quote(entry)},")
-            continue
-        if isinstance(entry, DependencyGroupInclude):
-            lines.append(
-                f"  {{ include-group = {_quote(entry.include_group)} }},"
+def _settings_dependency_groups(
+    dependency_groups: Mapping[str, tuple[str | DependencyGroupInclude, ...]],
+) -> dict[str, tuple[object, ...]]:
+    converted: dict[str, tuple[object, ...]] = {}
+    for group_name, entries in dependency_groups.items():
+        rendered_entries: list[object] = []
+        for entry in entries:
+            if isinstance(entry, str):
+                rendered_entries.append(entry)
+                continue
+            if isinstance(entry, DependencyGroupInclude):
+                rendered_entries.append(
+                    _make_settings_dependency_group_include(
+                        entry.include_group
+                    )
+                )
+                continue
+            raise ManifestError(
+                "unsupported dependency group entry for "
+                f"{group_name!r}: {entry!r}"
             )
-            continue
+        converted[group_name] = tuple(rendered_entries)
+    return converted
+
+
+def _supports_settings_dependency_groups() -> bool:
+    annotations = getattr(arx_settings.ArxProject, "__annotations__", {})
+    return "dependency_groups" in annotations
+
+
+def _make_settings_dependency_group_include(include_group: str) -> object:
+    include_cls = getattr(arx_settings, "DependencyGroupInclude", None)
+    if include_cls is None:
         raise ManifestError(
-            f"unsupported dependency group entry for {name!r}: {entry!r}"
+            "installed arx.settings does not expose DependencyGroupInclude"
         )
-    lines.append("]")
-    return lines
-
-
-def _render_requirements_array(
-    key: str,
-    entries: dict[str, DependencySpec],
-) -> list[str]:
-    if not entries:
-        return [f"{key} = []"]
-    rendered = [
-        _quote(spec.to_requirement_string(name))
-        for name, spec in sorted(entries.items())
-    ]
-    lines = [f"{key} = ["]
-    lines.extend(f"  {value}," for value in rendered)
-    lines.append("]")
-    return lines
-
-
-def _quote(value: str) -> str:
-    return json.dumps(value, ensure_ascii=True)
+    return cast(Any, include_cls)(include_group=include_group)

@@ -391,10 +391,19 @@ class Manifest:
                 'strings (e.g. dependencies = ["pyyaml", '
                 '"local_lib @ ../local_lib"])'
             )
-        if "arxpm" in raw:
+
+        allowed_top_level = {
+            "project",
+            "build",
+            "toolchain",
+            "environment",
+            "dependency-groups",
+        }
+        extra_top_level = set(raw.keys()) - allowed_top_level
+        if extra_top_level:
+            unknown = ", ".join(sorted(extra_top_level))
             raise ManifestError(
-                "package-manager-specific [arxpm] tables are not supported; "
-                "move dependencies into project.dependencies"
+                f"manifest has unknown top-level keys: {unknown}"
             )
 
         project_raw = _require_table(raw, "project")

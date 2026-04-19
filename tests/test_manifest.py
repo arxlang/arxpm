@@ -72,7 +72,7 @@ linker = "clang"
     )
 
 
-def test_manifest_rejects_arxpm_table(tmp_path: Path) -> None:
+def test_manifest_rejects_unknown_top_level_table(tmp_path: Path) -> None:
     content = """
 [project]
 name = "legacy"
@@ -85,7 +85,9 @@ resolver = "future"
     path = tmp_path / ".arxproject.toml"
     path.write_text(content + "\n", encoding="utf-8")
 
-    with pytest.raises(ManifestError, match="package-manager-specific"):
+    with pytest.raises(
+        ManifestError, match=r"does not support \[arxpm\] sections"
+    ):
         load_manifest_file(path)
 
 
@@ -102,7 +104,9 @@ http = { source = "registry" }
     path = tmp_path / ".arxproject.toml"
     path.write_text(content + "\n", encoding="utf-8")
 
-    with pytest.raises(ManifestError, match="no longer supported"):
+    with pytest.raises(
+        ManifestError, match=r"Additional properties are not allowed"
+    ):
         load_manifest_file(path)
 
 
@@ -219,7 +223,9 @@ name = "nope"
 """
     path = _write_manifest(tmp_path, body)
 
-    with pytest.raises(ManifestError, match="kind is 'venv'"):
+    with pytest.raises(
+        ManifestError, match=r'kind="venv" does not support "name"'
+    ):
         load_manifest_file(path)
 
 
@@ -231,7 +237,10 @@ kind = "conda"
 """
     path = _write_manifest(tmp_path, body)
 
-    with pytest.raises(ManifestError, match="kind is 'conda'"):
+    with pytest.raises(
+        ManifestError,
+        match=r'kind="conda" requires at least one of "name" or "path"',
+    ):
         load_manifest_file(path)
 
 
@@ -258,7 +267,9 @@ path = "/usr/bin/python"
 """
     path = _write_manifest(tmp_path, body)
 
-    with pytest.raises(ManifestError, match="kind is 'system'"):
+    with pytest.raises(
+        ManifestError, match=r'kind="system" does not support "path"'
+    ):
         load_manifest_file(path)
 
 
@@ -284,7 +295,7 @@ kind = "bogus"
 """
     path = _write_manifest(tmp_path, body)
 
-    with pytest.raises(ManifestError, match="environment.kind"):
+    with pytest.raises(ManifestError, match=r"'bogus' is not one of"):
         load_manifest_file(path)
 
 

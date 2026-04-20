@@ -10,8 +10,9 @@ dependencies = [
 
 [build]
 src_dir = "src"
-entry = "main.x"
 out_dir = "build"
+package = "local_consumer"
+mode = "app"
 
 [toolchain]
 compiler = "arx"

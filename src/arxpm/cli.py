@@ -41,6 +41,18 @@ def _resolve(directory: Path) -> Path:
     return directory.resolve()
 
 
+def _print_health_report(directory: Path) -> None:
+    healthcheck_service = HealthCheckService()
+    report = healthcheck_service.run(_resolve(directory))
+
+    for check in report.checks:
+        status = "ok" if check.ok else "fail"
+        typer.echo(f"[{status}] {check.name}: {check.message}")
+
+    if not report.ok:
+        raise typer.Exit(code=1)
+
+
 @app.command()
 def init(
     name: Annotated[
@@ -396,12 +408,22 @@ def healthcheck(
           Annotated[Path, typer.Option('--directory', '-C', help='Project
           directory.')]
     """
-    healthcheck_service = HealthCheckService()
-    report = healthcheck_service.run(_resolve(directory))
+    _print_health_report(directory)
 
-    for check in report.checks:
-        status = "ok" if check.ok else "fail"
-        typer.echo(f"[{status}] {check.name}: {check.message}")
 
-    if not report.ok:
-        raise typer.Exit(code=1)
+@app.command()
+def doctor(
+    directory: Annotated[
+        Path,
+        typer.Option("--directory", "-C", help="Project directory."),
+    ] = Path("."),
+) -> None:
+    """
+    title: Report manifest, layout, environment, and toolchain health.
+    parameters:
+      directory:
+        type: >-
+          Annotated[Path, typer.Option('--directory', '-C', help='Project
+          directory.')]
+    """
+    _print_health_report(directory)

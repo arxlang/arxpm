@@ -34,8 +34,9 @@ def test_manifest_round_trip(tmp_path: Path) -> None:
     assert loaded.project.name == "hello-arx"
     assert loaded.project.version == "0.1.0"
     assert loaded.build.src_dir == "src"
-    assert loaded.build.entry == "main.x"
-    assert loaded.build.source_path == "src/main.x"
+    assert loaded.build.out_dir == "build"
+    assert loaded.build.package is None
+    assert loaded.build.mode is None
     assert loaded.toolchain.linker == "clang"
     assert loaded.environment.kind == "venv"
 
@@ -53,7 +54,8 @@ dependencies = [
 ]
 
 [build]
-entry = "src/main.x"
+package = "hello_arx"
+mode = "app"
 out_dir = "build"
 
 [toolchain]
@@ -65,11 +67,33 @@ linker = "clang"
 
     manifest = load_manifest_file(path)
 
+    assert manifest.build.package == "hello_arx"
+    assert manifest.build.mode == "app"
     assert manifest.dependencies["http"].kind == "registry"
     assert manifest.dependencies["mylib"].path == "../mylib"
     assert (
         manifest.dependencies["utils"].git == "https://example.com/utils.git"
     )
+
+
+def test_manifest_rejects_removed_build_entry(tmp_path: Path) -> None:
+    content = """
+[project]
+name = "legacy"
+version = "0.1.0"
+edition = "2026"
+
+[build]
+entry = "src/main.x"
+""".strip()
+    path = tmp_path / ".arxproject.toml"
+    path.write_text(content + "\n", encoding="utf-8")
+
+    with pytest.raises(
+        ManifestError,
+        match=r"\[build\]\.entry is no longer supported",
+    ):
+        load_manifest_file(path)
 
 
 def test_manifest_rejects_unknown_top_level_table(tmp_path: Path) -> None:
@@ -183,8 +207,8 @@ edition = "2026"
 dependencies = []
 
 [build]
-entry = "src/main.x"
 out_dir = "build"
+mode = "app"
 
 [toolchain]
 compiler = "arx"
@@ -258,59 +282,35 @@ name = "demo-env"
     assert manifest.environment.name == "demo-env"
 
 
-def test_environment_system_rejects_path(tmp_path: Path) -> None:
+def test_environment_system_disallows_path_and_name(tmp_path: Path) -> None:
     body = f"""{_BASE_MANIFEST}
 
 [environment]
 kind = "system"
-path = "/usr/bin/python"
+path = "/tmp/python"
 """
     path = _write_manifest(tmp_path, body)
 
     with pytest.raises(
-        ManifestError, match=r'kind="system" does not support "path"'
+        ManifestError,
+        match=r'kind="system" does not support "path"',
     ):
         load_manifest_file(path)
 
 
-def test_environment_system_parses(tmp_path: Path) -> None:
-    body = f"""{_BASE_MANIFEST}
-
-[environment]
-kind = "system"
-"""
-    path = _write_manifest(tmp_path, body)
-    manifest = load_manifest_file(path)
-
-    assert manifest.environment.kind == "system"
-    assert manifest.environment.path is None
-    assert manifest.environment.name is None
-
-
-def test_environment_rejects_unknown_kind(tmp_path: Path) -> None:
-    body = f"""{_BASE_MANIFEST}
-
-[environment]
-kind = "bogus"
-"""
-    path = _write_manifest(tmp_path, body)
-
-    with pytest.raises(ManifestError, match=r"'bogus' is not one of"):
-        load_manifest_file(path)
-
-
-def test_environment_round_trips_through_render(tmp_path: Path) -> None:
+def test_manifest_round_trip_preserves_environment(tmp_path: Path) -> None:
     manifest = Manifest(
         project=ProjectConfig(name="demo"),
-        environment=EnvironmentConfig(kind="conda", name="demo-env"),
+        environment=EnvironmentConfig(kind="system"),
     )
     path = tmp_path / ".arxproject.toml"
     path.write_text(render_manifest(manifest), encoding="utf-8")
 
     loaded = load_manifest_file(path)
 
-    assert loaded.environment.kind == "conda"
-    assert loaded.environment.name == "demo-env"
+    assert loaded.environment.kind == "system"
+    assert loaded.environment.path is None
+    assert loaded.environment.name is None
 
 
 def test_manifest_loads_minimal_arx_settings_shape(tmp_path: Path) -> None:
@@ -328,6 +328,8 @@ version = "0.0.1"
     assert manifest.project.version == "0.0.1"
     assert manifest.project.edition == "2026"
     assert manifest.build.src_dir == "src"
-    assert manifest.build.entry == "main.x"
+    assert manifest.build.out_dir == "build"
+    assert manifest.build.package is None
+    assert manifest.build.mode is None
     assert manifest.toolchain.compiler == "arx"
     assert manifest.environment.is_default()

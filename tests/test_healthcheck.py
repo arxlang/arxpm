@@ -10,8 +10,13 @@ from arxpm.environment import EnvironmentFactory, EnvironmentRuntime
 from arxpm.errors import EnvironmentError
 from arxpm.external import CommandResult
 from arxpm.healthcheck import HealthCheckService
-from arxpm.manifest import create_default_manifest, save_manifest
-from arxpm.models import EnvironmentConfig, Manifest
+from arxpm.manifest import (
+    create_default_manifest,
+    load_manifest,
+    save_manifest,
+)
+from arxpm.models import BuildConfig, EnvironmentConfig, Manifest
+from arxpm.project import ProjectService
 
 
 class StubEnvironment:
@@ -68,13 +73,12 @@ def _which_all(tool: str) -> str | None:
     return f"/usr/bin/{tool}"
 
 
-def _which_none(tool: str) -> str | None:
-    _ = tool
-    return None
+def _project_service() -> ProjectService:
+    return ProjectService(environment_factory=_stub_factory("venv"))
 
 
 def test_healthcheck_reports_success(tmp_path: Path) -> None:
-    save_manifest(tmp_path, create_default_manifest("demo"))
+    _project_service().init(tmp_path, name="demo")
     service = HealthCheckService(
         environment_factory=_stub_factory("venv at /tmp/.venv"),
         which=_which_all,
@@ -86,6 +90,11 @@ def test_healthcheck_reports_success(tmp_path: Path) -> None:
     assert report.ok is True
     assert checks[".arxproject.toml"].ok is True
     assert checks["manifest parsing"].ok is True
+    assert checks["package name"].ok is True
+    assert checks["source root"].ok is True
+    assert checks["package root"].ok is True
+    assert checks["__init__.x"].ok is True
+    assert checks["main.x"].ok is True
     assert checks["uv"].ok is True
     assert checks["compiler (arx)"].ok is True
     assert checks["environment"].ok is True
@@ -106,8 +115,30 @@ def test_healthcheck_reports_missing_manifest(tmp_path: Path) -> None:
     assert checks["manifest parsing"].ok is False
 
 
+def test_healthcheck_reports_missing_source_root(tmp_path: Path) -> None:
+    manifest = create_default_manifest("demo")
+    manifest.build = BuildConfig(
+        src_dir=manifest.build.src_dir,
+        out_dir=manifest.build.out_dir,
+        package=manifest.build.package,
+        mode="app",
+    )
+    save_manifest(tmp_path, manifest)
+    service = HealthCheckService(
+        environment_factory=_stub_factory("venv"),
+        which=_which_all,
+    )
+
+    report = service.run(tmp_path)
+    checks = {check.name: check for check in report.checks}
+
+    assert report.ok is False
+    assert checks["source root"].ok is False
+    assert "source root not found" in checks["source root"].message
+
+
 def test_healthcheck_reports_missing_uv(tmp_path: Path) -> None:
-    save_manifest(tmp_path, create_default_manifest("demo"))
+    _project_service().init(tmp_path, name="demo")
 
     def _which(tool: str) -> str | None:
         if tool == "uv":
@@ -127,7 +158,7 @@ def test_healthcheck_reports_missing_uv(tmp_path: Path) -> None:
 
 
 def test_healthcheck_reports_missing_compiler(tmp_path: Path) -> None:
-    save_manifest(tmp_path, create_default_manifest("demo"))
+    _project_service().init(tmp_path, name="demo")
 
     def _which(tool: str) -> str | None:
         if tool == "arx":
@@ -148,7 +179,7 @@ def test_healthcheck_reports_missing_compiler(tmp_path: Path) -> None:
 def test_healthcheck_reports_unreachable_environment(
     tmp_path: Path,
 ) -> None:
-    save_manifest(tmp_path, create_default_manifest("demo"))
+    _project_service().init(tmp_path, name="demo")
     service = HealthCheckService(
         environment_factory=_stub_factory("venv", fail=True),
         which=_which_all,
@@ -162,13 +193,36 @@ def test_healthcheck_reports_unreachable_environment(
     assert "environment not reachable" in checks["environment"].message
 
 
+def test_healthcheck_reports_invalid_package_name(tmp_path: Path) -> None:
+    manifest = create_default_manifest("my-project")
+    manifest.build = BuildConfig(
+        src_dir=manifest.build.src_dir,
+        out_dir=manifest.build.out_dir,
+        package=manifest.build.package,
+        mode="app",
+    )
+    save_manifest(tmp_path, manifest)
+    service = HealthCheckService(
+        environment_factory=_stub_factory("venv"),
+        which=_which_all,
+    )
+
+    report = service.run(tmp_path)
+    checks = {check.name: check for check in report.checks}
+
+    assert checks["package name"].ok is False
+    assert "set [build].package explicitly" in checks["package name"].message
+
+
 def test_healthcheck_reports_broken_venv(tmp_path: Path) -> None:
+    service = _project_service()
+    service.init(tmp_path, name="demo")
     manifest = create_default_manifest("demo")
     broken = tmp_path / "broken-venv"
     broken.mkdir()
     manifest_with_env = Manifest(
         project=manifest.project,
-        build=manifest.build,
+        build=load_manifest(tmp_path).build,
         dependencies=manifest.dependencies,
         toolchain=manifest.toolchain,
         environment=EnvironmentConfig(
@@ -177,9 +231,7 @@ def test_healthcheck_reports_broken_venv(tmp_path: Path) -> None:
         ),
     )
     save_manifest(tmp_path, manifest_with_env)
-    service = HealthCheckService(which=_which_all)
-
-    report = service.run(tmp_path)
+    report = HealthCheckService(which=_which_all).run(tmp_path)
     checks = {check.name: check for check in report.checks}
 
     assert report.ok is False

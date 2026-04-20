@@ -7,8 +7,9 @@ dependencies = []
 
 [build]
 src_dir = "src"
-entry = "main.x"
 out_dir = "build"
+package = "multi_module"
+mode = "app"
 
 [toolchain]
 compiler = "arx"

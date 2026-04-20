@@ -20,6 +20,11 @@ from arxpm.environment import (
 )
 from arxpm.errors import ManifestError, MissingCompilerError
 from arxpm.external import CommandResult, CommandRunner, run_command
+from arxpm.layout import (
+    ResolvedBuildConfig,
+    is_valid_package_name,
+    resolve_build_config,
+)
 from arxpm.manifest import (
     MANIFEST_FILENAME,
     create_default_manifest,
@@ -27,11 +32,17 @@ from arxpm.manifest import (
     save_manifest,
 )
 from arxpm.models import (
+    BuildConfig,
     DependencyGroupInclude,
     DependencySpec,
     EnvironmentConfig,
     Manifest,
 )
+
+_INIT_SOURCE = """```
+title: Package root module
+```
+"""
 
 _MAIN_SOURCE = """```
 title: Simple main module
@@ -68,6 +79,8 @@ class BuildResult:
     attributes:
       manifest:
         type: Manifest
+      layout:
+        type: ResolvedBuildConfig
       command_result:
         type: CommandResult
       artifact:
@@ -75,6 +88,7 @@ class BuildResult:
     """
 
     manifest: Manifest
+    layout: ResolvedBuildConfig
     command_result: CommandResult
     artifact: Path
 
@@ -157,14 +171,35 @@ class ProjectService:
             manifest = load_manifest(directory)
         else:
             manifest = create_default_manifest(project_name)
+            package_name = (
+                _arx_module_name(manifest.project.name)
+                if not is_valid_package_name(manifest.project.name)
+                else None
+            )
+            manifest.build = BuildConfig(
+                src_dir=manifest.build.src_dir,
+                out_dir=manifest.build.out_dir,
+                package=package_name,
+                mode="app",
+            )
             if environment is not None:
                 manifest.environment = environment
             save_manifest(directory, manifest)
 
-        entry_path = directory / manifest.build.source_path
-        entry_path.parent.mkdir(parents=True, exist_ok=True)
-        if not entry_path.exists():
-            entry_path.write_text(_MAIN_SOURCE, encoding="utf-8")
+        package_name = manifest.build.package or manifest.project.name
+        source_root = directory / manifest.build.src_dir
+        package_root = source_root / package_name
+        init_path = package_root / "__init__.x"
+        main_path = package_root / "main.x"
+
+        package_root.mkdir(parents=True, exist_ok=True)
+        if not init_path.exists():
+            init_path.write_text(_INIT_SOURCE, encoding="utf-8")
+
+        mode = manifest.build.mode
+        if mode == "app" or (mode is None and not main_path.exists()):
+            if not main_path.exists():
+                main_path.write_text(_MAIN_SOURCE, encoding="utf-8")
 
         return manifest
 
@@ -271,17 +306,50 @@ class ProjectService:
           type: BuildResult
         """
         manifest = load_manifest(directory)
+        layout = resolve_build_config(manifest, directory)
+        return self._build_with_layout(directory, manifest, layout)
 
+    def run(self, directory: Path) -> RunResult:
+        """
+        title: Build and run the produced artifact.
+        parameters:
+          directory:
+            type: Path
+        returns:
+          type: RunResult
+        """
+        manifest = load_manifest(directory)
+        layout = resolve_build_config(manifest, directory)
+        if layout.mode != "app":
+            raise ManifestError(
+                "arxpm run is only available for app projects; "
+                f"resolved mode is {layout.mode!r}"
+            )
+
+        build_result = self._build_with_layout(directory, manifest, layout)
+        artifact_rel = Path(layout.out_dir) / layout.package
+        command_result = self._runner(
+            [str(artifact_rel)],
+            cwd=directory,
+            check=True,
+        )
+        return RunResult(
+            build_result=build_result,
+            command_result=command_result,
+        )
+
+    def _build_with_layout(
+        self,
+        directory: Path,
+        manifest: Manifest,
+        layout: ResolvedBuildConfig,
+    ) -> BuildResult:
         compiler = manifest.toolchain.compiler.strip()
         if not compiler:
             raise MissingCompilerError("toolchain.compiler cannot be empty")
 
-        source_path = manifest.build.source_path
-        entry_path = directory / source_path
-        if not entry_path.exists():
-            raise ManifestError(f"build entry does not exist: {entry_path}")
-
-        artifact_rel = Path(manifest.build.out_dir) / manifest.project.name
+        source_path = layout.target_file.relative_to(directory).as_posix()
+        artifact_rel = Path(layout.out_dir) / layout.package
         artifact_path = directory / artifact_rel
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -295,30 +363,9 @@ class ProjectService:
 
         return BuildResult(
             manifest=manifest,
+            layout=layout,
             command_result=command_result,
             artifact=artifact_path,
-        )
-
-    def run(self, directory: Path) -> RunResult:
-        """
-        title: Build and run the produced artifact.
-        parameters:
-          directory:
-            type: Path
-        returns:
-          type: RunResult
-        """
-        build_result = self.build(directory)
-        artifact_rel = Path(build_result.manifest.build.out_dir)
-        artifact_rel = artifact_rel / build_result.manifest.project.name
-        command_result = self._runner(
-            [str(artifact_rel)],
-            cwd=directory,
-            check=True,
-        )
-        return RunResult(
-            build_result=build_result,
-            command_result=command_result,
         )
 
     def pack(self, directory: Path) -> PublishResult:
@@ -443,13 +490,15 @@ class ProjectService:
             type: Path
         """
         library_manifest = load_manifest(library_directory)
-        module_name = _arx_module_name(library_manifest.project.name)
+        library_layout = resolve_build_config(
+            library_manifest, library_directory
+        )
+        module_name = library_layout.package
         if module_name != dependency_name:
             raise ManifestError(
                 f"dependency {dependency_name!r} must match the library's "
-                f"Arx module name {module_name!r} "
-                f"(derived from project.name = "
-                f"{library_manifest.project.name!r})"
+                f"Arx package name {module_name!r} "
+                f"(resolved from the library manifest)"
             )
 
         pack_result = self.pack(library_directory)
@@ -530,17 +579,18 @@ def _prepare_publish_workspace(
     manifest: Manifest,
     staging_dir: Path,
 ) -> None:
-    package_name = _arx_module_name(manifest.project.name)
+    layout = resolve_build_config(manifest, directory)
+    package_name = layout.package
     package_root = staging_dir / "src" / package_name
     package_root.mkdir(parents=True, exist_ok=True)
 
-    source_paths = _discover_arx_sources(directory)
+    source_paths = _discover_arx_sources(directory, layout.package_root)
     if not source_paths:
         raise ManifestError(
             "no Arx source files found to publish (expected .x or .arx)"
         )
 
-    source_root = Path(manifest.build.src_dir)
+    source_root = layout.package_root.relative_to(directory)
     for relative_source in source_paths:
         source_path = directory / relative_source
         bundled_rel = _bundled_source_path(relative_source, source_root)
@@ -588,9 +638,13 @@ def _bundled_source_path(relative_source: Path, source_root: Path) -> Path:
         return relative_source
 
 
-def _discover_arx_sources(directory: Path) -> list[Path]:
+def _discover_arx_sources(
+    directory: Path,
+    search_root: Path | None = None,
+) -> list[Path]:
+    root = search_root or directory
     sources: list[Path] = []
-    for path in directory.rglob("*"):
+    for path in root.rglob("*"):
         if not path.is_file() or path.suffix not in _SOURCE_SUFFIXES:
             continue
 

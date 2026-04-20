@@ -2,7 +2,7 @@
 
 Arx projects are described by `.arxproject.toml`.
 
-## Minimal Layout
+## Build contract
 
 ```toml
 [project]
@@ -13,33 +13,94 @@ dependencies = []
 
 [build]
 src_dir = "src"
-entry = "main.x"
 out_dir = "build"
+package = "hello_arx"
+mode = "app"
 
 [toolchain]
 compiler = "arx"
 linker = "clang"
 ```
 
-## Source Layout
+`[build]` supports:
 
-`build.src_dir` names the directory where your `.x` sources live, relative to
-the project root. It defaults to `"src"` (the recommended layout). `build.entry`
-is **always interpreted relative to `src_dir`**, so with the default layout a
-file at `src/main.x` is spelled `entry = "main.x"`.
+- `src_dir`: optional, defaults to `"src"`
+- `out_dir`: optional, defaults to `"build"`
+- `package`: optional, defaults to `project.name`
+- `mode`: optional, `"lib"` or `"app"`
 
-Override `src_dir` when your project uses a different convention — for example,
-`src_dir = "."` to keep sources at the project root, or `src_dir = "lib"` to use
-a `lib/` folder. Cross-project tooling (`arxpm build`, `arxpm pack`) uses
-`<src_dir>/<entry>` internally and strips `src_dir` when bundling for
-publication, so published modules always appear flat under their package name.
+`[build].entry` was removed. `arxpm` rejects manifests that still declare it.
 
-## Runtime Dependencies
+## Source layout
+
+`arxpm` resolves the effective layout from the project root:
+
+- `source_root = <project>/<src_dir>`
+- `package_root = <source_root>/<package>`
+- `init_file = <package_root>/__init__.x`
+- `main_file = <package_root>/main.x`
+
+`__init__.x` is always required.
+
+If `mode` is omitted, `arxpm` infers it from the filesystem:
+
+- if `main.x` exists, the project is treated as an app
+- otherwise, the project is treated as a library
+
+Validation rules:
+
+- `source_root` must exist
+- `package_root` must exist
+- `__init__.x` must exist
+- app projects must contain `main.x`
+- lib projects must not contain `main.x`
+
+Package names must match `^[A-Za-z_][A-Za-z0-9_]*$`. If `project.name` is not a
+valid package identifier, set `[build].package` explicitly instead of relying on
+normalization.
+
+## Examples
+
+Library:
+
+```toml
+[project]
+name = "astx"
+version = "0.1.0"
+
+[build]
+mode = "lib"
+```
+
+App:
+
+```toml
+[project]
+name = "myapp"
+version = "0.1.0"
+
+[build]
+mode = "app"
+```
+
+Package override:
+
+```toml
+[project]
+name = "my-project"
+version = "0.1.0"
+
+[build]
+package = "my_project"
+mode = "lib"
+```
+
+## Runtime dependencies
 
 Runtime dependencies live in the `project.dependencies` array and use PEP
 508-style strings. `arxpm` supports three shapes:
 
-1. Registry (bare name):
+1. Registry:
 
 ```toml
 dependencies = [
@@ -63,12 +124,7 @@ dependencies = [
 ]
 ```
 
-Version solving is intentionally out of scope in v0. During `arxpm install`,
-registry dependencies are installed with `uv pip install <name>`, path
-dependencies with `uv pip install <path>`, and git dependencies with
-`uv pip install git+<url>`.
-
-## Dependency Groups
+## Dependency groups
 
 Non-runtime workflow dependencies such as test, lint, and docs tools live in the
 top-level `[dependency-groups]` table.
@@ -79,48 +135,10 @@ dev = [
   "pytest",
   "ruff",
 ]
-docs = [
-  "mkdocs",
-]
 ```
-
-Groups can include other groups using `include-group` entries:
-
-```toml
-[dependency-groups]
-lint = [
-  "ruff",
-  "mypy",
-]
-dev = [
-  { include-group = "lint" },
-  "pytest",
-]
-```
-
-`arxpm install --group dev` resolves the selected group plus any nested
-includes. Group names are matched using the same normalized form as
-`arx.settings`, so names like `Dev_Test`, `dev-test`, and `dev.test` refer to
-the same logical group.
 
 ## Environment
 
 The `[environment]` table controls how `arxpm install` obtains a Python
 environment for the project. It is optional — when absent, `arxpm` behaves as if
 `kind = "venv"` with `path = ".venv"` had been declared.
-
-```toml
-[environment]
-kind = "venv"               # venv | conda | system
-path = ".venv"              # optional for venv and conda
-name = "my-conda-env"       # optional for conda when path is omitted
-```
-
-Validation rules:
-
-- `venv`: `name` is not allowed. `path` defaults to `".venv"`.
-- `conda`: at least one of `name` or `path` is required.
-- `system`: neither `path` nor `name` is allowed.
-- Any other `kind` value is rejected with a manifest error.
-
-See [Environments](environments.md) for how each strategy behaves at runtime.

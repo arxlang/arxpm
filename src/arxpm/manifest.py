@@ -10,6 +10,7 @@ from typing import Any, cast
 
 import arx.settings as arx_settings
 
+from arxpm._toml import tomllib
 from arxpm.errors import ManifestError
 from arxpm.models import (
     BuildConfig,
@@ -70,6 +71,8 @@ def load_manifest_file(path: Path) -> Manifest:
     returns:
       type: Manifest
     """
+    raw = _load_raw_manifest(path)
+    _reject_removed_build_entry(raw)
     try:
         settings = cast(Any, arx_settings.load_settings(path))
     except arx_settings.ArxProjectError as exc:
@@ -124,6 +127,29 @@ def render_manifest(manifest: Manifest) -> str:
         raise ManifestError(str(exc)) from exc
 
 
+def _load_raw_manifest(path: Path) -> Mapping[str, Any]:
+    try:
+        return cast(
+            Mapping[str, Any], tomllib.loads(path.read_text(encoding="utf-8"))
+        )
+    except FileNotFoundError as exc:
+        raise ManifestError(f"manifest not found: {path}") from exc
+    except tomllib.TOMLDecodeError as exc:
+        raise ManifestError(str(exc)) from exc
+
+
+def _reject_removed_build_entry(raw: Mapping[str, Any]) -> None:
+    build = raw.get("build")
+    if not isinstance(build, Mapping):
+        return
+    if "entry" not in build:
+        return
+    raise ManifestError(
+        "Invalid manifest: [build].entry is no longer supported; "
+        "use build.package/build.mode instead"
+    )
+
+
 def _normalize_settings_error(
     error: arx_settings.ArxProjectError,
     path: Path,
@@ -150,16 +176,21 @@ def _manifest_from_settings(settings: Any) -> Manifest:
             and settings.build.src_dir is not None
             else build_defaults.src_dir
         ),
-        entry=(
-            settings.build.entry
-            if settings.build is not None and settings.build.entry is not None
-            else build_defaults.entry
-        ),
         out_dir=(
             settings.build.out_dir
             if settings.build is not None
             and settings.build.out_dir is not None
             else build_defaults.out_dir
+        ),
+        package=(
+            getattr(settings.build, "package", None)
+            if settings.build is not None
+            else build_defaults.package
+        ),
+        mode=(
+            getattr(settings.build, "mode", None)
+            if settings.build is not None
+            else build_defaults.mode
         ),
     )
 
@@ -219,8 +250,9 @@ def _settings_from_manifest(manifest: Manifest) -> Any:
 
     build = cast(Any, arx_settings.Build)(
         src_dir=manifest.build.src_dir,
-        entry=manifest.build.entry,
         out_dir=manifest.build.out_dir,
+        package=manifest.build.package,
+        mode=manifest.build.mode,
     )
     toolchain = cast(Any, arx_settings.Toolchain)(
         compiler=manifest.toolchain.compiler,

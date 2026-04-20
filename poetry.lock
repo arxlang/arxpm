@@ -167,20 +167,20 @@ nanoarrow = ">=0.8.0,<0.9.0"
 
 [[package]]
 name = "arxlang"
-version = "0.10.0"
+version = "0.13.0"
 description = "Arx is a compiler built with llvm"
 optional = false
 python-versions = "<4,>=3.10"
 groups = ["main"]
 files = [
-    {file = "arxlang-0.10.0-py3-none-any.whl", hash = "sha256:31f9e5a07e91b8500f8cd48f8005025fcad3648aeac59aec9faece96d66f4c4c"},
-    {file = "arxlang-0.10.0.tar.gz", hash = "sha256:7ab0572aab6acca8e88f900c258d0b35a204ab5f2e7b2eadf6a32f85185bf522"},
+    {file = "arxlang-0.13.0-py3-none-any.whl", hash = "sha256:f835f253fca6fd0d5dd390957579bad1399e0987c5631844c5cd48879b7e9604"},
+    {file = "arxlang-0.13.0.tar.gz", hash = "sha256:4322b7e323937493c920b93343dbd0d79e9309fd5de9c8908993900cbd6e6305"},
 ]
 
 [package.dependencies]
 astx = ">=0.24.0"
 jsonschema = ">=4.0.0"
-pyirx = "1.11.0"
+pyirx = "1.12.0"
 pyyaml = ">=4"
 tomli = {version = ">=2.0.0", markers = "python_version < \"3.11\""}
 types-pyyaml = ">=6.0.12.20250516"
@@ -3526,14 +3526,14 @@ windows-terminal = ["colorama (>=0.4.6)"]
 
 [[package]]
 name = "pyirx"
-version = "1.11.0"
+version = "1.12.0"
 description = "IRx"
 optional = false
 python-versions = "<4,>=3.10"
 groups = ["main"]
 files = [
-    {file = "pyirx-1.11.0-py3-none-any.whl", hash = "sha256:792816692d92b6a62491c43da36d13a3951f5826c9e1cf72cd66b57ce17d5c70"},
-    {file = "pyirx-1.11.0.tar.gz", hash = "sha256:1c8abca25dc320d628316f8c7f16656516af688de58bb73174a816c071fb7963"},
+    {file = "pyirx-1.12.0-py3-none-any.whl", hash = "sha256:bee3c095b2b385ba7f096cdc254b260e078d7bc8d7aba4c02a57edf32dd479ca"},
+    {file = "pyirx-1.12.0.tar.gz", hash = "sha256:e08c42e0cd7944f66c038e0e8058f98ce4b0be4c717bfd79d2c62fb8b28e3c7c"},
 ]
 
 [package.dependencies]
@@ -5210,4 +5210,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4"
-content-hash = "a51409688450a9c3d021348a9f0263a43092b7e4c0a6fa7b9255f38f610a669a"
+content-hash = "294f5b361121503380218dffccdb791f252d69d2aed242b3e4a76ecb2f3bce0f"

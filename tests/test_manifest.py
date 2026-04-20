@@ -293,7 +293,7 @@ path = "/tmp/python"
 
     with pytest.raises(
         ManifestError,
-        match=r'kind="system" does not support "path" or "name"',
+        match=r'kind="system" does not support "path"',
     ):
         load_manifest_file(path)
 

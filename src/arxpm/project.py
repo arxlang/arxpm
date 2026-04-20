@@ -584,13 +584,13 @@ def _prepare_publish_workspace(
     package_root = staging_dir / "src" / package_name
     package_root.mkdir(parents=True, exist_ok=True)
 
-    source_paths = _discover_arx_sources(directory, layout.source_root)
+    source_paths = _discover_arx_sources(directory, layout.package_root)
     if not source_paths:
         raise ManifestError(
             "no Arx source files found to publish (expected .x or .arx)"
         )
 
-    source_root = Path(layout.src_dir)
+    source_root = layout.package_root.relative_to(directory)
     for relative_source in source_paths:
         source_path = directory / relative_source
         bundled_rel = _bundled_source_path(relative_source, source_root)

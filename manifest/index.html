@@ -399,10 +399,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#minimal-layout" class="md-nav__link">
+  <a href="#build-contract" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Minimal Layout
+        Build contract
       
     </span>
   </a>
@@ -413,7 +413,18 @@
   <a href="#source-layout" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Source Layout
+        Source layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
       
     </span>
   </a>
@@ -424,7 +435,7 @@
   <a href="#runtime-dependencies" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Runtime Dependencies
+        Runtime dependencies
       
     </span>
   </a>
@@ -435,7 +446,7 @@
   <a href="#dependency-groups" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Dependency Groups
+        Dependency groups
       
     </span>
   </a>
@@ -623,10 +634,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#minimal-layout" class="md-nav__link">
+  <a href="#build-contract" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Minimal Layout
+        Build contract
       
     </span>
   </a>
@@ -637,7 +648,18 @@
   <a href="#source-layout" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Source Layout
+        Source layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
       
     </span>
   </a>
@@ -648,7 +670,7 @@
   <a href="#runtime-dependencies" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Runtime Dependencies
+        Runtime dependencies
       
     </span>
   </a>
@@ -659,7 +681,7 @@
   <a href="#dependency-groups" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Dependency Groups
+        Dependency groups
       
     </span>
   </a>
@@ -699,7 +721,7 @@
 
 <h1 id="manifest">Manifest<a class="headerlink" href="#manifest" title="Permanent link">&para;</a></h1>
 <p>Arx projects are described by <code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code>.</p>
-<h2 id="minimal-layout">Minimal Layout<a class="headerlink" href="#minimal-layout" title="Permanent link">&para;</a></h2>
+<h2 id="build-contract">Build contract<a class="headerlink" href="#build-contract" title="Permanent link">&para;</a></h2>
 <div class="language-toml highlight"><pre><span></span><code><span class="k">[project]</span>
 <span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;hello-arx&quot;</span>
 <span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
@@ -708,28 +730,78 @@
 
 <span class="k">[build]</span>
 <span class="n">src_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;src&quot;</span>
-<span class="n">entry</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;main.x&quot;</span>
 <span class="n">out_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;build&quot;</span>
+<span class="n">package</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;hello_arx&quot;</span>
+<span class="n">mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;app&quot;</span>
 
 <span class="k">[toolchain]</span>
 <span class="n">compiler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;arx&quot;</span>
 <span class="n">linker</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;clang&quot;</span>
 </code></pre></div>
-<h2 id="source-layout">Source Layout<a class="headerlink" href="#source-layout" title="Permanent link">&para;</a></h2>
-<p><code class="language-python highlight"><span class="n">build</span><span class="o">.</span><span class="n">src_dir</span></code> names the directory where your <code class="language-python highlight"><span class="o">.</span><span class="n">x</span></code> sources live, relative to
-the project root. It defaults to <code class="language-python highlight"><span class="s2">&quot;src&quot;</span></code> (the recommended layout). <code class="language-python highlight"><span class="n">build</span><span class="o">.</span><span class="n">entry</span></code>
-is <strong>always interpreted relative to <code class="language-python highlight"><span class="n">src_dir</span></code></strong>, so with the default layout a
-file at <code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">main</span><span class="o">.</span><span class="n">x</span></code> is spelled <code class="language-python highlight"><span class="n">entry</span> <span class="o">=</span> <span class="s2">&quot;main.x&quot;</span></code>.</p>
-<p>Override <code class="language-python highlight"><span class="n">src_dir</span></code> when your project uses a different convention — for example,
-<code class="language-python highlight"><span class="n">src_dir</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span></code> to keep sources at the project root, or <code class="language-python highlight"><span class="n">src_dir</span> <span class="o">=</span> <span class="s2">&quot;lib&quot;</span></code> to use
-a <code class="language-python highlight"><span class="n">lib</span><span class="o">/</span></code> folder. Cross-project tooling (<code class="language-python highlight"><span class="n">arxpm</span> <span class="n">build</span></code>, <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">pack</span></code>) uses
-<code class="language-python highlight"><span class="o">&lt;</span><span class="n">src_dir</span><span class="o">&gt;/&lt;</span><span class="n">entry</span><span class="o">&gt;</span></code> internally and strips <code class="language-python highlight"><span class="n">src_dir</span></code> when bundling for
-publication, so published modules always appear flat under their package name.</p>
-<h2 id="runtime-dependencies">Runtime Dependencies<a class="headerlink" href="#runtime-dependencies" title="Permanent link">&para;</a></h2>
+<p><code class="language-python highlight"><span class="p">[</span><span class="n">build</span><span class="p">]</span></code> supports:</p>
+<ul>
+<li><code class="language-python highlight"><span class="n">src_dir</span></code>: optional, defaults to <code class="language-python highlight"><span class="s2">&quot;src&quot;</span></code></li>
+<li><code class="language-python highlight"><span class="n">out_dir</span></code>: optional, defaults to <code class="language-python highlight"><span class="s2">&quot;build&quot;</span></code></li>
+<li><code class="language-python highlight"><span class="n">package</span></code>: optional, defaults to <code class="language-python highlight"><span class="n">project</span><span class="o">.</span><span class="n">name</span></code></li>
+<li><code class="language-python highlight"><span class="n">mode</span></code>: optional, <code class="language-python highlight"><span class="s2">&quot;lib&quot;</span></code> or <code class="language-python highlight"><span class="s2">&quot;app&quot;</span></code></li>
+</ul>
+<p><code class="language-python highlight"><span class="p">[</span><span class="n">build</span><span class="p">]</span><span class="o">.</span><span class="n">entry</span></code> was removed. <code class="language-python highlight"><span class="n">arxpm</span></code> rejects manifests that still declare it.</p>
+<h2 id="source-layout">Source layout<a class="headerlink" href="#source-layout" title="Permanent link">&para;</a></h2>
+<p><code class="language-python highlight"><span class="n">arxpm</span></code> resolves the effective layout from the project root:</p>
+<ul>
+<li><code class="language-python highlight"><span class="n">source_root</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">project</span><span class="o">&gt;/&lt;</span><span class="n">src_dir</span><span class="o">&gt;</span></code></li>
+<li><code class="language-python highlight"><span class="n">package_root</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">source_root</span><span class="o">&gt;/&lt;</span><span class="n">package</span><span class="o">&gt;</span></code></li>
+<li><code class="language-python highlight"><span class="n">init_file</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">package_root</span><span class="o">&gt;/</span><span class="fm">__init__</span><span class="o">.</span><span class="n">x</span></code></li>
+<li><code class="language-python highlight"><span class="n">main_file</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">package_root</span><span class="o">&gt;/</span><span class="n">main</span><span class="o">.</span><span class="n">x</span></code></li>
+</ul>
+<p><code class="language-python highlight"><span class="fm">__init__</span><span class="o">.</span><span class="n">x</span></code> is always required.</p>
+<p>If <code class="language-python highlight"><span class="n">mode</span></code> is omitted, <code class="language-python highlight"><span class="n">arxpm</span></code> infers it from the filesystem:</p>
+<ul>
+<li>if <code class="language-python highlight"><span class="n">main</span><span class="o">.</span><span class="n">x</span></code> exists, the project is treated as an app</li>
+<li>otherwise, the project is treated as a library</li>
+</ul>
+<p>Validation rules:</p>
+<ul>
+<li><code class="language-python highlight"><span class="n">source_root</span></code> must exist</li>
+<li><code class="language-python highlight"><span class="n">package_root</span></code> must exist</li>
+<li><code class="language-python highlight"><span class="fm">__init__</span><span class="o">.</span><span class="n">x</span></code> must exist</li>
+<li>app projects must contain <code class="language-python highlight"><span class="n">main</span><span class="o">.</span><span class="n">x</span></code></li>
+<li>lib projects must not contain <code class="language-python highlight"><span class="n">main</span><span class="o">.</span><span class="n">x</span></code></li>
+</ul>
+<p>Package names must match <code class="language-python highlight"><span class="o">^</span><span class="p">[</span><span class="n">A</span><span class="o">-</span><span class="n">Za</span><span class="o">-</span><span class="n">z_</span><span class="p">][</span><span class="n">A</span><span class="o">-</span><span class="n">Za</span><span class="o">-</span><span class="n">z0</span><span class="o">-</span><span class="mi">9</span><span class="n">_</span><span class="p">]</span><span class="o">*</span><span class="err">$</span></code>. If <code class="language-python highlight"><span class="n">project</span><span class="o">.</span><span class="n">name</span></code> is not a
+valid package identifier, set <code class="language-python highlight"><span class="p">[</span><span class="n">build</span><span class="p">]</span><span class="o">.</span><span class="n">package</span></code> explicitly instead of relying on
+normalization.</p>
+<h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h2>
+<p>Library:</p>
+<div class="language-toml highlight"><pre><span></span><code><span class="k">[project]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;astx&quot;</span>
+<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
+
+<span class="k">[build]</span>
+<span class="n">mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;lib&quot;</span>
+</code></pre></div>
+<p>App:</p>
+<div class="language-toml highlight"><pre><span></span><code><span class="k">[project]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;myapp&quot;</span>
+<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
+
+<span class="k">[build]</span>
+<span class="n">mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;app&quot;</span>
+</code></pre></div>
+<p>Package override:</p>
+<div class="language-toml highlight"><pre><span></span><code><span class="k">[project]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;my-project&quot;</span>
+<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
+
+<span class="k">[build]</span>
+<span class="n">package</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;my_project&quot;</span>
+<span class="n">mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;lib&quot;</span>
+</code></pre></div>
+<h2 id="runtime-dependencies">Runtime dependencies<a class="headerlink" href="#runtime-dependencies" title="Permanent link">&para;</a></h2>
 <p>Runtime dependencies live in the <code class="language-python highlight"><span class="n">project</span><span class="o">.</span><span class="n">dependencies</span></code> array and use PEP
 508-style strings. <code class="language-python highlight"><span class="n">arxpm</span></code> supports three shapes:</p>
 <ol>
-<li>Registry (bare name):</li>
+<li>Registry:</li>
 </ol>
 <div class="language-toml highlight"><pre><span></span><code><span class="n">dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
 <span class="w">  </span><span class="s2">&quot;pyyaml&quot;</span><span class="p">,</span>
@@ -749,11 +821,7 @@ publication, so published modules always appear flat under their package name.</
 <span class="w">  </span><span class="s2">&quot;utils @ git+https://example.com/utils.git&quot;</span><span class="p">,</span>
 <span class="p">]</span>
 </code></pre></div>
-<p>Version solving is intentionally out of scope in v0. During <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code>,
-registry dependencies are installed with <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span></code>, path
-dependencies with <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;</span></code>, and git dependencies with
-<code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="n">git</span><span class="o">+&lt;</span><span class="n">url</span><span class="o">&gt;</span></code>.</p>
-<h2 id="dependency-groups">Dependency Groups<a class="headerlink" href="#dependency-groups" title="Permanent link">&para;</a></h2>
+<h2 id="dependency-groups">Dependency groups<a class="headerlink" href="#dependency-groups" title="Permanent link">&para;</a></h2>
 <p>Non-runtime workflow dependencies such as test, lint, and docs tools live in the
 top-level <code class="language-python highlight"><span class="p">[</span><span class="n">dependency</span><span class="o">-</span><span class="n">groups</span><span class="p">]</span></code> table.</p>
 <div class="language-toml highlight"><pre><span></span><code><span class="k">[dependency-groups]</span>
@@ -761,42 +829,11 @@ top-level <code class="language-python highlight"><span class="p">[</span><span 
 <span class="w">  </span><span class="s2">&quot;pytest&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="s2">&quot;ruff&quot;</span><span class="p">,</span>
 <span class="p">]</span>
-<span class="n">docs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
-<span class="w">  </span><span class="s2">&quot;mkdocs&quot;</span><span class="p">,</span>
-<span class="p">]</span>
 </code></pre></div>
-<p>Groups can include other groups using <code class="language-python highlight"><span class="n">include</span><span class="o">-</span><span class="n">group</span></code> entries:</p>
-<div class="language-toml highlight"><pre><span></span><code><span class="k">[dependency-groups]</span>
-<span class="n">lint</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
-<span class="w">  </span><span class="s2">&quot;ruff&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="s2">&quot;mypy&quot;</span><span class="p">,</span>
-<span class="p">]</span>
-<span class="n">dev</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
-<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="n">include-group</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">&quot;lint&quot;</span><span class="w"> </span><span class="p">},</span>
-<span class="w">  </span><span class="s2">&quot;pytest&quot;</span><span class="p">,</span>
-<span class="p">]</span>
-</code></pre></div>
-<p><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span> <span class="o">--</span><span class="n">group</span> <span class="n">dev</span></code> resolves the selected group plus any nested
-includes. Group names are matched using the same normalized form as
-<code class="language-python highlight"><span class="n">arx</span><span class="o">.</span><span class="n">settings</span></code>, so names like <code class="language-python highlight"><span class="n">Dev_Test</span></code>, <code class="language-python highlight"><span class="n">dev</span><span class="o">-</span><span class="n">test</span></code>, and <code class="language-python highlight"><span class="n">dev</span><span class="o">.</span><span class="n">test</span></code> refer to
-the same logical group.</p>
 <h2 id="environment">Environment<a class="headerlink" href="#environment" title="Permanent link">&para;</a></h2>
 <p>The <code class="language-python highlight"><span class="p">[</span><span class="n">environment</span><span class="p">]</span></code> table controls how <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code> obtains a Python
 environment for the project. It is optional — when absent, <code class="language-python highlight"><span class="n">arxpm</span></code> behaves as if
 <code class="language-python highlight"><span class="n">kind</span> <span class="o">=</span> <span class="s2">&quot;venv&quot;</span></code> with <code class="language-python highlight"><span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;.venv&quot;</span></code> had been declared.</p>
-<div class="language-toml highlight"><pre><span></span><code><span class="k">[environment]</span>
-<span class="n">kind</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;venv&quot;</span><span class="w">               </span><span class="c1"># venv | conda | system</span>
-<span class="n">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;.venv&quot;</span><span class="w">              </span><span class="c1"># optional for venv and conda</span>
-<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;my-conda-env&quot;</span><span class="w">       </span><span class="c1"># optional for conda when path is omitted</span>
-</code></pre></div>
-<p>Validation rules:</p>
-<ul>
-<li><code class="language-python highlight"><span class="n">venv</span></code>: <code class="language-python highlight"><span class="n">name</span></code> is not allowed. <code class="language-python highlight"><span class="n">path</span></code> defaults to <code class="language-python highlight"><span class="s2">&quot;.venv&quot;</span></code>.</li>
-<li><code class="language-python highlight"><span class="n">conda</span></code>: at least one of <code class="language-python highlight"><span class="n">name</span></code> or <code class="language-python highlight"><span class="n">path</span></code> is required.</li>
-<li><code class="language-python highlight"><span class="n">system</span></code>: neither <code class="language-python highlight"><span class="n">path</span></code> nor <code class="language-python highlight"><span class="n">name</span></code> is allowed.</li>
-<li>Any other <code class="language-python highlight"><span class="n">kind</span></code> value is rejected with a manifest error.</li>
-</ul>
-<p>See <a href="../environments/">Environments</a> for how each strategy behaves at runtime.</p>
 
 
 

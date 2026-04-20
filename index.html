@@ -327,17 +327,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#compatibility" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Compatibility
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -621,17 +610,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#compatibility" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Compatibility
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -678,45 +656,33 @@
 <h2 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code class="language-python highlight"><span class="n">arx</span></code> is compiler-only.</li>
-<li><code class="language-python highlight"><span class="n">arxpm</span></code> is the user-facing workflow tool.</li>
+<li><code class="language-python highlight"><span class="n">arxpm</span></code> resolves project layout, validates package roots, and chooses default
+  build targets.</li>
 <li>Python environments are backend-neutral: a project can use a project-local
   venv (default), a conda environment, or the current system interpreter. <code class="language-python highlight"><span class="n">uv</span></code>
   is used to install packages in all cases.</li>
-</ul>
-<p>Arx projects use <code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code> as their project manifest. Python packaging
-is only for distributing <code class="language-python highlight"><span class="n">arxpm</span></code> itself.</p>
-<h2 id="compatibility">Compatibility<a class="headerlink" href="#compatibility" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Python 3.10+ is supported.</li>
-<li>On Python 3.10, <code class="language-python highlight"><span class="n">arxpm</span></code> uses <code class="language-python highlight"><span class="n">tomli</span></code> as a compatibility fallback for
-  <code class="language-python highlight"><span class="n">tomllib</span></code>.</li>
 </ul>
 <h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">models</span><span class="o">.</span><span class="n">py</span></code>: typed manifest models.</li>
 <li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">manifest</span><span class="o">.</span><span class="n">py</span></code>: parse/render <code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code>.</li>
-<li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">_toml</span><span class="o">.</span><span class="n">py</span></code>: TOML parser compatibility shim (<code class="language-python highlight"><span class="n">tomllib</span></code>/<code class="language-python highlight"><span class="n">tomli</span></code>).</li>
+<li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">layout</span><span class="o">.</span><span class="n">py</span></code>: resolve effective <code class="language-python highlight"><span class="n">src_dir</span></code>, <code class="language-python highlight"><span class="n">package</span></code>, and <code class="language-python highlight"><span class="n">mode</span></code>.</li>
 <li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">environment</span><span class="o">.</span><span class="n">py</span></code>: environment runtime abstraction and the <code class="language-python highlight"><span class="n">venv</span></code>,
   <code class="language-python highlight"><span class="n">conda</span></code>, and <code class="language-python highlight"><span class="n">system</span></code> implementations.</li>
 <li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">project</span><span class="o">.</span><span class="n">py</span></code>: <code class="language-python highlight"><span class="n">init</span></code>, <code class="language-python highlight"><span class="n">add</span></code>, <code class="language-python highlight"><span class="n">install</span></code>, <code class="language-python highlight"><span class="n">build</span></code>, <code class="language-python highlight"><span class="n">run</span></code>, <code class="language-python highlight"><span class="n">pack</span></code>,
   <code class="language-python highlight"><span class="n">publish</span></code>.</li>
-<li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">healthcheck</span><span class="o">.</span><span class="n">py</span></code>: environment and manifest checks.</li>
+<li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">healthcheck</span><span class="o">.</span><span class="n">py</span></code>: manifest, layout, environment, and toolchain
+  checks.</li>
 <li><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">arxpm</span><span class="o">/</span><span class="n">cli</span><span class="o">.</span><span class="n">py</span></code>: Typer CLI layer.</li>
 </ul>
 <h2 id="quick-cli">Quick CLI<a class="headerlink" href="#quick-cli" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>init<span class="w"> </span>--name<span class="w"> </span>hello-arx
 arxpm<span class="w"> </span>add<span class="w"> </span>http
 arxpm<span class="w"> </span>install
-arxpm<span class="w"> </span>install<span class="w"> </span>--group<span class="w"> </span>dev
 arxpm<span class="w"> </span>build
-arxpm<span class="w"> </span>compile
 arxpm<span class="w"> </span>run
-arxpm<span class="w"> </span>pack
-arxpm<span class="w"> </span>publish
-arxpm<span class="w"> </span>healthcheck
+arxpm<span class="w"> </span>doctor
 </code></pre></div>
-<p>See <a href="getting-started/">Getting Started</a> for a full setup and
-<a href="environments/">Environments</a> for the supported environment strategies.</p>
 
 
 

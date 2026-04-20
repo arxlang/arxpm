@@ -461,63 +461,13 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Supported layout">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#customizing-the-source-directory" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Customizing the source directory
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
-  <a href="#declaring-the-dependency" class="md-nav__link">
+  <a href="#what-arxpm-install-does" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Declaring the dependency
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-arxpm-install-does-for-an-arx-path-dependency" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What arxpm install does for an Arx path dependency
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#current-limits" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Current limits
+        What arxpm install does
       
     </span>
   </a>
@@ -648,63 +598,13 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Supported layout">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#customizing-the-source-directory" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Customizing the source directory
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
-  <a href="#declaring-the-dependency" class="md-nav__link">
+  <a href="#what-arxpm-install-does" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Declaring the dependency
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-arxpm-install-does-for-an-arx-path-dependency" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What arxpm install does for an Arx path dependency
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#current-limits" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Current limits
+        What arxpm install does
       
     </span>
   </a>
@@ -736,102 +636,53 @@
 with a path dependency. <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code> handles the packaging / install / link
 step so the Arx compiler finds the library's modules at build time.</p>
 <h2 id="supported-layout">Supported layout<a class="headerlink" href="#supported-layout" title="Permanent link">&para;</a></h2>
-<p>Arx projects default to a <code class="language-python highlight"><span class="n">src</span><span class="o">/</span></code> source root. The library's <code class="language-python highlight"><span class="o">.</span><span class="n">x</span></code> sources sit
-under <code class="language-python highlight"><span class="n">src</span><span class="o">/</span></code>, the consumer's sources sit under its own <code class="language-python highlight"><span class="n">src</span><span class="o">/</span></code>, and each side
-declares <code class="language-python highlight"><span class="n">src_dir</span> <span class="o">=</span> <span class="s2">&quot;src&quot;</span></code> in <code class="language-python highlight"><span class="p">[</span><span class="n">build</span><span class="p">]</span></code>:</p>
 <div class="language-text highlight"><pre><span></span><code>workspace/
 ├── local_lib/
 │   ├── .arxproject.toml
 │   └── src/
-│       ├── local_lib.x
-│       └── stats.x
+│       └── local_lib/
+│           ├── __init__.x
+│           └── stats.x
 └── local-consumer/
     ├── .arxproject.toml
     └── src/
-        └── main.x
+        └── local_consumer/
+            ├── __init__.x
+            └── main.x
 </code></pre></div>
-<p>The library's <code class="language-python highlight"><span class="n">project</span><span class="o">.</span><span class="n">name</span></code> becomes the Arx module name used by consumers.
-<code class="language-python highlight"><span class="n">arxpm</span> <span class="n">pack</span></code> strips the <code class="language-python highlight"><span class="n">src_dir</span></code> prefix when bundling, so the wheel lays the
-sources out flat under <code class="language-python highlight"><span class="o">&lt;</span><span class="n">package</span><span class="o">&gt;/</span></code>. That means
-<code class="language-python highlight"><span class="kn">import</span><span class="w"> </span><span class="nn">sum2</span> <span class="kn">from</span><span class="w"> </span><span class="nn">local_lib.stats</span></code> resolves to the <code class="language-python highlight"><span class="n">stats</span><span class="o">.</span><span class="n">x</span></code> file inside the
-package directory named <code class="language-python highlight"><span class="n">local_lib</span><span class="o">/</span></code> (not <code class="language-python highlight"><span class="n">local_lib</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">stats</span><span class="o">.</span><span class="n">x</span></code>).</p>
-<h3 id="customizing-the-source-directory">Customizing the source directory<a class="headerlink" href="#customizing-the-source-directory" title="Permanent link">&para;</a></h3>
-<p><code class="language-python highlight"><span class="n">src_dir</span></code> defaults to <code class="language-python highlight"><span class="s2">&quot;src&quot;</span></code> but you can override it per project — for example,
-a library that keeps its sources at the project root would declare
-<code class="language-python highlight"><span class="n">src_dir</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span></code>, and one that uses a <code class="language-python highlight"><span class="n">lib</span><span class="o">/</span></code> root would declare
-<code class="language-python highlight"><span class="n">src_dir</span> <span class="o">=</span> <span class="s2">&quot;lib&quot;</span></code>. <code class="language-python highlight"><span class="n">entry</span></code> is always interpreted <strong>relative to <code class="language-python highlight"><span class="n">src_dir</span></code></strong>, so
-the entry path passed to the compiler is <code class="language-python highlight"><span class="o">&lt;</span><span class="n">src_dir</span><span class="o">&gt;/&lt;</span><span class="n">entry</span><span class="o">&gt;</span></code>.</p>
-<h2 id="declaring-the-dependency">Declaring the dependency<a class="headerlink" href="#declaring-the-dependency" title="Permanent link">&para;</a></h2>
-<p><code class="language-python highlight"><span class="n">local</span><span class="o">-</span><span class="n">consumer</span><span class="o">/.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code>:</p>
+<p>Library manifest:</p>
+<div class="language-toml highlight"><pre><span></span><code><span class="k">[project]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;local_lib&quot;</span>
+<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
+
+<span class="k">[build]</span>
+<span class="n">mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;lib&quot;</span>
+</code></pre></div>
+<p>Consumer manifest:</p>
 <div class="language-toml highlight"><pre><span></span><code><span class="k">[project]</span>
 <span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;local-consumer&quot;</span>
 <span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
-<span class="n">edition</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;2026&quot;</span>
 
 <span class="n">dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
 <span class="w">  </span><span class="s2">&quot;local_lib @ ../local_lib&quot;</span><span class="p">,</span>
 <span class="p">]</span>
 
 <span class="k">[build]</span>
-<span class="n">src_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;src&quot;</span>
-<span class="n">entry</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;main.x&quot;</span>
-<span class="n">out_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;build&quot;</span>
-
-<span class="k">[toolchain]</span>
-<span class="n">compiler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;arx&quot;</span>
-<span class="n">linker</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;clang&quot;</span>
+<span class="n">package</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;local_consumer&quot;</span>
+<span class="n">mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;app&quot;</span>
 </code></pre></div>
-<p>The name on the left of <code class="language-python highlight"><span class="o">@</span></code> <strong>must</strong> match the library's Arx module name
-(derived from its <code class="language-python highlight"><span class="n">project</span><span class="o">.</span><span class="n">name</span></code>, normalized to a Python identifier).
-<code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code> rejects mismatched names rather than producing a silent failure
-at build time.</p>
-<h2 id="what-arxpm-install-does-for-an-arx-path-dependency">What <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code> does for an Arx path dependency<a class="headerlink" href="#what-arxpm-install-does-for-an-arx-path-dependency" title="Permanent link">&para;</a></h2>
+<p>The dependency name on the left of <code class="language-python highlight"><span class="o">@</span></code> must match the library's resolved Arx
+package name. <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code> rejects mismatches instead of guessing.</p>
+<h2 id="what-arxpm-install-does">What <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code> does<a class="headerlink" href="#what-arxpm-install-does" title="Permanent link">&para;</a></h2>
 <p>For each <code class="language-python highlight"><span class="n">project</span><span class="o">.</span><span class="n">dependencies</span></code> entry of the form <code class="language-python highlight"><span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span> <span class="o">@</span> <span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;</span></code> where
 <code class="language-python highlight"><span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;</span></code> points at a directory containing <code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code>, <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code>:</p>
 <ol>
-<li>Packs the library (runs <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">pack</span></code> on that path) to produce a wheel that
-   bundles every <code class="language-python highlight"><span class="o">.</span><span class="n">x</span></code> / <code class="language-python highlight"><span class="o">.</span><span class="n">arx</span></code> source under the library's <code class="language-python highlight"><span class="n">src_dir</span></code>, flattened
-   to the package root.</li>
-<li>Installs the wheel into the consumer's Python environment via
-   <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">python</span> <span class="o">&lt;</span><span class="n">interp</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">force</span><span class="o">-</span><span class="n">reinstall</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">deps</span> <span class="o">&lt;</span><span class="n">wheel</span><span class="o">&gt;</span></code>, so
-   the library lands at <code class="language-python highlight"><span class="o">&lt;</span><span class="n">env</span><span class="o">&gt;/</span><span class="n">lib</span><span class="o">/</span><span class="n">pythonX</span><span class="o">/</span><span class="n">site</span><span class="o">-</span><span class="n">packages</span><span class="o">/&lt;</span><span class="n">module_name</span><span class="o">&gt;/</span></code>.</li>
-<li>Creates a symlink <code class="language-python highlight"><span class="o">&lt;</span><span class="n">consumer</span><span class="o">&gt;/&lt;</span><span class="n">module_name</span><span class="o">&gt;</span></code> pointing at the installed
-   directory. The Arx compiler's resolver walks the ancestors of the entry file
-   looking for <code class="language-python highlight"><span class="o">&lt;</span><span class="n">module_name</span><span class="o">&gt;/&lt;</span><span class="n">sub</span><span class="o">&gt;.</span><span class="n">x</span></code>, so the symlink at the consumer's project
-   root is what lets the import succeed.</li>
+<li>Validates the library layout.</li>
+<li>Packs the library to produce a wheel that bundles its <code class="language-python highlight"><span class="o">.</span><span class="n">x</span></code> / <code class="language-python highlight"><span class="o">.</span><span class="n">arx</span></code> sources.</li>
+<li>Installs the wheel into the consumer's Python environment with <code class="language-python highlight"><span class="n">uv</span></code>.</li>
+<li>Creates a symlink <code class="language-python highlight"><span class="o">&lt;</span><span class="n">consumer</span><span class="o">&gt;/&lt;</span><span class="n">package</span><span class="o">&gt;</span></code> pointing at the installed package
+   directory so Arx import resolution can find it locally.</li>
 </ol>
-<p>Commit the <code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code> entry; ignore the generated symlink:</p>
-<div class="language-text highlight"><pre><span></span><code># local-consumer/.gitignore
-/local_lib
-</code></pre></div>
-<h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
-<p>The <code class="language-python highlight"><span class="n">examples</span><span class="o">/</span></code> directory ships a working pair:</p>
-<ul>
-<li><a href="https://github.com/arxlang/arxpm/tree/main/examples/local_lib"><code class="language-python highlight"><span class="n">examples</span><span class="o">/</span><span class="n">local_lib</span><span class="o">/</span></code></a></li>
-<li><a href="https://github.com/arxlang/arxpm/tree/main/examples/local-consumer"><code class="language-python highlight"><span class="n">examples</span><span class="o">/</span><span class="n">local</span><span class="o">-</span><span class="n">consumer</span><span class="o">/</span></code></a></li>
-</ul>
-<p>Copy them so they sit next to each other, then from the consumer:</p>
-<div class="language-text highlight"><pre><span></span><code>cd local-consumer
-arxpm install
-arxpm build
-arxpm run
-</code></pre></div>
-<p>Expected stdout: <code class="language-python highlight"><span class="mi">5</span></code>.</p>
-<h2 id="current-limits">Current limits<a class="headerlink" href="#current-limits" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Compiler resolution is local, not site-packages.</strong> The Arx compiler's
-  <code class="language-python highlight"><span class="n">FileImportResolver</span></code> only searches CWD and ancestors of the input files — it
-  does not read from <code class="language-python highlight"><span class="n">site</span><span class="o">-</span><span class="n">packages</span></code> directly. The symlink step is what bridges
-  the installed wheel back into the consumer's ancestor tree.</li>
-<li><strong>Path deps only; no registry or git.</strong> <code class="language-python highlight"><span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span> <span class="o">@</span> <span class="n">git</span><span class="o">+...</span></code> dependencies still
-  go straight through <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span></code> and bring no cross-compile support today
-  — only <code class="language-python highlight"><span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span> <span class="o">@</span> <span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;</span></code> entries pointing at an Arx project trigger the
-  pack/install/link flow.</li>
-<li><strong>No version solving or editable installs.</strong> Every <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code> re-packs
-  the library and reinstalls the wheel. For iterative library development, edit
-  sources and re-run <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code> in the consumer.</li>
-<li><strong>No circular dependencies.</strong> A and B cannot depend on each other.</li>
-</ul>
 
 
 

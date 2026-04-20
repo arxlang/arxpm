@@ -691,6 +691,9 @@ makim<span class="w"> </span>tests.smoke
 makim<span class="w"> </span>tests.linter
 makim<span class="w"> </span>docs.build
 </code></pre></div>
+<p><code class="language-python highlight"><span class="n">makim</span> <span class="n">tests</span><span class="o">.</span><span class="n">smoke</span></code> installs and builds every example, but only runs examples
+whose resolved <code class="language-python highlight"><span class="n">build</span><span class="o">.</span><span class="n">mode</span></code> is <code class="language-python highlight"><span class="s2">&quot;app&quot;</span></code>. Library examples are expected to stop
+after a successful build.</p>
 <h2 id="pull-requests">Pull Requests<a class="headerlink" href="#pull-requests" title="Permanent link">&para;</a></h2>
 <ul>
 <li>keep changes focused</li>

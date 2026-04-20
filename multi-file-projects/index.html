@@ -437,17 +437,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#import-syntaxes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Import syntaxes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#calling-imported-functions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -623,17 +612,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#import-syntaxes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Import syntaxes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#calling-imported-functions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -677,15 +655,17 @@
 
 <h1 id="multi-file-projects">Multi-file Projects<a class="headerlink" href="#multi-file-projects" title="Permanent link">&para;</a></h1>
 <p>An Arx project can be composed of several <code class="language-python highlight"><span class="o">.</span><span class="n">x</span></code> files that refer to each other
-via <code class="language-python highlight"><span class="kn">import</span></code> statements. Only the entry module is named in <code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code> —
-the compiler discovers sibling modules on the filesystem at build time.</p>
+via <code class="language-python highlight"><span class="kn">import</span></code> statements. <code class="language-python highlight"><span class="n">arxpm</span></code> now resolves the package root and passes an
+explicit file path to <code class="language-python highlight"><span class="n">arx</span></code>.</p>
 <h2 id="layout">Layout<a class="headerlink" href="#layout" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code>multi-module/
 ├── .arxproject.toml
 └── src/
-    ├── main.x
-    ├── math_utils.x
-    └── string_utils.x
+    └── multi_module/
+        ├── __init__.x
+        ├── main.x
+        ├── math_utils.x
+        └── string_utils.x
 </code></pre></div>
 <p><code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code>:</p>
 <div class="language-toml highlight"><pre><span></span><code><span class="k">[project]</span>
@@ -694,44 +674,28 @@ the compiler discovers sibling modules on the filesystem at build time.</p>
 <span class="n">edition</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;2026&quot;</span>
 
 <span class="k">[build]</span>
-<span class="n">entry</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;src/main.x&quot;</span>
+<span class="n">package</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;multi_module&quot;</span>
+<span class="n">mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;app&quot;</span>
 <span class="n">out_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;build&quot;</span>
 
 <span class="k">[toolchain]</span>
 <span class="n">compiler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;arx&quot;</span>
 <span class="n">linker</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;clang&quot;</span>
 </code></pre></div>
-<p>The manifest lists only <code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">main</span><span class="o">.</span><span class="n">x</span></code>. <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">build</span></code> invokes the compiler as
-<code class="language-python highlight"><span class="n">arx</span> <span class="n">src</span><span class="o">/</span><span class="n">main</span><span class="o">.</span><span class="n">x</span> <span class="o">--</span><span class="n">output</span><span class="o">-</span><span class="n">file</span> <span class="n">build</span><span class="o">/</span><span class="n">multi</span><span class="o">-</span><span class="n">module</span></code>; the compiler resolves
-<code class="language-python highlight"><span class="kn">import</span></code> statements against sibling files.</p>
-<h2 id="import-syntaxes">Import syntaxes<a class="headerlink" href="#import-syntaxes" title="Permanent link">&para;</a></h2>
-<p>The following forms are accepted in any <code class="language-python highlight"><span class="o">.</span><span class="n">x</span></code> file:</p>
-<div class="language-text highlight"><pre><span></span><code>import std.math
-import std.math as math
-
-import sin from std.math
-import sin as sine from std.math
-
-import (sin, cos, tan as tangent) from std.math
-
-import (
-  sin,
-  cos,
-  tan as tangent,
-) from std.math
+<p><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">build</span></code> invokes the compiler as:</p>
+<div class="language-text highlight"><pre><span></span><code>arx src/multi_module/main.x --output-file build/multi_module
 </code></pre></div>
-<p>Dotted names resolve to directories: <code class="language-python highlight"><span class="kn">import</span><span class="w"> </span><span class="nn">std.math</span></code> looks for <code class="language-python highlight"><span class="n">std</span><span class="o">/</span><span class="n">math</span><span class="o">.</span><span class="n">x</span></code>
-under the entry file's directory and its ancestors.</p>
+<p>Sibling imports still work from inside the package root.</p>
 <h2 id="calling-imported-functions">Calling imported functions<a class="headerlink" href="#calling-imported-functions" title="Permanent link">&para;</a></h2>
-<p><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">math_utils</span><span class="o">.</span><span class="n">x</span></code>:</p>
+<p><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">multi_module</span><span class="o">/</span><span class="n">math_utils</span><span class="o">.</span><span class="n">x</span></code>:</p>
 <div class="language-text highlight"><pre><span></span><code>fn add(a: i32, b: i32) -&gt; i32:
   return a + b;
 </code></pre></div>
-<p><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">string_utils</span><span class="o">.</span><span class="n">x</span></code>:</p>
+<p><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">multi_module</span><span class="o">/</span><span class="n">string_utils</span><span class="o">.</span><span class="n">x</span></code>:</p>
 <div class="language-text highlight"><pre><span></span><code>fn greet(name: string) -&gt; string:
   return &quot;Hello, &quot; + name + &quot;!&quot;;
 </code></pre></div>
-<p><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">main</span><span class="o">.</span><span class="n">x</span></code>:</p>
+<p><code class="language-python highlight"><span class="n">src</span><span class="o">/</span><span class="n">multi_module</span><span class="o">/</span><span class="n">main</span><span class="o">.</span><span class="n">x</span></code>:</p>
 <div class="language-text highlight"><pre><span></span><code>import add from math_utils
 import greet from string_utils
 
@@ -740,16 +704,9 @@ fn main() -&gt; i32:
   print(add(2, 3));
   return 0;
 </code></pre></div>
-<p>Running this project with <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">run</span></code> prints:</p>
-<div class="language-text highlight"><pre><span></span><code>Hello, Arx!
-5
-</code></pre></div>
-<p>A working copy of this project lives at
-<a href="https://github.com/arxlang/arxpm/tree/main/examples/multi-module"><code class="language-python highlight"><span class="n">examples</span><span class="o">/</span><span class="n">multi</span><span class="o">-</span><span class="n">module</span><span class="o">/</span></code></a>.</p>
 <h2 id="packaging">Packaging<a class="headerlink" href="#packaging" title="Permanent link">&para;</a></h2>
 <p><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">pack</span></code> and <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">publish</span></code> bundle every <code class="language-python highlight"><span class="o">*.</span><span class="n">x</span></code> / <code class="language-python highlight"><span class="o">*.</span><span class="n">arx</span></code> file under the
-project root (excluding <code class="language-python highlight"><span class="n">build</span><span class="o">/</span></code>, <code class="language-python highlight"><span class="n">dist</span><span class="o">/</span></code>, virtualenvs, and caches). Multi-file
-projects publish without additional configuration.</p>
+resolved source root, preserving the package-relative layout.</p>
 
 
 

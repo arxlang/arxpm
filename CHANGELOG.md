@@ -1,6 +1,13 @@
 # Release Notes
 ---
 
+# [1.7.0](https://github.com/arxlang/arxpm/compare/1.6.0...1.7.0) (2026-04-20)
+
+
+### Features
+
+* Update packaging layout strategy ([#10](https://github.com/arxlang/arxpm/issues/10)) ([658ca36](https://github.com/arxlang/arxpm/commit/658ca36bd8ebb0adf7e0d127d5262597ed089ead))
+
 # [1.6.0](https://github.com/arxlang/arxpm/compare/1.5.0...1.6.0) (2026-04-19)
 
 

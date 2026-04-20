@@ -22,6 +22,11 @@ Use this guidance for any change inside the IRx repository:
 3. Keep quality gates green (tests, mypy, ruff, pre-commit, coverage).
 4. Make minimal, targeted edits with clear intent.
 
+## Codex Authoring Rule
+
+- Never use heredocs inside YAML files. When editing YAML, use YAML-safe
+  single-line commands or move logic into scripts/files instead.
+
 ## Project Snapshot
 
 - Package: `pyirx`

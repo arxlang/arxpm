@@ -80,7 +80,14 @@ groups:
             python -m arxpm healthcheck --directory "${project_dir}"
             python -m arxpm install --directory "${project_dir}"
             python -m arxpm build --directory "${project_dir}"
-            python -m arxpm run --directory "${project_dir}"
+
+            project_mode="$(PROJECT_DIR="${project_dir}" python -c 'from pathlib import Path; import os; from arxpm._toml import tomllib; project_dir = Path(os.environ["PROJECT_DIR"]); data = tomllib.loads((project_dir / ".arxproject.toml").read_text(encoding="utf-8")); build = data.get("build", {}); src_dir = build.get("src_dir") or "src"; package = build.get("package") or data["project"]["name"]; main_file = project_dir / src_dir / package / "main.x"; print(build.get("mode") or ("app" if main_file.exists() else "lib"))')"
+
+            if [ "${project_mode}" = "app" ]; then
+              python -m arxpm run --directory "${project_dir}"
+            else
+              echo "Skipping run for lib project: ${example_name}"
+            fi
           done
 
       ci:

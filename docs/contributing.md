@@ -22,6 +22,10 @@ makim tests.linter
 makim docs.build
 ```
 
+`makim tests.smoke` installs and builds every example, but only runs examples
+whose resolved `build.mode` is `"app"`. Library examples are expected to stop
+after a successful build.
+
 ## Pull Requests
 
 - keep changes focused

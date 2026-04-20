@@ -134,11 +134,14 @@ def test_init_command_creates_project_files(
     assert manifest_path.exists()
 
     manifest_data = tomllib.loads(manifest_path.read_text(encoding="utf-8"))
-    src_dir = manifest_data["build"]["src_dir"]
-    entry = manifest_data["build"]["entry"]
+    build = manifest_data["build"]
+    src_dir = build["src_dir"]
+    package = build["package"]
+    assert build["mode"] == "app"
     assert isinstance(src_dir, str)
-    assert isinstance(entry, str)
-    assert (tmp_path / src_dir / entry).exists()
+    assert isinstance(package, str)
+    assert (tmp_path / src_dir / package / "__init__.x").exists()
+    assert (tmp_path / src_dir / package / "main.x").exists()
     assert "environment" not in manifest_data
 
 
@@ -330,6 +333,15 @@ def test_healthcheck_command_reports_failure(
     assert "[fail] uv: missing" in result.output
 
 
-def test_doctor_command_is_removed() -> None:
+def test_doctor_command_reports_success(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "arxpm.cli.HealthCheckService",
+        PassingHealthcheckService,
+    )
+
     result = runner.invoke(app, ["doctor"])
-    assert result.exit_code != 0
+
+    assert result.exit_code == 0
+    assert "[ok] uv: ok" in result.output

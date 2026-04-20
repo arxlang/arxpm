@@ -13,7 +13,7 @@ from conftest import FakeEnvironment, FakeRunner
 from arxpm.environment import EnvironmentFactory, EnvironmentRuntime
 from arxpm.errors import ManifestError
 from arxpm.manifest import load_manifest, save_manifest
-from arxpm.models import DependencyGroupInclude, Manifest
+from arxpm.models import BuildConfig, DependencyGroupInclude, Manifest
 from arxpm.project import ProjectService
 
 
@@ -58,7 +58,11 @@ def test_build_and_run_invoke_compiler_directly(tmp_path: Path) -> None:
     run_result = service.run(tmp_path)
 
     assert build_result.artifact == tmp_path / "build" / "demo"
-    assert runner.calls[0][0][:3] == ["arx", "src/main.x", "--output-file"]
+    assert runner.calls[0][0][:3] == [
+        "arx",
+        "src/demo/main.x",
+        "--output-file",
+    ]
     assert runner.calls[-1][0] == ["build/demo"]
     assert run_result.build_result.artifact == tmp_path / "build" / "demo"
 
@@ -205,14 +209,14 @@ def test_init_is_idempotent_when_manifest_exists(tmp_path: Path) -> None:
     env = FakeEnvironment()
     service = ProjectService(environment_factory=_factory(env))
 
-    first = service.init(tmp_path, name="demo")
-    entry_path = tmp_path / first.build.source_path
-    entry_path.write_text("// existing source\n", encoding="utf-8")
+    service.init(tmp_path, name="demo")
+    main_path = tmp_path / "src" / "demo" / "main.x"
+    main_path.write_text("// existing source\n", encoding="utf-8")
 
     second = service.init(tmp_path, name="ignored")
 
     assert second.project.name == "demo"
-    assert entry_path.read_text(encoding="utf-8") == "// existing source\n"
+    assert main_path.read_text(encoding="utf-8") == "// existing source\n"
 
 
 def test_install_packs_and_symlinks_arx_path_dependency(
@@ -223,7 +227,7 @@ def test_install_packs_and_symlinks_arx_path_dependency(
     consumer_dir = tmp_path / "app"
     fake_install_dir = tmp_path / "fake-site-packages" / "mylib"
     fake_install_dir.mkdir(parents=True)
-    (fake_install_dir / "main.x").write_text("", encoding="utf-8")
+    (fake_install_dir / "__init__.x").write_text("", encoding="utf-8")
 
     runner = FakeRunner(module_install_dirs={"mylib": fake_install_dir})
     service = ProjectService(
@@ -232,6 +236,15 @@ def test_install_packs_and_symlinks_arx_path_dependency(
     )
 
     service.init(library_dir, name="mylib")
+    library_manifest = load_manifest(library_dir)
+    library_manifest.build = BuildConfig(
+        src_dir=library_manifest.build.src_dir,
+        out_dir=library_manifest.build.out_dir,
+        package=library_manifest.build.package,
+        mode="lib",
+    )
+    save_manifest(library_dir, library_manifest)
+    (library_dir / "src" / "mylib" / "main.x").unlink()
     service.init(consumer_dir, name="app")
     service.add_dependency(consumer_dir, "mylib", path=Path("../mylib"))
 
@@ -267,6 +280,15 @@ def test_install_rejects_arx_path_dep_name_mismatch(tmp_path: Path) -> None:
     library_dir = tmp_path / "weird_dir_name"
     consumer_dir = tmp_path / "app"
     service.init(library_dir, name="actual_module")
+    library_manifest = load_manifest(library_dir)
+    library_manifest.build = BuildConfig(
+        src_dir=library_manifest.build.src_dir,
+        out_dir=library_manifest.build.out_dir,
+        package=library_manifest.build.package,
+        mode="lib",
+    )
+    save_manifest(library_dir, library_manifest)
+    (library_dir / "src" / "actual_module" / "main.x").unlink()
     service.init(consumer_dir, name="app")
     service.add_dependency(
         consumer_dir,
@@ -342,3 +364,51 @@ def test_install_rejects_conflicts_across_included_groups(
 
     with pytest.raises(ManifestError, match="defines conflicting entries"):
         service.install(tmp_path, groups=("dev",))
+
+
+def test_build_uses_init_module_for_lib_projects(tmp_path: Path) -> None:
+    env = FakeEnvironment()
+    runner = FakeRunner()
+    service = ProjectService(
+        environment_factory=_factory(env),
+        runner=runner,
+    )
+    service.init(tmp_path, name="demo")
+
+    manifest = load_manifest(tmp_path)
+    manifest.build = BuildConfig(
+        src_dir=manifest.build.src_dir,
+        out_dir=manifest.build.out_dir,
+        package=manifest.build.package,
+        mode="lib",
+    )
+    save_manifest(tmp_path, manifest)
+    (tmp_path / "src" / "demo" / "main.x").unlink()
+
+    build_result = service.build(tmp_path)
+
+    assert build_result.artifact == tmp_path / "build" / "demo"
+    assert runner.calls[0][0] == [
+        "arx",
+        "src/demo/__init__.x",
+        "--output-file",
+        "build/demo",
+    ]
+
+
+def test_run_rejects_lib_projects(tmp_path: Path) -> None:
+    service = ProjectService(environment_factory=_factory(FakeEnvironment()))
+    service.init(tmp_path, name="demo")
+
+    manifest = load_manifest(tmp_path)
+    manifest.build = BuildConfig(
+        src_dir=manifest.build.src_dir,
+        out_dir=manifest.build.out_dir,
+        package=manifest.build.package,
+        mode="lib",
+    )
+    save_manifest(tmp_path, manifest)
+    (tmp_path / "src" / "demo" / "main.x").unlink()
+
+    with pytest.raises(ManifestError, match="only available for app projects"):
+        service.run(tmp_path)

@@ -2,7 +2,7 @@
 
 ## `arxpm init`
 
-Create a new project in the target directory.
+Create a new app project in the target directory.
 
 ```bash
 arxpm init --name hello-arx
@@ -15,11 +15,12 @@ arxpm init --env-kind system
 Effects:
 
 - creates `.arxproject.toml`
-- creates `src/main.x`
+- creates `src/<package>/__init__.x`
+- creates `src/<package>/main.x`
+- writes `build.mode = "app"`
+- writes `build.package` when `project.name` is not a valid package identifier
 - writes an explicit `[environment]` block only when `--env-kind`, `--env-path`,
   or `--env-name` is provided
-
-See [Environments](environments.md) for the supported strategies.
 
 ## `arxpm add`
 
@@ -40,46 +41,26 @@ install dependencies with `uv`.
 arxpm install
 arxpm install --directory examples
 arxpm install --group dev
-arxpm install --group dev,docs
-arxpm install --group dev --group docs
-arxpm install --dev
 ```
-
-Dependency entries are installed as follows:
-
-- registry: `uv pip install <name>`
-- path: `uv pip install <path>` (non-Arx paths) or pack+install+symlink flow
-  (Arx libraries with an `.arxproject.toml`)
-- git: `uv pip install git+<url>`
-
-`--group` selects one or more dependency groups from `[dependency-groups]`.
-Repeat the flag or pass comma-separated names. `--dev` is a convenience alias
-for selecting the `dev` group.
 
 ## `arxpm build`
 
-Invoke the configured Arx compiler directly.
+Resolve the effective layout, validate it, choose the default target file, and
+invoke the configured Arx compiler directly.
 
 ```bash
 arxpm build
 arxpm build --directory examples
 ```
 
-Current Arx invocation uses:
+Arx invocation uses one of these targets:
 
-```text
-arx <entry> --output-file <out_dir>/<project_name>
-```
+- app: `arx <src_dir>/<package>/main.x --output-file <out_dir>/<package>`
+- lib: `arx <src_dir>/<package>/__init__.x --output-file <out_dir>/<package>`
 
 ## `arxpm compile`
 
-Alias for `arxpm build`. Clearer name for anyone treating `build` as a packaging
-operation.
-
-```bash
-arxpm compile
-arxpm compile --directory examples
-```
+Alias for `arxpm build`.
 
 ## `arxpm run`
 
@@ -90,43 +71,29 @@ arxpm run
 arxpm run --directory examples
 ```
 
-The command shows compiler and program output directly in your terminal.
+`arxpm run` is only valid for app projects.
 
 ## `arxpm pack`
 
 Build package artifacts locally without uploading to a registry.
 
-```bash
-arxpm pack
-arxpm pack --directory examples
-```
-
 ## `arxpm publish`
 
 Build and publish the current project as a Python package that bundles
-`.arxproject.toml` and `*.x`/`*.arx` sources. Build and upload tools (`build`,
-`twine`) run from the outer interpreter that is executing `arxpm`; they are
-never installed into your project environment.
-
-```bash
-export TWINE_USERNAME=__token__
-export TWINE_PASSWORD=<pypi-token>
-arxpm publish
-arxpm publish --repository-url https://test.pypi.org/legacy/
-arxpm publish --dry-run
-```
+`.arxproject.toml` and `*.x`/`*.arx` sources.
 
 ## `arxpm healthcheck`
 
-Report environment health and manifest status.
+Report manifest, layout, environment, and toolchain health.
 
 ```bash
 arxpm healthcheck
 ```
 
-Checks:
+## `arxpm doctor`
 
-- `.arxproject.toml` exists and parses
-- `uv` is on PATH
-- the configured compiler (`toolchain.compiler`) is on PATH
-- the declared environment is reachable
+Alias for `arxpm healthcheck` with the same checks and exit behavior.
+
+```bash
+arxpm doctor
+```

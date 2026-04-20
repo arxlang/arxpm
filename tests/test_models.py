@@ -88,8 +88,12 @@ def test_environment_config_rejects_invalid_values(
             "build.src_dir must be a non-empty string",
         ),
         (
-            lambda: BuildConfig(entry=""),
-            "build.entry must be a non-empty string",
+            lambda: BuildConfig(package=""),
+            "build.package must be a non-empty string",
+        ),
+        (
+            lambda: BuildConfig(mode="cli"),
+            "build.mode must be 'lib' or 'app'",
         ),
         (
             lambda: BuildConfig(out_dir=""),
@@ -113,12 +117,20 @@ def test_project_build_and_toolchain_reject_blank_values(
         factory()
 
 
-def test_build_source_path_handles_current_directory() -> None:
-    assert BuildConfig(src_dir=".", entry="main.x").source_path == "main.x"
-    assert (
-        BuildConfig(src_dir="lib", entry="core/main.x").source_path
-        == "lib/core/main.x"
+def test_manifest_from_dict_applies_build_defaults() -> None:
+    manifest = Manifest.from_dict(
+        {
+            "project": {
+                "name": "demo",
+                "version": "0.1.0",
+            }
+        }
     )
+
+    assert manifest.build.src_dir == "src"
+    assert manifest.build.out_dir == "build"
+    assert manifest.build.package is None
+    assert manifest.build.mode is None
 
 
 @pytest.mark.parametrize(
@@ -213,10 +225,13 @@ def test_manifest_from_dict_applies_defaults_and_to_dict_round_trips() -> None:
         }
     )
 
-    assert manifest.build.src_dir == "src"
     assert manifest.toolchain.compiler == "arx"
     assert manifest.environment.is_default() is True
     assert manifest.to_dict()["project"]["dependencies"] == []
+    assert manifest.to_dict()["build"] == {
+        "src_dir": "src",
+        "out_dir": "build",
+    }
 
 
 @pytest.mark.parametrize(
@@ -227,6 +242,10 @@ def test_manifest_from_dict_applies_defaults_and_to_dict_round_trips() -> None:
             r"top-level \[dependencies\] table is no longer supported",
         ),
         ({"build": []}, "build must be a table"),
+        (
+            {"build": {"entry": "src/main.x"}},
+            r"\[build\]\.entry is no longer supported",
+        ),
         ({"toolchain": []}, "toolchain must be a table"),
         ({"environment": []}, "environment must be a table"),
         ({"extra": {}}, "manifest has unknown top-level keys: extra"),
@@ -273,6 +292,24 @@ def test_manifest_from_dict_rejects_invalid_project_dependencies(
                 }
             }
         )
+
+
+def test_manifest_from_dict_parses_package_and_mode() -> None:
+    manifest = Manifest.from_dict(
+        {
+            "project": {
+                "name": "my-project",
+                "version": "0.1.0",
+            },
+            "build": {
+                "package": "my_project",
+                "mode": "lib",
+            },
+        }
+    )
+
+    assert manifest.build.package == "my_project"
+    assert manifest.build.mode == "lib"
 
 
 def test_manifest_from_dict_parses_dependency_groups_and_environment() -> None:

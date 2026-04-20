@@ -7,8 +7,8 @@ dependencies = []
 
 [build]
 src_dir = "src"
-entry = "local_lib.x"
 out_dir = "build"
+mode = "lib"
 
 [toolchain]
 compiler = "arx"

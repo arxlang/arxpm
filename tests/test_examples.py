@@ -9,11 +9,11 @@ from pathlib import Path
 from conftest import CopyExample, FakeEnvironment, FakeRunner
 
 from arxpm.environment import EnvironmentFactory, EnvironmentRuntime
+from arxpm.layout import resolve_build_config
 from arxpm.manifest import load_manifest
 from arxpm.models import Manifest
 from arxpm.project import (
     ProjectService,
-    _arx_module_name,
     _discover_arx_sources,
     _prepare_publish_workspace,
 )
@@ -31,15 +31,17 @@ def test_hello_arx_manifest_parses(copy_example: CopyExample) -> None:
     project_dir = copy_example("hello-arx")
 
     manifest = load_manifest(project_dir)
+    layout = resolve_build_config(manifest, project_dir)
 
     assert manifest.project.name == "hello-arx"
     assert manifest.build.src_dir == "src"
-    assert manifest.build.entry == "main.x"
-    assert manifest.build.source_path == "src/main.x"
+    assert manifest.build.package == "hello_arx"
+    assert manifest.build.mode == "app"
+    assert layout.target_file == project_dir / "src" / "hello_arx" / "main.x"
     assert manifest.toolchain.compiler == "arx"
 
 
-def test_hello_arx_build_invokes_arx_with_entry_only(
+def test_hello_arx_build_invokes_arx_with_main_module(
     copy_example: CopyExample,
     fake_env: FakeEnvironment,
     fake_runner: FakeRunner,
@@ -54,32 +56,40 @@ def test_hello_arx_build_invokes_arx_with_entry_only(
 
     assert fake_runner.calls[0][0] == [
         "arx",
-        "src/main.x",
+        "src/hello_arx/main.x",
         "--output-file",
-        "build/hello-arx",
+        "build/hello_arx",
     ]
 
 
 def test_hello_arx_discover_arx_sources(copy_example: CopyExample) -> None:
     project_dir = copy_example("hello-arx")
+    layout = resolve_build_config(load_manifest(project_dir), project_dir)
 
-    sources = _discover_arx_sources(project_dir)
+    sources = _discover_arx_sources(project_dir, layout.source_root)
 
-    assert sources == [Path("src/main.x")]
+    assert sources == [
+        Path("src/hello_arx/__init__.x"),
+        Path("src/hello_arx/main.x"),
+    ]
 
 
 def test_multi_module_manifest_parses(copy_example: CopyExample) -> None:
     project_dir = copy_example("multi-module")
 
     manifest = load_manifest(project_dir)
+    layout = resolve_build_config(manifest, project_dir)
 
     assert manifest.project.name == "multi-module"
     assert manifest.build.src_dir == "src"
-    assert manifest.build.entry == "main.x"
-    assert manifest.build.source_path == "src/main.x"
+    assert manifest.build.package == "multi_module"
+    assert manifest.build.mode == "app"
+    assert layout.target_file == (
+        project_dir / "src" / "multi_module" / "main.x"
+    )
 
 
-def test_multi_module_build_invokes_arx_with_entry_only(
+def test_multi_module_build_invokes_arx_with_main_module(
     copy_example: CopyExample,
     fake_env: FakeEnvironment,
     fake_runner: FakeRunner,
@@ -94,9 +104,9 @@ def test_multi_module_build_invokes_arx_with_entry_only(
 
     assert fake_runner.calls[0][0] == [
         "arx",
-        "src/main.x",
+        "src/multi_module/main.x",
         "--output-file",
-        "build/multi-module",
+        "build/multi_module",
     ]
 
 
@@ -104,13 +114,15 @@ def test_multi_module_discover_arx_sources_finds_all_modules(
     copy_example: CopyExample,
 ) -> None:
     project_dir = copy_example("multi-module")
+    layout = resolve_build_config(load_manifest(project_dir), project_dir)
 
-    sources = _discover_arx_sources(project_dir)
+    sources = _discover_arx_sources(project_dir, layout.source_root)
 
     assert sources == [
-        Path("src/main.x"),
-        Path("src/math_utils.x"),
-        Path("src/string_utils.x"),
+        Path("src/multi_module/__init__.x"),
+        Path("src/multi_module/main.x"),
+        Path("src/multi_module/math_utils.x"),
+        Path("src/multi_module/string_utils.x"),
     ]
 
 
@@ -118,7 +130,9 @@ def test_multi_module_main_declares_expected_imports(
     copy_example: CopyExample,
 ) -> None:
     project_dir = copy_example("multi-module")
-    main_text = (project_dir / "src" / "main.x").read_text(encoding="utf-8")
+    main_text = (project_dir / "src" / "multi_module" / "main.x").read_text(
+        encoding="utf-8"
+    )
 
     assert "import add from math_utils" in main_text
     assert "import greet from string_utils" in main_text
@@ -126,29 +140,34 @@ def test_multi_module_main_declares_expected_imports(
     assert 'greet("Arx")' in main_text
 
 
-def test_local_lib_manifest_declares_underscore_package(
+def test_local_lib_manifest_declares_lib_mode(
     copy_example: CopyExample,
 ) -> None:
     project_dir = copy_example("local_lib")
 
     manifest = load_manifest(project_dir)
+    layout = resolve_build_config(manifest, project_dir)
 
     assert manifest.project.name == "local_lib"
     assert manifest.build.src_dir == "src"
-    assert manifest.build.entry == "local_lib.x"
-    assert manifest.build.source_path == "src/local_lib.x"
+    assert manifest.build.package is None
+    assert manifest.build.mode == "lib"
+    assert layout.target_file == (
+        project_dir / "src" / "local_lib" / "__init__.x"
+    )
 
 
 def test_local_lib_exposes_stats_module_at_top_level(
     copy_example: CopyExample,
 ) -> None:
     project_dir = copy_example("local_lib")
+    layout = resolve_build_config(load_manifest(project_dir), project_dir)
 
-    sources = _discover_arx_sources(project_dir)
+    sources = _discover_arx_sources(project_dir, layout.source_root)
 
     assert sources == [
-        Path("src/local_lib.x"),
-        Path("src/stats.x"),
+        Path("src/local_lib/__init__.x"),
+        Path("src/local_lib/stats.x"),
     ]
 
 
@@ -158,11 +177,15 @@ def test_local_consumer_manifest_declares_local_lib_path_dep(
     project_dir = copy_example("local-consumer")
 
     manifest = load_manifest(project_dir)
+    layout = resolve_build_config(manifest, project_dir)
 
     assert manifest.project.name == "local-consumer"
     assert manifest.build.src_dir == "src"
-    assert manifest.build.entry == "main.x"
-    assert manifest.build.source_path == "src/main.x"
+    assert manifest.build.package == "local_consumer"
+    assert manifest.build.mode == "app"
+    assert layout.target_file == (
+        project_dir / "src" / "local_consumer" / "main.x"
+    )
     assert manifest.dependencies["local_lib"].path == "../local_lib"
     assert manifest.dependencies["pyyaml"].kind == "registry"
 
@@ -171,13 +194,15 @@ def test_local_consumer_imports_from_local_lib(
     copy_example: CopyExample,
 ) -> None:
     project_dir = copy_example("local-consumer")
-    main_text = (project_dir / "src" / "main.x").read_text(encoding="utf-8")
+    main_text = (project_dir / "src" / "local_consumer" / "main.x").read_text(
+        encoding="utf-8"
+    )
 
     assert "import sum2 from local_lib.stats" in main_text
     assert "sum2(2, 3)" in main_text
 
 
-def test_local_consumer_build_invokes_arx_with_entry_only(
+def test_local_consumer_build_invokes_arx_with_main_module(
     copy_example: CopyExample,
     fake_env: FakeEnvironment,
     fake_runner: FakeRunner,
@@ -192,9 +217,9 @@ def test_local_consumer_build_invokes_arx_with_entry_only(
 
     assert fake_runner.calls[0][0] == [
         "arx",
-        "src/main.x",
+        "src/local_consumer/main.x",
         "--output-file",
-        "build/local-consumer",
+        "build/local_consumer",
     ]
 
 
@@ -208,10 +233,8 @@ def test_local_lib_publish_workspace_bundles_all_arx_sources(
 
     _prepare_publish_workspace(project_dir, manifest, staging_dir)
 
-    package_name = _arx_module_name(manifest.project.name)
-    package_root = staging_dir / "src" / package_name
-    assert package_name == "local_lib"
-    assert (package_root / "local_lib.x").is_file()
+    package_root = staging_dir / "src" / "local_lib"
+    assert (package_root / "__init__.x").is_file()
     assert (package_root / "stats.x").is_file()
     assert (package_root / ".arxproject.toml").is_file()
     assert (package_root / "__init__.py").is_file()

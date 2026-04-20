@@ -208,7 +208,7 @@ __marimo__/
 
 # tmp
 PLAN.md
-pytest-*/*
+pytest-*
 
 # llm
 .codex

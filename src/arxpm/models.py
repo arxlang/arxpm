@@ -132,35 +132,28 @@ class BuildConfig:
     attributes:
       src_dir:
         type: str
-      entry:
-        type: str
       out_dir:
         type: str
+      package:
+        type: str | None
+      mode:
+        type: str | None
     """
 
     src_dir: str = "src"
-    entry: str = "main.x"
     out_dir: str = "build"
+    package: str | None = None
+    mode: str | None = None
 
     def __post_init__(self) -> None:
         if not self.src_dir.strip():
             raise ManifestError("build.src_dir must be a non-empty string")
-        if not self.entry.strip():
-            raise ManifestError("build.entry must be a non-empty string")
         if not self.out_dir.strip():
             raise ManifestError("build.out_dir must be a non-empty string")
-
-    @property
-    def source_path(self) -> str:
-        """
-        title: Entry path relative to the project root (src_dir + entry).
-        returns:
-          type: str
-        """
-        normalized = self.src_dir.strip().strip("/")
-        if not normalized or normalized == ".":
-            return self.entry
-        return f"{normalized}/{self.entry}"
+        if self.package is not None and not self.package.strip():
+            raise ManifestError("build.package must be a non-empty string")
+        if self.mode is not None and self.mode not in {"lib", "app"}:
+            raise ManifestError("build.mode must be 'lib' or 'app'")
 
 
 @dataclass(slots=True, frozen=True)
@@ -425,6 +418,11 @@ class Manifest:
         else:
             if not isinstance(build_raw, Mapping):
                 raise ManifestError("build must be a table")
+            if "entry" in build_raw:
+                raise ManifestError(
+                    "Invalid manifest: [build].entry is no longer supported; "
+                    "use build.package/build.mode instead"
+                )
             build_defaults = BuildConfig()
             build = BuildConfig(
                 src_dir=_optional_string(
@@ -433,17 +431,23 @@ class Manifest:
                     "build",
                     build_defaults.src_dir,
                 ),
-                entry=_optional_string(
-                    build_raw,
-                    "entry",
-                    "build",
-                    build_defaults.entry,
-                ),
                 out_dir=_optional_string(
                     build_raw,
                     "out_dir",
                     "build",
                     build_defaults.out_dir,
+                ),
+                package=_optional_optional_string(
+                    build_raw,
+                    "package",
+                    "build",
+                    build_defaults.package,
+                ),
+                mode=_optional_optional_string(
+                    build_raw,
+                    "mode",
+                    "build",
+                    build_defaults.mode,
                 ),
             )
 
@@ -503,13 +507,18 @@ class Manifest:
                 for name, spec in sorted(self.dependencies.items())
             ],
         }
+        build: dict[str, Any] = {
+            "src_dir": self.build.src_dir,
+            "out_dir": self.build.out_dir,
+        }
+        if self.build.package is not None:
+            build["package"] = self.build.package
+        if self.build.mode is not None:
+            build["mode"] = self.build.mode
+
         data: dict[str, Any] = {
             "project": project,
-            "build": {
-                "src_dir": self.build.src_dir,
-                "entry": self.build.entry,
-                "out_dir": self.build.out_dir,
-            },
+            "build": build,
             "toolchain": {
                 "compiler": self.toolchain.compiler,
                 "linker": self.toolchain.linker,
@@ -641,6 +650,22 @@ def _optional_string(
     if key not in raw:
         return default
     value = raw.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise ManifestError(f"{section}.{key} must be a non-empty string")
+    return value
+
+
+def _optional_optional_string(
+    raw: Mapping[str, Any],
+    key: str,
+    section: str,
+    default: str | None,
+) -> str | None:
+    if key not in raw:
+        return default
+    value = raw.get(key)
+    if value is None:
+        return None
     if not isinstance(value, str) or not value.strip():
         raise ManifestError(f"{section}.{key} must be a non-empty string")
     return value

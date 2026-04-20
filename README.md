@@ -2,8 +2,9 @@
 
 `arxpm` is the Arx project manager and workspace tool.
 
-`arx` provides the shared `.arxproject.toml` loading, parsing, and validation
-API. `arxpm` owns manifest rendering, workspace lifecycle, Python environment
+`arx` compiles `.x` files and resolves project-aware imports using
+`build.src_dir`. `arxpm` owns `.arxproject.toml` rendering, project layout
+inference and validation, default target selection, Python environment
 provisioning (via `uv`), and user-facing workflow commands.
 
 ## Compatibility
@@ -16,13 +17,14 @@ provisioning (via `uv`), and user-facing workflow commands.
 
 - `models.py`: typed manifest models.
 - `manifest.py`: `.arxproject.toml` parsing and rendering.
+- `layout.py`: effective package/mode resolution and filesystem validation.
 - `_toml.py`: TOML parser compatibility shim (`tomllib`/`tomli`).
 - `environment.py`: backend-neutral environment protocol plus `venv`, `conda`,
   and `system` implementations that install packages via
   `uv pip install --python <interp>`.
 - `project.py`: project workflows (`init`, `add`, `install`, `build`, `run`,
   `pack`, `publish`).
-- `healthcheck.py`: health checks for environment and manifest.
+- `healthcheck.py`: manifest, layout, environment, and toolchain checks.
 - `cli.py`: Typer command layer.
 
 ## Commands (v0)
@@ -36,6 +38,7 @@ provisioning (via `uv`), and user-facing workflow commands.
 - `arxpm pack`
 - `arxpm publish`
 - `arxpm healthcheck`
+- `arxpm doctor`
 
 ## Development
 
@@ -48,9 +51,9 @@ pytest
 
 The `examples/` directory ships several sample projects:
 
-- `examples/hello-arx/` — minimal single-file project.
-- `examples/multi-module/` — multi-file project whose `main.x` imports and calls
-  functions from sibling `.x` modules. See the
+- `examples/hello-arx/` — minimal app project at `src/hello_arx/`.
+- `examples/multi-module/` — multi-file app project whose `main.x` imports and
+  calls functions from sibling `.x` modules. See the
   [Multi-file Projects](docs/multi-file-projects.md) guide.
 - `examples/local_lib/` + `examples/local-consumer/` — a library and a consumer
   that live side by side on disk so the consumer resolves imports against the

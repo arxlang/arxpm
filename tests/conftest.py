@@ -4,6 +4,7 @@ title: Shared fixtures for arxpm tests.
 
 from __future__ import annotations
 
+import json
 import shutil
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
@@ -79,19 +80,24 @@ class FakeRunner:
         type: list[dict[str, str] | None]
       module_install_dirs:
         type: dict[str, Path]
+      module_dependencies:
+        type: dict[str, tuple[str, Ellipsis]]
     """
 
     calls: list[tuple[list[str], Path | None, bool]]
     environments: list[dict[str, str] | None]
     module_install_dirs: dict[str, Path]
+    module_dependencies: dict[str, tuple[str, ...]]
 
     def __init__(
         self,
         module_install_dirs: dict[str, Path] | None = None,
+        module_dependencies: dict[str, tuple[str, ...]] | None = None,
     ) -> None:
         self.calls = []
         self.environments = []
         self.module_install_dirs = module_install_dirs or {}
+        self.module_dependencies = module_dependencies or {}
 
     def __call__(
         self,
@@ -129,6 +135,9 @@ class FakeRunner:
 
         if len(cmd_list) >= 3 and cmd_list[1] == "-c":
             script = cmd_list[2]
+            if "_arxpm_find_arx_packages" in script:
+                return self._arx_package_probe(cmd_list)
+
             for module_name, install_dir in self.module_install_dirs.items():
                 if f"import {module_name}" in script:
                     return CommandResult(
@@ -139,6 +148,48 @@ class FakeRunner:
                     )
 
         return CommandResult(tuple(cmd_list), 0, "", "")
+
+    def _arx_package_probe(self, cmd_list: list[str]) -> CommandResult:
+        requested_names = json.loads(cmd_list[3]) if len(cmd_list) > 3 else []
+        packages: list[dict[str, str]] = []
+        seen: set[str] = set()
+        pending = list(requested_names)
+        while pending:
+            dependency_name = pending.pop(0)
+            if dependency_name in seen:
+                continue
+            seen.add(dependency_name)
+            pending.extend(self.module_dependencies.get(dependency_name, ()))
+            install_dir = self.module_install_dirs.get(dependency_name)
+            if install_dir is None:
+                normalized_name = dependency_name.replace("-", "_")
+                install_dir = self.module_install_dirs.get(normalized_name)
+            if install_dir is None:
+                continue
+            if not _is_arx_package_dir(install_dir):
+                continue
+            packages.append(
+                {
+                    "dist": dependency_name,
+                    "module": install_dir.name,
+                    "path": str(install_dir),
+                }
+            )
+        return CommandResult(
+            tuple(cmd_list),
+            0,
+            json.dumps(packages) + "\n",
+            "",
+        )
+
+
+def _is_arx_package_dir(path: Path) -> bool:
+    if not (path / ".arxproject.toml").is_file():
+        return False
+    return any(
+        source.is_file() and source.suffix in {".x", ".arx"}
+        for source in path.rglob("*")
+    )
 
 
 @pytest.fixture

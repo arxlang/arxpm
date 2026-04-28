@@ -91,12 +91,17 @@ arxpm run --directory examples
 
 ## `arxpm pack`
 
-Build package artifacts locally without uploading to a registry.
+Build package artifacts locally without uploading to a registry. The command
+produces both a source distribution (`.tar.gz`) and a wheel (`.whl`) so source
+files remain available for debugging and import resolution.
 
 ## `arxpm publish`
 
 Build and publish the current project as a Python package that bundles
-`.arxproject.toml` and `*.x`/`*.arx` sources.
+`.arxproject.toml` and `*.x`/`*.arx` sources in both source distribution and
+wheel artifacts. The generated package metadata also includes
+`project.dependencies`, so Python installers can resolve transitive package
+dependencies.
 
 The default repository is the official PyPI upload endpoint:
 `https://upload.pypi.org/legacy/`. Override it with `--repository-url` or

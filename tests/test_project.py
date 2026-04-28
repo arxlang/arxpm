@@ -14,7 +14,7 @@ from arxpm.environment import EnvironmentFactory, EnvironmentRuntime
 from arxpm.errors import ManifestError
 from arxpm.manifest import load_manifest, save_manifest
 from arxpm.models import BuildConfig, DependencyGroupInclude, Manifest
-from arxpm.project import ProjectService
+from arxpm.project import ProjectService, _prepare_publish_workspace
 
 
 def _factory(env: FakeEnvironment) -> EnvironmentFactory:
@@ -104,7 +104,11 @@ def test_install_dispatches_dependencies_through_environment(
     tmp_path: Path,
 ) -> None:
     env = FakeEnvironment()
-    service = ProjectService(environment_factory=_factory(env))
+    runner = FakeRunner()
+    service = ProjectService(
+        environment_factory=_factory(env),
+        runner=runner,
+    )
     service.init(tmp_path, name="demo")
 
     service.add_dependency(tmp_path, "http")
@@ -118,13 +122,19 @@ def test_install_dispatches_dependencies_through_environment(
     assert requirements == [
         ("http", "git+https://example.com/utils.git"),
     ]
+    assert not (tmp_path / "http").exists()
+    assert not (tmp_path / "utils").exists()
 
 
 def test_install_includes_selected_dependency_groups(
     tmp_path: Path,
 ) -> None:
     env = FakeEnvironment()
-    service = ProjectService(environment_factory=_factory(env))
+    runner = FakeRunner()
+    service = ProjectService(
+        environment_factory=_factory(env),
+        runner=runner,
+    )
     service.init(tmp_path, name="demo")
 
     manifest = load_manifest(tmp_path)
@@ -142,7 +152,11 @@ def test_install_includes_selected_dependency_groups(
 
 def test_install_dev_alias_selects_dev_group(tmp_path: Path) -> None:
     env = FakeEnvironment()
-    service = ProjectService(environment_factory=_factory(env))
+    runner = FakeRunner()
+    service = ProjectService(
+        environment_factory=_factory(env),
+        runner=runner,
+    )
     service.init(tmp_path, name="demo")
 
     manifest = load_manifest(tmp_path)
@@ -179,6 +193,8 @@ def test_publish_builds_and_uploads_artifacts(tmp_path: Path) -> None:
 
     commands = [call[0] for call in runner.calls]
     assert commands[0][:3] == [sys.executable, "-m", "build"]
+    assert "--sdist" in commands[0]
+    assert "--wheel" in commands[0]
     upload_command = commands[1]
     assert upload_command[:4] == [sys.executable, "-m", "twine", "upload"]
     assert "--repository-url" in upload_command
@@ -377,6 +393,38 @@ def test_pack_builds_artifacts_without_upload(tmp_path: Path) -> None:
     ]
     assert pack_result.upload_result is None
     assert len(runner.calls) == 1
+    assert "--sdist" in runner.calls[0][0]
+    assert "--wheel" in runner.calls[0][0]
+
+
+def test_publish_workspace_renders_dependency_metadata(
+    tmp_path: Path,
+) -> None:
+    env = FakeEnvironment()
+    service = ProjectService(environment_factory=_factory(env))
+    service.init(tmp_path, name="demo")
+    service.add_dependency(tmp_path, "http")
+    service.add_dependency(tmp_path, "local-lib", path=Path("../local-lib"))
+    service.add_dependency(
+        tmp_path,
+        "utils",
+        git="https://example.com/utils.git",
+    )
+
+    staging_dir = tmp_path / "staging"
+    _prepare_publish_workspace(
+        tmp_path,
+        load_manifest(tmp_path),
+        staging_dir,
+    )
+
+    pyproject_text = (staging_dir / "pyproject.toml").read_text(
+        encoding="utf-8"
+    )
+    assert "dependencies = [" in pyproject_text
+    assert '  "http",' in pyproject_text
+    assert '  "local-lib",' in pyproject_text
+    assert '  "utils @ git+https://example.com/utils.git",' in pyproject_text
 
 
 def test_publish_dry_run_skips_upload(tmp_path: Path) -> None:
@@ -468,6 +516,162 @@ def test_install_packs_and_symlinks_arx_path_dependency(
     symlink = consumer_dir / "mylib"
     assert symlink.is_symlink()
     assert symlink.resolve() == fake_install_dir
+
+
+def test_install_symlinks_installed_registry_arx_dependency(
+    tmp_path: Path,
+) -> None:
+    env = FakeEnvironment()
+    consumer_dir = tmp_path / "app"
+    fake_install_dir = tmp_path / "fake-site-packages" / "shared_lib"
+    fake_install_dir.mkdir(parents=True)
+    (fake_install_dir / ".arxproject.toml").write_text(
+        """
+[project]
+name = "shared-lib"
+version = "0.1.0"
+
+[build]
+package = "shared_lib"
+mode = "lib"
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    (fake_install_dir / "__init__.x").write_text("", encoding="utf-8")
+
+    runner = FakeRunner(module_install_dirs={"shared-lib": fake_install_dir})
+    service = ProjectService(
+        environment_factory=_factory(env),
+        runner=runner,
+    )
+    service.init(consumer_dir, name="app")
+    service.add_dependency(consumer_dir, "shared-lib")
+
+    service.install(consumer_dir)
+
+    assert env.install_calls == [(("shared-lib",), False, False)]
+    symlink = consumer_dir / "shared_lib"
+    assert symlink.is_symlink()
+    assert symlink.resolve() == fake_install_dir
+
+
+def test_install_symlinks_transitive_registry_arx_dependency(
+    tmp_path: Path,
+) -> None:
+    env = FakeEnvironment()
+    consumer_dir = tmp_path / "app"
+    project_a_dir = tmp_path / "fake-site-packages" / "project_a"
+    project_b_dir = tmp_path / "fake-site-packages" / "project_b"
+    for package_dir, project_name in (
+        (project_a_dir, "project-a"),
+        (project_b_dir, "project-b"),
+    ):
+        package_dir.mkdir(parents=True)
+        (package_dir / ".arxproject.toml").write_text(
+            f"""
+[project]
+name = "{project_name}"
+version = "0.1.0"
+
+[build]
+package = "{package_dir.name}"
+mode = "lib"
+""".strip()
+            + "\n",
+            encoding="utf-8",
+        )
+        (package_dir / "__init__.x").write_text("", encoding="utf-8")
+
+    runner = FakeRunner(
+        module_install_dirs={
+            "project-a": project_a_dir,
+            "project-b": project_b_dir,
+        },
+        module_dependencies={"project-a": ("project-b",)},
+    )
+    service = ProjectService(
+        environment_factory=_factory(env),
+        runner=runner,
+    )
+    service.init(consumer_dir, name="app")
+    service.add_dependency(consumer_dir, "project-a")
+
+    service.install(consumer_dir)
+
+    assert (consumer_dir / "project_a").resolve() == project_a_dir
+    assert (consumer_dir / "project_b").resolve() == project_b_dir
+
+
+def test_install_packs_nested_arx_path_dependency(
+    tmp_path: Path,
+) -> None:
+    env = FakeEnvironment()
+    consumer_dir = tmp_path / "app"
+    project_a_dir = tmp_path / "project_a"
+    project_b_dir = tmp_path / "project_b"
+    project_a_install_dir = tmp_path / "fake-site-packages" / "project_a"
+    project_b_install_dir = tmp_path / "fake-site-packages" / "project_b"
+    project_a_install_dir.mkdir(parents=True)
+    project_b_install_dir.mkdir(parents=True)
+    (project_a_install_dir / "__init__.x").write_text("", encoding="utf-8")
+    (project_b_install_dir / "__init__.x").write_text("", encoding="utf-8")
+
+    runner = FakeRunner(
+        module_install_dirs={
+            "project_a": project_a_install_dir,
+            "project_b": project_b_install_dir,
+        }
+    )
+    service = ProjectService(
+        environment_factory=_factory(env),
+        runner=runner,
+    )
+    service.init(project_b_dir, name="project_b")
+    project_b_manifest = load_manifest(project_b_dir)
+    project_b_manifest.build = BuildConfig(
+        src_dir=project_b_manifest.build.src_dir,
+        out_dir=project_b_manifest.build.out_dir,
+        package=project_b_manifest.build.package,
+        mode="lib",
+    )
+    save_manifest(project_b_dir, project_b_manifest)
+    (project_b_dir / "src" / "project_b" / "main.x").unlink()
+
+    service.init(project_a_dir, name="project_a")
+    project_a_manifest = load_manifest(project_a_dir)
+    project_a_manifest.build = BuildConfig(
+        src_dir=project_a_manifest.build.src_dir,
+        out_dir=project_a_manifest.build.out_dir,
+        package=project_a_manifest.build.package,
+        mode="lib",
+    )
+    save_manifest(project_a_dir, project_a_manifest)
+    (project_a_dir / "src" / "project_a" / "main.x").unlink()
+    service.add_dependency(
+        project_a_dir,
+        "project_b",
+        path=Path("../project_b"),
+    )
+
+    service.init(consumer_dir, name="app")
+    service.add_dependency(
+        consumer_dir,
+        "project_a",
+        path=Path("../project_a"),
+    )
+
+    service.install(consumer_dir)
+
+    wheel_installs = [
+        call[0][0]
+        for call in env.install_calls
+        if call[0] and call[0][0].endswith(".whl")
+    ]
+    assert any("project_b" in wheel for wheel in wheel_installs)
+    assert any("project_a" in wheel for wheel in wheel_installs)
+    assert (consumer_dir / "project_a").resolve() == project_a_install_dir
+    assert (consumer_dir / "project_b").resolve() == project_b_install_dir
 
 
 def test_install_rejects_arx_path_dep_name_mismatch(tmp_path: Path) -> None:

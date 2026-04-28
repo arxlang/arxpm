@@ -334,8 +334,18 @@ def _compiler_check(
             message="skipped: environment unreachable",
         )
 
-    arx_executable = environment_executable(environment, _DEFAULT_ARX_COMPILER)
     python_executable = environment.python_executable()
+    arx_executable = environment_executable(environment, _DEFAULT_ARX_COMPILER)
+    if not python_executable.exists():
+        return HealthCheck(
+            name="compiler (arx)",
+            ok=True,
+            message=(
+                "skipped: environment has not been created yet; "
+                f"run arxpm install to install {arx_executable}"
+            ),
+        )
+
     try:
         executable_result = runner(
             [str(arx_executable), "--help"],

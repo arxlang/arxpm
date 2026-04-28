@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import shutil
 import sys
+import sysconfig
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Protocol
@@ -65,6 +66,16 @@ class EnvironmentRuntime(Protocol):
           type: CommandResult
         """
 
+    def executable(self, name: str) -> Path:
+        """
+        title: Return an executable installed in this environment.
+        parameters:
+          name:
+            type: str
+        returns:
+          type: Path
+        """
+
     def describe(self) -> str:
         """
         title: Human-readable description of the environment.
@@ -87,8 +98,7 @@ def environment_executable(
     returns:
       type: Path
     """
-    suffix = ".exe" if sys.platform == "win32" else ""
-    return environment.python_executable().parent / f"{executable}{suffix}"
+    return environment.executable(executable)
 
 
 class _UvBackend:
@@ -216,6 +226,9 @@ class UvManagedEnvironment(_UvBackend):
     def python_executable(self) -> Path:
         return _interpreter_for(self._venv_path)
 
+    def executable(self, name: str) -> Path:
+        return _executable_for(self._venv_path, name)
+
     def install_packages(
         self,
         requirements: Sequence[str],
@@ -329,6 +342,9 @@ class CondaEnvironment(_UvBackend):
             )
         return Path(resolved)
 
+    def executable(self, name: str) -> Path:
+        return self.python_executable().parent / _executable_name(name)
+
     def install_packages(
         self,
         requirements: Sequence[str],
@@ -374,6 +390,11 @@ class SystemEnvironment(_UvBackend):
 
     def python_executable(self) -> Path:
         return Path(sys.executable).resolve()
+
+    def executable(self, name: str) -> Path:
+        return Path(sysconfig.get_path("scripts")).resolve() / (
+            _executable_name(name)
+        )
 
     def install_packages(
         self,
@@ -452,6 +473,17 @@ def _interpreter_for(venv_path: Path) -> Path:
     if sys.platform == "win32":
         return venv_path / "Scripts" / "python.exe"
     return venv_path / "bin" / "python"
+
+
+def _executable_for(environment_path: Path, name: str) -> Path:
+    if sys.platform == "win32":
+        return environment_path / "Scripts" / _executable_name(name)
+    return environment_path / "bin" / _executable_name(name)
+
+
+def _executable_name(name: str) -> str:
+    suffix = ".exe" if sys.platform == "win32" else ""
+    return f"{name}{suffix}"
 
 
 def default_environment_config_from_cli(

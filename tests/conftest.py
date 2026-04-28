@@ -49,6 +49,9 @@ class FakeEnvironment:
     def python_executable(self) -> Path:
         return self.python_path
 
+    def executable(self, name: str) -> Path:
+        return self.python_path.parent / name
+
     def install_packages(
         self,
         requirements: Sequence[str],

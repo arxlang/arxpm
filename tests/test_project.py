@@ -70,7 +70,7 @@ def test_init_and_add_dependency_forms(tmp_path: Path) -> None:
 def test_build_and_run_invoke_environment_arx_executable(
     tmp_path: Path,
 ) -> None:
-    env = FakeEnvironment()
+    env = FakeEnvironment(tmp_path / ".venv" / "bin" / "python")
     runner = FakeRunner()
     service = ProjectService(
         environment_factory=_factory(env),
@@ -84,7 +84,7 @@ def test_build_and_run_invoke_environment_arx_executable(
 
     assert build_result.artifact == tmp_path / "build" / "demo"
     assert runner.calls[0][0][:2] == [
-        "/fake/arx",
+        str(tmp_path / ".venv" / "bin" / "arx"),
         "src/demo/main.x",
     ]
     assert runner.calls[-1][0] == ["build/demo"]
@@ -99,6 +99,25 @@ def test_install_calls_environment_ensure_ready(tmp_path: Path) -> None:
     service.install(tmp_path)
 
     assert env.ensure_ready_calls == 1
+    assert env.install_calls == [(("arxlang>=1.22.0",), False, False)]
+
+
+def test_install_skips_default_arx_for_custom_compiler(
+    tmp_path: Path,
+) -> None:
+    env = FakeEnvironment()
+    service = ProjectService(environment_factory=_factory(env))
+    service.init(tmp_path, name="demo")
+    manifest = load_manifest(tmp_path)
+    manifest.toolchain = type(manifest.toolchain)(
+        compiler="custom-arx",
+        linker=manifest.toolchain.linker,
+    )
+    save_manifest(tmp_path, manifest)
+
+    service.install(tmp_path)
+
+    assert env.install_calls == [((), False, False)]
 
 
 def test_install_dispatches_dependencies_through_environment(

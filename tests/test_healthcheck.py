@@ -28,14 +28,23 @@ class StubEnvironment:
         type: str
       _fail:
         type: bool
+      _python_path:
+        type: Path
     """
 
     _description: str
     _fail: bool
+    _python_path: Path
 
-    def __init__(self, description: str, fail: bool = False) -> None:
+    def __init__(
+        self,
+        description: str,
+        fail: bool = False,
+        python_path: Path | None = None,
+    ) -> None:
         self._description = description
         self._fail = fail
+        self._python_path = python_path or Path("/fake/python")
 
     def ensure_ready(self) -> None:
         if self._fail:
@@ -46,7 +55,10 @@ class StubEnvironment:
             raise EnvironmentError("environment not reachable")
 
     def python_executable(self) -> Path:
-        return Path("/fake/python")
+        return self._python_path
+
+    def executable(self, name: str) -> Path:
+        return self._python_path.parent / name
 
     def install_packages(
         self,
@@ -92,12 +104,27 @@ class StubRunner:
         return CommandResult(command_tuple, self.returncode, "", "")
 
 
-def _stub_factory(description: str, fail: bool = False) -> EnvironmentFactory:
+def _stub_factory(
+    description: str,
+    fail: bool = False,
+    python_path: Path | None = None,
+) -> EnvironmentFactory:
     def _build(manifest: Manifest, project_dir: Path) -> EnvironmentRuntime:
         _ = manifest, project_dir
-        return StubEnvironment(description, fail=fail)
+        return StubEnvironment(
+            description,
+            fail=fail,
+            python_path=python_path,
+        )
 
     return _build
+
+
+def _existing_python(tmp_path: Path) -> Path:
+    python_path = tmp_path / ".venv" / "bin" / "python"
+    python_path.parent.mkdir(parents=True)
+    python_path.write_text("", encoding="utf-8")
+    return python_path
 
 
 def _which_all(tool: str) -> str | None:
@@ -110,9 +137,13 @@ def _project_service() -> ProjectService:
 
 def test_healthcheck_reports_success(tmp_path: Path) -> None:
     _project_service().init(tmp_path, name="demo")
+    python_path = _existing_python(tmp_path)
     runner = StubRunner()
     service = HealthCheckService(
-        environment_factory=_stub_factory("venv at /tmp/.venv"),
+        environment_factory=_stub_factory(
+            "venv at /tmp/.venv",
+            python_path=python_path,
+        ),
         which=_which_all,
         runner=runner,
     )
@@ -130,11 +161,33 @@ def test_healthcheck_reports_success(tmp_path: Path) -> None:
     assert checks["main.x"].ok is True
     assert checks["uv"].ok is True
     assert checks["compiler (arx)"].ok is True
-    assert runner.calls[0][:2] == ("/fake/arx", "--help")
+    assert runner.calls[0][:2] == (str(python_path.with_name("arx")), "--help")
     assert "package_index" in runner.calls[1][2]
     assert "_resolve_installed_module_file" not in runner.calls[1][2]
     assert checks["environment"].ok is True
     assert "reachable" in checks["environment"].message
+
+
+def test_healthcheck_skips_compiler_before_environment_install(
+    tmp_path: Path,
+) -> None:
+    _project_service().init(tmp_path, name="demo")
+    runner = StubRunner()
+    service = HealthCheckService(
+        environment_factory=_stub_factory("venv"),
+        which=_which_all,
+        runner=runner,
+    )
+
+    report = service.run(tmp_path)
+    checks = {check.name: check for check in report.checks}
+
+    assert report.ok is True
+    assert checks["compiler (arx)"].ok is True
+    assert "environment has not been created yet" in (
+        checks["compiler (arx)"].message
+    )
+    assert runner.calls == []
 
 
 def test_healthcheck_reports_missing_manifest(tmp_path: Path) -> None:
@@ -200,8 +253,9 @@ def test_healthcheck_reports_missing_environment_compiler(
     tmp_path: Path,
 ) -> None:
     _project_service().init(tmp_path, name="demo")
+    python_path = _existing_python(tmp_path)
     service = HealthCheckService(
-        environment_factory=_stub_factory("venv"),
+        environment_factory=_stub_factory("venv", python_path=python_path),
         which=_which_all,
         runner=StubRunner(returncode=1),
     )

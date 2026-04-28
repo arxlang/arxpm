@@ -59,8 +59,8 @@ The `examples/` directory ships several sample projects:
   [Multi-file Projects](docs/multi-file-projects.md) guide.
 - `examples/local_lib/` + `examples/local-consumer/` — a library and a consumer
   that live side by side on disk so the consumer resolves imports against the
-  library's `.x` files. See [Local Packages](docs/local-packages.md) for the
-  supported layout and the current boundary around installed libraries.
+  library's installed `.x` files. See [Local Packages](docs/local-packages.md)
+  for path dependencies and installed Arx package source links.
 
 Integration tests that compile and execute the examples live in
 `tests/test_examples_integration.py` and are gated on `arx` and `uv` being on

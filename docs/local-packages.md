@@ -4,6 +4,12 @@ A library and its consumer can live side by side on disk and be wired together
 with a path dependency. `arxpm install` handles the packaging / install / link
 step so the Arx compiler finds the library's modules at build time.
 
+Published Arx packages use the same runtime shape: wheels and source
+distributions include `.arxproject.toml` plus `*.x` / `*.arx` source files.
+After `uv` installs registry, Git, or local wheel dependencies, `arxpm install`
+links any installed Arx package sources in the dependency closure into the
+consumer project root.
+
 ## Supported layout
 
 ```
@@ -62,3 +68,15 @@ For each `project.dependencies` entry of the form `<name> @ <path>` where
 3. Installs the wheel into the consumer's Python environment with `uv`.
 4. Creates a symlink `<consumer>/<package>` pointing at the installed package
    directory so Arx import resolution can find it locally.
+
+For registry, Git, or wheel dependencies, `arxpm install` first lets `uv`
+install the requested packages and their metadata-declared transitive
+dependencies. It then inspects the installed dependency closure for bundled
+`.arxproject.toml` files and links each discovered Arx source root as
+`<consumer>/<package>`. Normal Python-only dependencies are left untouched.
+
+For packaging, `arxpm pack` and `arxpm publish` render dependencies into the
+generated `pyproject.toml`. Registry dependencies remain plain package names,
+Git dependencies are rendered as `name @ git+...`, and path dependencies are
+rendered by name so published packages can resolve them from the target package
+index.

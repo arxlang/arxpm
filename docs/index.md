@@ -21,7 +21,7 @@
 - `src/arxpm/credentials.py`: keyring-backed publish credential storage.
 - `src/arxpm/project.py`: `init`, `add`, `install`, `build`, `run`, `pack`,
   `publish`.
-- `src/arxpm/healthcheck.py`: manifest, layout, environment, and toolchain
+- `src/arxpm/healthcheck.py`: manifest, layout, environment, and compiler
   checks.
 - `src/arxpm/cli.py`: Typer CLI layer.
 
@@ -33,5 +33,5 @@ arxpm add http
 arxpm install
 arxpm build
 arxpm run
-arxpm doctor
+arxpm healthcheck
 ```

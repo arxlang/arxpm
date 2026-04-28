@@ -25,7 +25,7 @@ provisioning (via `uv`), and user-facing workflow commands.
 - `credentials.py`: keyring-backed publish credential storage.
 - `project.py`: project workflows (`init`, `add`, `install`, `build`, `run`,
   `pack`, `publish`).
-- `healthcheck.py`: manifest, layout, environment, and toolchain checks.
+- `healthcheck.py`: manifest, layout, environment, and compiler checks.
 - `cli.py`: Typer command layer.
 
 ## Commands (v0)
@@ -40,7 +40,6 @@ provisioning (via `uv`), and user-facing workflow commands.
 - `arxpm pack`
 - `arxpm publish`
 - `arxpm healthcheck`
-- `arxpm doctor`
 
 ## Development
 

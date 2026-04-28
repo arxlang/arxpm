@@ -24,7 +24,7 @@ from arxpm.environment import (
     build_environment,
     environment_executable,
 )
-from arxpm.errors import ManifestError, MissingCompilerError
+from arxpm.errors import ManifestError
 from arxpm.external import CommandResult, CommandRunner, run_command
 from arxpm.layout import (
     ResolvedBuildConfig,
@@ -44,6 +44,7 @@ from arxpm.models import (
     DependencySpec,
     EnvironmentConfig,
     Manifest,
+    effective_build_system_dependencies,
 )
 
 _INIT_SOURCE = """```
@@ -89,7 +90,6 @@ _EXCLUDED_SOURCE_DIRS = {
     "venv",
 }
 _DEFAULT_ARX_COMPILER = "arx"
-_ARX_COMPILER_REQUIREMENT = "arxlang>=1.22.0"
 
 
 @dataclass(slots=True, frozen=True)
@@ -313,7 +313,6 @@ class ProjectService:
         install_reqs = _environment_install_requirements(
             manifest,
             registry_reqs,
-            dependencies,
         )
         command_result = environment.install_packages(install_reqs)
         installing_path_deps: list[Path] = []
@@ -393,17 +392,12 @@ class ProjectService:
         layout: ResolvedBuildConfig,
         environment: EnvironmentRuntime,
     ) -> BuildResult:
-        compiler = manifest.toolchain.compiler.strip()
-        if not compiler:
-            raise MissingCompilerError("toolchain.compiler cannot be empty")
-
         source_path = layout.target_file.relative_to(directory).as_posix()
         artifact_rel = Path(layout.out_dir) / layout.package
         artifact_path = directory / artifact_rel
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
 
         command = _compiler_command(
-            compiler,
             environment,
             source_path,
             artifact_rel,
@@ -690,49 +684,21 @@ def _dependency_install_target(name: str, spec: DependencySpec) -> str:
 def _environment_install_requirements(
     manifest: Manifest,
     requirements: Sequence[str],
-    dependencies: Mapping[str, DependencySpec],
 ) -> list[str]:
-    install_requirements = list(requirements)
-    if not _uses_default_arx_compiler(manifest):
-        return install_requirements
-    if _has_dependency_named(dependencies, "arxlang"):
-        return install_requirements
-    return [_ARX_COMPILER_REQUIREMENT, *install_requirements]
-
-
-def _uses_default_arx_compiler(manifest: Manifest) -> bool:
-    return manifest.toolchain.compiler.strip() == _DEFAULT_ARX_COMPILER
-
-
-def _has_dependency_named(
-    dependencies: Mapping[str, DependencySpec],
-    name: str,
-) -> bool:
-    normalized_name = _normalize_distribution_name(name)
-    return any(
-        _normalize_distribution_name(dependency_name) == normalized_name
-        for dependency_name in dependencies
-    )
-
-
-def _normalize_distribution_name(name: str) -> str:
-    return re.sub(r"[-_.]+", "-", name).lower()
+    return [*effective_build_system_dependencies(manifest), *requirements]
 
 
 def _compiler_command(
-    compiler: str,
     environment: EnvironmentRuntime,
     source_path: str,
     artifact_rel: Path,
 ) -> list[str]:
-    if compiler == _DEFAULT_ARX_COMPILER:
-        return [
-            str(environment_executable(environment, compiler)),
-            source_path,
-            "--output-file",
-            str(artifact_rel),
-        ]
-    return [compiler, source_path, "--output-file", str(artifact_rel)]
+    return [
+        str(environment_executable(environment, _DEFAULT_ARX_COMPILER)),
+        source_path,
+        "--output-file",
+        str(artifact_rel),
+    ]
 
 
 def _normalize_publish_value(name: str, value: str | None) -> str | None:
@@ -949,7 +915,7 @@ def _render_packaged_manifest(manifest: Manifest) -> str:
             name: _packaged_dependency_spec(spec)
             for name, spec in manifest.dependencies.items()
         },
-        toolchain=manifest.toolchain,
+        build_system=manifest.build_system,
     )
     return render_manifest(packaged_manifest)
 

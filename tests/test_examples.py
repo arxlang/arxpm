@@ -38,7 +38,7 @@ def test_hello_arx_manifest_parses(copy_example: CopyExample) -> None:
     assert manifest.build.package == "hello_arx"
     assert manifest.build.mode == "app"
     assert layout.target_file == project_dir / "src" / "hello_arx" / "main.x"
-    assert manifest.toolchain.compiler == "arx"
+    assert manifest.build_system is not None
 
 
 def test_hello_arx_build_invokes_arx_with_main_module(

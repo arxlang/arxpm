@@ -23,8 +23,8 @@ path = ".venv"   # optional; defaults to ".venv"
 Behavior:
 
 - `arxpm install` runs `uv venv <path>` if the venv does not yet exist, then
-  `uv pip install --python <venv>/bin/python ...` for the compiler package and
-  your dependencies.
+  `uv pip install --python <venv>/bin/python ...` for build-system and runtime
+  dependencies.
 - `arxpm run` and `arxpm build` invoke `<venv>/bin/arx` so the compiler resolves
   installed Arx libraries from the same environment.
 
@@ -74,7 +74,8 @@ Behavior:
 
 `uv` is used as the package installer for every strategy. It is fast, it does
 not require an active venv (it accepts `--python <interp>`), and it is a single
-static binary. `arxpm doctor` reports whether `uv` is reachable on your PATH.
+static binary. `arxpm healthcheck` reports whether `uv` is reachable on your
+PATH.
 
 ## Tooling not managed by arxpm
 

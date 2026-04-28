@@ -34,6 +34,12 @@ Library manifest:
 [project]
 name = "local_lib"
 version = "0.1.0"
+requires-arx = ">=1.0"
+
+[build-system]
+dependencies = [
+  "arxlang>=1.0",
+]
 
 [build]
 mode = "lib"
@@ -45,9 +51,15 @@ Consumer manifest:
 [project]
 name = "local-consumer"
 version = "0.1.0"
+requires-arx = ">=1.0"
 
 dependencies = [
   "local_lib @ ../local_lib",
+]
+
+[build-system]
+dependencies = [
+  "arxlang>=1.0",
 ]
 
 [build]

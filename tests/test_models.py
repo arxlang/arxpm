@@ -5,18 +5,20 @@ title: Tests for manifest and model invariants.
 from __future__ import annotations
 
 from collections.abc import Callable
+from importlib import metadata as importlib_metadata
 
 import pytest
 
 from arxpm.errors import ManifestError
 from arxpm.models import (
     BuildConfig,
+    BuildSystemConfig,
     DependencyGroupInclude,
     DependencySpec,
     EnvironmentConfig,
     Manifest,
     ProjectConfig,
-    ToolchainConfig,
+    effective_build_system_dependencies,
 )
 
 
@@ -84,6 +86,15 @@ def test_environment_config_rejects_invalid_values(
             "project.edition must be a non-empty string",
         ),
         (
+            lambda: ProjectConfig(name="demo", requires_arx="not-valid"),
+            "project.requires-arx must be a valid version specifier",
+        ),
+        (
+            lambda: BuildSystemConfig(dependencies=("not a requirement",)),
+            r"build-system.dependencies\[0\] must be a valid Python "
+            "requirement",
+        ),
+        (
             lambda: BuildConfig(src_dir=""),
             "build.src_dir must be a non-empty string",
         ),
@@ -99,17 +110,9 @@ def test_environment_config_rejects_invalid_values(
             lambda: BuildConfig(out_dir=""),
             "build.out_dir must be a non-empty string",
         ),
-        (
-            lambda: ToolchainConfig(compiler=""),
-            "toolchain.compiler must be a non-empty string",
-        ),
-        (
-            lambda: ToolchainConfig(linker=""),
-            "toolchain.linker must be a non-empty string",
-        ),
     ],
 )
-def test_project_build_and_toolchain_reject_blank_values(
+def test_project_build_and_build_system_reject_invalid_values(
     factory: Callable[[], object],
     message: str,
 ) -> None:
@@ -225,13 +228,29 @@ def test_manifest_from_dict_applies_defaults_and_to_dict_round_trips() -> None:
         }
     )
 
-    assert manifest.toolchain.compiler == "arx"
     assert manifest.environment.is_default() is True
-    assert manifest.to_dict()["project"]["dependencies"] == []
+    assert "dependencies" not in manifest.to_dict()["project"]
     assert manifest.to_dict()["build"] == {
         "src_dir": "src",
         "out_dir": "build",
     }
+
+
+def test_manifest_default_uses_public_arx_version(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _version(name: str) -> str:
+        assert name == "arxlang"
+        return "1.2.3+local"
+
+    monkeypatch.setattr(importlib_metadata, "version", _version)
+
+    manifest = Manifest.default("demo")
+
+    assert manifest.project.requires_arx == ">=1.2.3"
+    assert manifest.build_system == BuildSystemConfig(
+        dependencies=("arxlang>=1.2.3",)
+    )
 
 
 @pytest.mark.parametrize(
@@ -246,7 +265,10 @@ def test_manifest_from_dict_applies_defaults_and_to_dict_round_trips() -> None:
             {"build": {"entry": "src/main.x"}},
             r"\[build\]\.entry is no longer supported",
         ),
-        ({"toolchain": []}, "toolchain must be a table"),
+        (
+            {"toolchain": {"compiler": "arx"}},
+            r"does not support \[toolchain\] sections",
+        ),
         ({"environment": []}, "environment must be a table"),
         ({"extra": {}}, "manifest has unknown top-level keys: extra"),
     ],
@@ -310,6 +332,68 @@ def test_manifest_from_dict_parses_package_and_mode() -> None:
 
     assert manifest.build.package == "my_project"
     assert manifest.build.mode == "lib"
+
+
+def test_manifest_from_dict_parses_requires_arx_and_build_system() -> None:
+    manifest = Manifest.from_dict(
+        {
+            "project": {
+                "name": "demo",
+                "version": "0.1.0",
+                "requires-arx": ">=1.0,<2",
+            },
+            "build-system": {
+                "dependencies": ["some-build-helper>=0.3"],
+            },
+        }
+    )
+
+    assert manifest.project.requires_arx == ">=1.0,<2"
+    assert manifest.build_system == BuildSystemConfig(
+        dependencies=("some-build-helper>=0.3",)
+    )
+    assert effective_build_system_dependencies(manifest) == [
+        "arxlang>=1.0,<2",
+        "some-build-helper>=0.3",
+    ]
+
+
+def test_effective_build_system_preserves_explicit_arxlang() -> None:
+    manifest = Manifest(
+        project=ProjectConfig(name="demo", requires_arx=">=1.0,<2"),
+        build_system=BuildSystemConfig(
+            dependencies=("arxlang==1.5.0", "helper>=0.3"),
+        ),
+    )
+
+    assert effective_build_system_dependencies(manifest) == [
+        "arxlang==1.5.0",
+        "helper>=0.3",
+    ]
+
+
+def test_effective_build_system_defaults_when_omitted() -> None:
+    manifest = Manifest(project=ProjectConfig(name="demo"))
+
+    assert effective_build_system_dependencies(manifest) == ["arxlang"]
+
+
+def test_manifest_from_dict_rejects_invalid_build_system_dependency() -> None:
+    with pytest.raises(
+        ManifestError,
+        match=r"build-system\.dependencies\[0\]",
+    ):
+        Manifest.from_dict(
+            {
+                "project": {
+                    "name": "demo",
+                    "version": "0.1.0",
+                },
+                "build-system": {
+                    "dependencies": ["not a requirement"],
+                },
+            }
+        )
 
 
 def test_manifest_from_dict_parses_dependency_groups_and_environment() -> None:

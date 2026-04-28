@@ -2,10 +2,16 @@
 name = "local-consumer"
 version = "0.1.0"
 edition = "2026"
+requires-arx = ">=1.0"
 
 dependencies = [
   "local_lib @ ../local_lib",
   "pyyaml",
+]
+
+[build-system]
+dependencies = [
+  "arxlang>=1.0",
 ]
 
 [build]
@@ -13,7 +19,3 @@ src_dir = "src"
 out_dir = "build"
 package = "local_consumer"
 mode = "app"
-
-[toolchain]
-compiler = "arx"
-linker = "clang"

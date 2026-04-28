@@ -9,18 +9,36 @@ Arx projects are described by `.arxproject.toml`.
 name = "hello-arx"
 version = "0.1.0"
 edition = "2026"
-dependencies = []
+requires-arx = ">=1.0"
+
+[build-system]
+dependencies = [
+  "arxlang>=1.0",
+]
 
 [build]
 src_dir = "src"
 out_dir = "build"
 package = "hello_arx"
 mode = "app"
-
-[toolchain]
-compiler = "arx"
-linker = "clang"
 ```
+
+`[project]` supports:
+
+- `name`: required project name
+- `version`: required project version
+- `edition`: optional Arx edition
+- `requires-arx`: optional Arx compiler version specifier
+- `dependencies`: optional runtime dependency strings
+
+`[build-system]` supports:
+
+- `dependencies`: optional Python requirement strings used to prepare the build
+  environment. If omitted, `arxpm` installs the default Arx compiler package.
+
+When `project.requires-arx` is set and no explicit `arxlang` build dependency is
+listed, `arxpm` prepends `arxlang<specifier>` to the effective build-system
+dependencies. An explicit `arxlang` entry is preserved as written.
 
 `[build]` supports:
 
@@ -30,6 +48,8 @@ linker = "clang"
 - `mode`: optional, `"lib"` or `"app"`
 
 `[build].entry` was removed. `arxpm` rejects manifests that still declare it.
+`[toolchain]` was removed; declare compiler/build requirements in
+`[build-system].dependencies`.
 
 ## Source layout
 

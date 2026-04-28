@@ -470,7 +470,7 @@ def doctor(
     ] = Path("."),
 ) -> None:
     """
-    title: Report manifest, layout, environment, and toolchain health.
+    title: Report manifest, layout, environment, and compiler health.
     parameters:
       directory:
         type: >-

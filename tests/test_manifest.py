@@ -16,11 +16,13 @@ from arxpm.manifest import (
     save_manifest_file,
 )
 from arxpm.models import (
+    BuildSystemConfig,
     DependencyGroupInclude,
     DependencySpec,
     EnvironmentConfig,
     Manifest,
     ProjectConfig,
+    effective_build_system_dependencies,
 )
 
 
@@ -37,7 +39,9 @@ def test_manifest_round_trip(tmp_path: Path) -> None:
     assert loaded.build.out_dir == "build"
     assert loaded.build.package is None
     assert loaded.build.mode is None
-    assert loaded.toolchain.linker == "clang"
+    assert loaded.project.requires_arx is not None
+    assert loaded.build_system is not None
+    assert loaded.build_system.dependencies[0].startswith("arxlang>=")
     assert loaded.environment.kind == "venv"
 
 
@@ -57,10 +61,6 @@ dependencies = [
 package = "hello_arx"
 mode = "app"
 out_dir = "build"
-
-[toolchain]
-compiler = "arx"
-linker = "clang"
 """.strip()
     path = tmp_path / ".arxproject.toml"
     path.write_text(content + "\n", encoding="utf-8")
@@ -74,6 +74,35 @@ linker = "clang"
     assert (
         manifest.dependencies["utils"].git == "https://example.com/utils.git"
     )
+
+
+def test_manifest_parses_requires_arx_and_build_system(
+    tmp_path: Path,
+) -> None:
+    content = """
+[project]
+name = "hello-arx"
+version = "0.1.0"
+requires-arx = ">=1.0,<2"
+
+[build-system]
+dependencies = [
+  "some-build-helper>=0.3",
+]
+""".strip()
+    path = tmp_path / ".arxproject.toml"
+    path.write_text(content + "\n", encoding="utf-8")
+
+    manifest = load_manifest_file(path)
+
+    assert manifest.project.requires_arx == ">=1.0,<2"
+    assert manifest.build_system == BuildSystemConfig(
+        dependencies=("some-build-helper>=0.3",)
+    )
+    assert effective_build_system_dependencies(manifest) == [
+        "arxlang>=1.0,<2",
+        "some-build-helper>=0.3",
+    ]
 
 
 def test_manifest_rejects_removed_build_entry(tmp_path: Path) -> None:
@@ -110,7 +139,7 @@ resolver = "future"
     path.write_text(content + "\n", encoding="utf-8")
 
     with pytest.raises(
-        ManifestError, match=r"does not support \[arxpm\] sections"
+        ManifestError, match=r"manifest has unknown top-level keys: arxpm"
     ):
         load_manifest_file(path)
 
@@ -129,7 +158,28 @@ http = { source = "registry" }
     path.write_text(content + "\n", encoding="utf-8")
 
     with pytest.raises(
-        ManifestError, match=r"Additional properties are not allowed"
+        ManifestError, match=r"top-level \[dependencies\] table"
+    ):
+        load_manifest_file(path)
+
+
+def test_manifest_rejects_removed_toolchain_section(tmp_path: Path) -> None:
+    content = """
+[project]
+name = "legacy"
+version = "0.1.0"
+edition = "2026"
+
+[toolchain]
+compiler = "arx"
+linker = "clang"
+""".strip()
+    path = tmp_path / ".arxproject.toml"
+    path.write_text(content + "\n", encoding="utf-8")
+
+    with pytest.raises(
+        ManifestError,
+        match=r"does not support \[toolchain\] sections",
     ):
         load_manifest_file(path)
 
@@ -209,10 +259,6 @@ dependencies = []
 [build]
 out_dir = "build"
 mode = "app"
-
-[toolchain]
-compiler = "arx"
-linker = "clang"
 """.strip()
 
 
@@ -248,7 +294,7 @@ name = "nope"
     path = _write_manifest(tmp_path, body)
 
     with pytest.raises(
-        ManifestError, match=r'kind="venv" does not support "name"'
+        ManifestError, match=r"environment.name is not allowed"
     ):
         load_manifest_file(path)
 
@@ -263,7 +309,7 @@ kind = "conda"
 
     with pytest.raises(
         ManifestError,
-        match=r'kind="conda" requires at least one of "name" or "path"',
+        match=r"environment requires 'name' or 'path'",
     ):
         load_manifest_file(path)
 
@@ -293,7 +339,7 @@ path = "/tmp/python"
 
     with pytest.raises(
         ManifestError,
-        match=r'kind="system" does not support "path"',
+        match=r"environment.path and environment.name are not allowed",
     ):
         load_manifest_file(path)
 
@@ -313,7 +359,7 @@ def test_manifest_round_trip_preserves_environment(tmp_path: Path) -> None:
     assert loaded.environment.name is None
 
 
-def test_manifest_loads_minimal_arx_settings_shape(tmp_path: Path) -> None:
+def test_manifest_loads_minimal_shape(tmp_path: Path) -> None:
     content = """
 [project]
 name = "tiny"
@@ -331,5 +377,6 @@ version = "0.0.1"
     assert manifest.build.out_dir == "build"
     assert manifest.build.package is None
     assert manifest.build.mode is None
-    assert manifest.toolchain.compiler == "arx"
+    assert manifest.build_system is None
+    assert effective_build_system_dependencies(manifest) == ["arxlang"]
     assert manifest.environment.is_default()

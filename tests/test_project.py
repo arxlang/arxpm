@@ -13,7 +13,12 @@ from conftest import FakeEnvironment, FakeRunner
 from arxpm.environment import EnvironmentFactory, EnvironmentRuntime
 from arxpm.errors import ManifestError
 from arxpm.manifest import load_manifest, save_manifest
-from arxpm.models import BuildConfig, DependencyGroupInclude, Manifest
+from arxpm.models import (
+    BuildConfig,
+    BuildSystemConfig,
+    DependencyGroupInclude,
+    Manifest,
+)
 from arxpm.project import ProjectService, _prepare_publish_workspace
 
 
@@ -23,6 +28,10 @@ def _factory(env: FakeEnvironment) -> EnvironmentFactory:
         return env
 
     return _build
+
+
+def _assert_default_arx_requirement(requirement: str) -> None:
+    assert requirement.startswith("arxlang>=")
 
 
 class FakeCredentialStore:
@@ -99,25 +108,24 @@ def test_install_calls_environment_ensure_ready(tmp_path: Path) -> None:
     service.install(tmp_path)
 
     assert env.ensure_ready_calls == 1
-    assert env.install_calls == [(("arxlang>=1.22.0",), False, False)]
+    assert len(env.install_calls) == 1
+    assert env.install_calls[0][1:] == (False, False)
+    _assert_default_arx_requirement(env.install_calls[0][0][0])
 
 
-def test_install_skips_default_arx_for_custom_compiler(
+def test_install_preserves_explicit_arx_build_dependency(
     tmp_path: Path,
 ) -> None:
     env = FakeEnvironment()
     service = ProjectService(environment_factory=_factory(env))
     service.init(tmp_path, name="demo")
     manifest = load_manifest(tmp_path)
-    manifest.toolchain = type(manifest.toolchain)(
-        compiler="custom-arx",
-        linker=manifest.toolchain.linker,
-    )
+    manifest.build_system = BuildSystemConfig(dependencies=("arxlang==1.5.0",))
     save_manifest(tmp_path, manifest)
 
     service.install(tmp_path)
 
-    assert env.install_calls == [((), False, False)]
+    assert env.install_calls == [(("arxlang==1.5.0",), False, False)]
 
 
 def test_install_dispatches_dependencies_through_environment(
@@ -139,9 +147,12 @@ def test_install_dispatches_dependencies_through_environment(
     service.install(tmp_path)
 
     requirements = [call[0] for call in env.install_calls]
-    assert requirements == [
-        ("arxlang>=1.22.0", "http", "git+https://example.com/utils.git"),
-    ]
+    assert len(requirements) == 1
+    _assert_default_arx_requirement(requirements[0][0])
+    assert requirements[0][1:] == (
+        "http",
+        "git+https://example.com/utils.git",
+    )
     assert not (tmp_path / "http").exists()
     assert not (tmp_path / "utils").exists()
 
@@ -167,7 +178,9 @@ def test_install_includes_selected_dependency_groups(
     service.install(tmp_path, groups=("dev-test",))
 
     requirements = [call[0] for call in env.install_calls]
-    assert requirements == [("arxlang>=1.22.0", "pytest", "ruff")]
+    assert len(requirements) == 1
+    _assert_default_arx_requirement(requirements[0][0])
+    assert requirements[0][1:] == ("pytest", "ruff")
 
 
 def test_install_dev_alias_selects_dev_group(tmp_path: Path) -> None:
@@ -186,7 +199,9 @@ def test_install_dev_alias_selects_dev_group(tmp_path: Path) -> None:
     service.install(tmp_path, dev=True)
 
     requirements = [call[0] for call in env.install_calls]
-    assert requirements == [("arxlang>=1.22.0", "pytest")]
+    assert len(requirements) == 1
+    _assert_default_arx_requirement(requirements[0][0])
+    assert requirements[0][1:] == ("pytest",)
 
 
 def test_publish_builds_and_uploads_artifacts(tmp_path: Path) -> None:
@@ -523,7 +538,8 @@ def test_install_packs_arx_path_dependency_without_source_link(
     assert wheel_install_calls[0][1] is True  # force_reinstall
     assert wheel_install_calls[0][2] is True  # no_deps
 
-    assert env.install_calls[0] == (("arxlang>=1.22.0",), False, False)
+    assert env.install_calls[0][1:] == (False, False)
+    _assert_default_arx_requirement(env.install_calls[0][0][0])
     assert not (consumer_dir / "mylib").exists()
 
 
@@ -542,9 +558,10 @@ def test_install_leaves_installed_registry_arx_dependency_unlinked(
 
     service.install(consumer_dir)
 
-    assert env.install_calls == [
-        (("arxlang>=1.22.0", "shared-lib"), False, False)
-    ]
+    assert len(env.install_calls) == 1
+    _assert_default_arx_requirement(env.install_calls[0][0][0])
+    assert env.install_calls[0][0][1:] == ("shared-lib",)
+    assert env.install_calls[0][1:] == (False, False)
     assert not (consumer_dir / "shared_lib").exists()
 
 
@@ -563,9 +580,10 @@ def test_install_delegates_transitive_registry_arx_dependencies_to_uv(
 
     service.install(consumer_dir)
 
-    assert env.install_calls == [
-        (("arxlang>=1.22.0", "project-a"), False, False)
-    ]
+    assert len(env.install_calls) == 1
+    _assert_default_arx_requirement(env.install_calls[0][0][0])
+    assert env.install_calls[0][0][1:] == ("project-a",)
+    assert env.install_calls[0][1:] == (False, False)
     assert not (consumer_dir / "project_a").exists()
     assert not (consumer_dir / "project_b").exists()
 
@@ -625,7 +643,8 @@ def test_install_packs_nested_arx_path_dependency(
     ]
     assert any("project_b" in wheel for wheel in wheel_installs)
     assert any("project_a" in wheel for wheel in wheel_installs)
-    assert env.install_calls[0] == (("arxlang>=1.22.0",), False, False)
+    assert env.install_calls[0][1:] == (False, False)
+    _assert_default_arx_requirement(env.install_calls[0][0][0])
     assert not (consumer_dir / "project_a").exists()
     assert not (consumer_dir / "project_b").exists()
 

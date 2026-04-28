@@ -266,32 +266,6 @@ def test_healthcheck_reports_missing_environment_compiler(
     assert checks["compiler (arx)"].ok is False
 
 
-def test_healthcheck_reports_missing_custom_compiler(tmp_path: Path) -> None:
-    _project_service().init(tmp_path, name="demo")
-    manifest = load_manifest(tmp_path)
-    manifest.toolchain = type(manifest.toolchain)(
-        compiler="custom-arx",
-        linker=manifest.toolchain.linker,
-    )
-    save_manifest(tmp_path, manifest)
-
-    def _which(tool: str) -> str | None:
-        if tool == "custom-arx":
-            return None
-        return f"/usr/bin/{tool}"
-
-    service = HealthCheckService(
-        environment_factory=_stub_factory("venv"),
-        which=_which,
-        runner=StubRunner(),
-    )
-
-    report = service.run(tmp_path)
-    checks = {check.name: check for check in report.checks}
-
-    assert checks["compiler (custom-arx)"].ok is False
-
-
 def test_healthcheck_reports_unreachable_environment(
     tmp_path: Path,
 ) -> None:
@@ -341,7 +315,7 @@ def test_healthcheck_reports_broken_venv(tmp_path: Path) -> None:
         project=manifest.project,
         build=load_manifest(tmp_path).build,
         dependencies=manifest.dependencies,
-        toolchain=manifest.toolchain,
+        build_system=manifest.build_system,
         environment=EnvironmentConfig(
             kind="venv",
             path=str(broken),

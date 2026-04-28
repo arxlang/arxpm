@@ -22,7 +22,7 @@ poetry install --with dev
 
 ```bash
 python -m arxpm install --directory examples/hello-arx
-python -m arxpm doctor --directory examples/hello-arx
+python -m arxpm healthcheck --directory examples/hello-arx
 ```
 
 The report should show:

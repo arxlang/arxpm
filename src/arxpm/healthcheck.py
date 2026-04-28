@@ -72,7 +72,7 @@ class HealthReport:
 
 class HealthCheckService:
     """
-    title: Validate project manifest, layout, environment, and toolchain.
+    title: Validate project manifest, layout, environment, and compiler.
     attributes:
       _environment_factory:
         type: EnvironmentFactory
@@ -182,7 +182,6 @@ class HealthCheckService:
                 manifest,
                 directory,
                 environment if env_ok else None,
-                self._which,
                 self._runner,
             )
         )
@@ -311,21 +310,9 @@ def _compiler_check(
     manifest: Manifest,
     directory: Path,
     environment: EnvironmentRuntime | None,
-    which: WhichFn,
     runner: CommandRunner,
 ) -> HealthCheck:
-    compiler = manifest.toolchain.compiler.strip()
-    if compiler != _DEFAULT_ARX_COMPILER:
-        compiler_ok = which(compiler) is not None
-        return HealthCheck(
-            name=f"compiler ({compiler})",
-            ok=compiler_ok,
-            message=(
-                f"{compiler} is available"
-                if compiler_ok
-                else f"{compiler} is missing"
-            ),
-        )
+    _ = manifest
 
     if environment is None:
         return HealthCheck(

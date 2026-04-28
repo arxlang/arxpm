@@ -7,7 +7,12 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from importlib import metadata as importlib_metadata
 from typing import Any
+
+from packaging.requirements import InvalidRequirement, Requirement
+from packaging.specifiers import InvalidSpecifier, SpecifierSet
+from packaging.version import InvalidVersion, Version
 
 from arxpm.errors import ManifestError
 
@@ -18,6 +23,8 @@ _GROUP_NORMALIZE_PATTERN = re.compile(r"[-_.]+")
 ENVIRONMENT_KINDS = ("venv", "conda", "system")
 DEFAULT_VENV_PATH = ".venv"
 _DEFAULT_EDITION = "2026"
+_DEFAULT_REQUIRES_ARX = ">=1.0"
+_ARX_DISTRIBUTION_NAME = "arxlang"
 
 
 @dataclass(slots=True, frozen=True)
@@ -110,11 +117,14 @@ class ProjectConfig:
         type: str
       edition:
         type: str
+      requires_arx:
+        type: str | None
     """
 
     name: str
     version: str = "0.1.0"
     edition: str = "2026"
+    requires_arx: str | None = None
 
     def __post_init__(self) -> None:
         if not self.name.strip():
@@ -123,6 +133,18 @@ class ProjectConfig:
             raise ManifestError("project.version must be a non-empty string")
         if not self.edition.strip():
             raise ManifestError("project.edition must be a non-empty string")
+        if self.requires_arx is None:
+            return
+        if not self.requires_arx.strip():
+            raise ManifestError(
+                "project.requires-arx must be a non-empty string"
+            )
+        try:
+            SpecifierSet(self.requires_arx)
+        except InvalidSpecifier as exc:
+            raise ManifestError(
+                "project.requires-arx must be a valid version specifier"
+            ) from exc
 
 
 @dataclass(slots=True, frozen=True)
@@ -157,26 +179,22 @@ class BuildConfig:
 
 
 @dataclass(slots=True, frozen=True)
-class ToolchainConfig:
+class BuildSystemConfig:
     """
-    title: Toolchain configuration.
+    title: Build-system dependency configuration.
     attributes:
-      compiler:
-        type: str
-      linker:
-        type: str
+      dependencies:
+        type: tuple[str, Ellipsis]
     """
 
-    compiler: str = "arx"
-    linker: str = "clang"
+    dependencies: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        if not self.compiler.strip():
-            raise ManifestError(
-                "toolchain.compiler must be a non-empty string"
+        for index, dependency in enumerate(self.dependencies):
+            _validate_build_requirement(
+                dependency,
+                f"build-system.dependencies[{index}]",
             )
-        if not self.linker.strip():
-            raise ManifestError("toolchain.linker must be a non-empty string")
 
 
 @dataclass(slots=True, frozen=True)
@@ -338,8 +356,8 @@ class Manifest:
         type: dict[str, DependencySpec]
       dependency_groups:
         type: dict[str, tuple[DependencyGroupEntry, Ellipsis]]
-      toolchain:
-        type: ToolchainConfig
+      build_system:
+        type: BuildSystemConfig | None
       environment:
         type: EnvironmentConfig
     """
@@ -350,7 +368,7 @@ class Manifest:
     dependency_groups: dict[str, tuple[DependencyGroupEntry, ...]] = field(
         default_factory=dict
     )
-    toolchain: ToolchainConfig = field(default_factory=ToolchainConfig)
+    build_system: BuildSystemConfig | None = None
     environment: EnvironmentConfig = field(
         default_factory=EnvironmentConfig.default,
     )
@@ -365,7 +383,16 @@ class Manifest:
         returns:
           type: Manifest
         """
-        return cls(project=ProjectConfig(name=project_name))
+        requires_arx = _default_requires_arx()
+        return cls(
+            project=ProjectConfig(
+                name=project_name,
+                requires_arx=requires_arx,
+            ),
+            build_system=BuildSystemConfig(
+                dependencies=(f"{_ARX_DISTRIBUTION_NAME}{requires_arx}",),
+            ),
+        )
 
     @classmethod
     def from_dict(cls, raw: Mapping[str, Any]) -> Manifest:
@@ -387,11 +414,17 @@ class Manifest:
 
         allowed_top_level = {
             "project",
+            "build-system",
             "build",
-            "toolchain",
             "environment",
             "dependency-groups",
         }
+        if "toolchain" in raw:
+            raise ManifestError(
+                ".arxproject.toml does not support [toolchain] sections. "
+                "Declare compiler/build requirements in [build-system] "
+                'using dependencies = ["arxlang..."].'
+            )
         extra_top_level = set(raw.keys()) - allowed_top_level
         if extra_top_level:
             unknown = ", ".join(sorted(extra_top_level))
@@ -410,7 +443,15 @@ class Manifest:
                 "project",
                 _DEFAULT_EDITION,
             ),
+            requires_arx=_optional_optional_string(
+                project_raw,
+                "requires-arx",
+                "project",
+                None,
+            ),
         )
+
+        build_system = _parse_build_system(raw.get("build-system"))
 
         build_raw = raw.get("build")
         if build_raw is None:
@@ -451,28 +492,6 @@ class Manifest:
                 ),
             )
 
-        toolchain_raw = raw.get("toolchain")
-        if toolchain_raw is None:
-            toolchain = ToolchainConfig()
-        else:
-            if not isinstance(toolchain_raw, Mapping):
-                raise ManifestError("toolchain must be a table")
-            toolchain_defaults = ToolchainConfig()
-            toolchain = ToolchainConfig(
-                compiler=_optional_string(
-                    toolchain_raw,
-                    "compiler",
-                    "toolchain",
-                    toolchain_defaults.compiler,
-                ),
-                linker=_optional_string(
-                    toolchain_raw,
-                    "linker",
-                    "toolchain",
-                    toolchain_defaults.linker,
-                ),
-            )
-
         dependencies = _parse_requirements(
             project_raw.get("dependencies", []),
             "project.dependencies",
@@ -488,7 +507,7 @@ class Manifest:
             build=build,
             dependencies=dependencies,
             dependency_groups=dependency_groups,
-            toolchain=toolchain,
+            build_system=build_system,
             environment=environment,
         )
 
@@ -502,11 +521,14 @@ class Manifest:
             "name": self.project.name,
             "version": self.project.version,
             "edition": self.project.edition,
-            "dependencies": [
+        }
+        if self.project.requires_arx is not None:
+            project["requires-arx"] = self.project.requires_arx
+        if self.dependencies:
+            project["dependencies"] = [
                 spec.to_requirement_string(name)
                 for name, spec in sorted(self.dependencies.items())
-            ],
-        }
+            ]
         build: dict[str, Any] = {
             "src_dir": self.build.src_dir,
             "out_dir": self.build.out_dir,
@@ -519,11 +541,11 @@ class Manifest:
         data: dict[str, Any] = {
             "project": project,
             "build": build,
-            "toolchain": {
-                "compiler": self.toolchain.compiler,
-                "linker": self.toolchain.linker,
-            },
         }
+        if self.build_system is not None:
+            data["build-system"] = {
+                "dependencies": list(self.build_system.dependencies),
+            }
         if self.dependency_groups:
             data["dependency-groups"] = {
                 name: [
@@ -544,6 +566,109 @@ class Manifest:
                 env_data["name"] = self.environment.name
             data["environment"] = env_data
         return data
+
+
+def effective_build_system_dependencies(manifest: Manifest) -> list[str]:
+    """
+    title: Return build-system dependencies after Arx default injection.
+    parameters:
+      manifest:
+        type: Manifest
+    returns:
+      type: list[str]
+    """
+    dependencies = (
+        list(manifest.build_system.dependencies)
+        if manifest.build_system is not None
+        else []
+    )
+    if _has_requirement_named(dependencies, _ARX_DISTRIBUTION_NAME):
+        return dependencies
+
+    arx_dependency = _ARX_DISTRIBUTION_NAME
+    if manifest.project.requires_arx is not None:
+        arx_dependency = f"{arx_dependency}{manifest.project.requires_arx}"
+    return [arx_dependency, *dependencies]
+
+
+def _default_requires_arx() -> str:
+    try:
+        version = importlib_metadata.version(_ARX_DISTRIBUTION_NAME)
+    except importlib_metadata.PackageNotFoundError:
+        return _DEFAULT_REQUIRES_ARX
+    try:
+        public_version = Version(version).public
+    except InvalidVersion:
+        return _DEFAULT_REQUIRES_ARX
+    return f">={public_version}"
+
+
+def _has_requirement_named(
+    dependencies: Sequence[str],
+    name: str,
+) -> bool:
+    normalized_name = _normalize_distribution_name(name)
+    return any(
+        _normalize_distribution_name(Requirement(dependency).name)
+        == normalized_name
+        for dependency in dependencies
+    )
+
+
+def _validate_build_requirement(dependency: str, label: str) -> None:
+    if not isinstance(dependency, str) or not dependency.strip():
+        raise ManifestError(f"{label} must be a non-empty string")
+    try:
+        Requirement(dependency)
+    except InvalidRequirement as exc:
+        raise ManifestError(
+            f"{label} must be a valid Python requirement"
+        ) from exc
+
+
+def _normalize_distribution_name(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def _parse_build_system(raw: Any) -> BuildSystemConfig | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, Mapping):
+        raise ManifestError("build-system must be a table")
+
+    allowed = {"dependencies"}
+    extra = set(raw.keys()) - allowed
+    if extra:
+        unknown = ", ".join(sorted(extra))
+        raise ManifestError(
+            f"build-system has unknown keys: {unknown} (allowed: dependencies)"
+        )
+
+    return BuildSystemConfig(
+        dependencies=_parse_build_system_dependencies(
+            raw.get("dependencies", ()),
+        )
+    )
+
+
+def _parse_build_system_dependencies(raw: Any) -> tuple[str, ...]:
+    if isinstance(raw, str) or isinstance(raw, Mapping):
+        raise ManifestError(
+            "build-system.dependencies must be an array of strings"
+        )
+    if not isinstance(raw, Sequence):
+        raise ManifestError(
+            "build-system.dependencies must be an array of strings"
+        )
+
+    dependencies: list[str] = []
+    for index, entry in enumerate(raw):
+        _validate_build_requirement(
+            entry,
+            f"build-system.dependencies[{index}]",
+        )
+        dependencies.append(entry)
+    return tuple(dependencies)
 
 
 def _parse_environment(raw: Any) -> EnvironmentConfig:

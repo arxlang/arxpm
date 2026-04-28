@@ -25,6 +25,28 @@ def _factory(env: FakeEnvironment) -> EnvironmentFactory:
     return _build
 
 
+class FakeCredentialStore:
+    """
+    title: Publish credential provider test double.
+    attributes:
+      tokens:
+        type: dict[str, str]
+      calls:
+        type: list[str]
+    """
+
+    tokens: dict[str, str]
+    calls: list[str]
+
+    def __init__(self, tokens: dict[str, str] | None = None) -> None:
+        self.tokens = tokens or {}
+        self.calls = []
+
+    def get_token(self, repository: str) -> str | None:
+        self.calls.append(repository)
+        return self.tokens.get(repository)
+
+
 def test_init_and_add_dependency_forms(tmp_path: Path) -> None:
     service = ProjectService(environment_factory=_factory(FakeEnvironment()))
 
@@ -51,6 +73,7 @@ def test_build_and_run_invoke_compiler_directly(tmp_path: Path) -> None:
     service = ProjectService(
         environment_factory=_factory(env),
         runner=runner,
+        credential_store=FakeCredentialStore(),
     )
     service.init(tmp_path, name="demo")
 
@@ -138,6 +161,7 @@ def test_publish_builds_and_uploads_artifacts(tmp_path: Path) -> None:
     service = ProjectService(
         environment_factory=_factory(env),
         runner=runner,
+        credential_store=FakeCredentialStore(),
     )
     service.init(tmp_path, name="demo")
 
@@ -161,6 +185,179 @@ def test_publish_builds_and_uploads_artifacts(tmp_path: Path) -> None:
     assert "--skip-existing" in upload_command
     # publish must not install build/twine into the environment.
     assert env.install_calls == []
+
+
+def test_publish_maps_namespaced_token_environment(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ARXPM_PUBLISH_TOKEN", "pypi-token")
+    monkeypatch.setenv(
+        "ARXPM_PUBLISH_REPOSITORY_URL",
+        "https://test.pypi.org/legacy/",
+    )
+    monkeypatch.setenv("TWINE_USERNAME", "backend-user")
+    env = FakeEnvironment()
+    runner = FakeRunner()
+    service = ProjectService(
+        environment_factory=_factory(env),
+        runner=runner,
+        credential_store=FakeCredentialStore(),
+    )
+    service.init(tmp_path, name="demo")
+
+    service.publish(tmp_path)
+
+    upload_command = runner.calls[1][0]
+    upload_environment = runner.environments[1]
+    assert upload_environment is not None
+    assert upload_environment["TWINE_USERNAME"] == "__token__"
+    assert upload_environment["TWINE_PASSWORD"] == "pypi-token"
+    assert (
+        upload_environment["TWINE_REPOSITORY_URL"]
+        == "https://test.pypi.org/legacy/"
+    )
+    assert "pypi-token" not in upload_command
+    assert "backend-user" not in upload_environment.values()
+
+
+def test_publish_maps_namespaced_username_and_password(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ARXPM_PUBLISH_USERNAME", "demo-user")
+    monkeypatch.setenv("ARXPM_PUBLISH_PASSWORD", "demo-password")
+    env = FakeEnvironment()
+    runner = FakeRunner()
+    service = ProjectService(
+        environment_factory=_factory(env),
+        runner=runner,
+        credential_store=FakeCredentialStore(),
+    )
+    service.init(tmp_path, name="demo")
+
+    service.publish(tmp_path)
+
+    upload_environment = runner.environments[1]
+    assert upload_environment is not None
+    assert upload_environment["TWINE_USERNAME"] == "demo-user"
+    assert upload_environment["TWINE_PASSWORD"] == "demo-password"
+
+
+def test_publish_uses_stored_pypi_token_by_default(
+    tmp_path: Path,
+) -> None:
+    env = FakeEnvironment()
+    runner = FakeRunner()
+    credentials = FakeCredentialStore({"pypi": "stored-token"})
+    service = ProjectService(
+        environment_factory=_factory(env),
+        runner=runner,
+        credential_store=credentials,
+    )
+    service.init(tmp_path, name="demo")
+
+    service.publish(tmp_path)
+
+    upload_environment = runner.environments[1]
+    assert upload_environment is not None
+    assert credentials.calls == ["pypi"]
+    assert upload_environment["TWINE_USERNAME"] == "__token__"
+    assert upload_environment["TWINE_PASSWORD"] == "stored-token"
+
+
+def test_publish_uses_stored_testpypi_token_for_testpypi_url(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(
+        "ARXPM_PUBLISH_REPOSITORY_URL",
+        "https://test.pypi.org/legacy/",
+    )
+    env = FakeEnvironment()
+    runner = FakeRunner()
+    credentials = FakeCredentialStore({"testpypi": "stored-test-token"})
+    service = ProjectService(
+        environment_factory=_factory(env),
+        runner=runner,
+        credential_store=credentials,
+    )
+    service.init(tmp_path, name="demo")
+
+    service.publish(tmp_path)
+
+    upload_environment = runner.environments[1]
+    assert upload_environment is not None
+    assert credentials.calls == ["testpypi"]
+    assert upload_environment["TWINE_PASSWORD"] == "stored-test-token"
+
+
+def test_publish_does_not_use_stored_token_for_custom_repository(
+    tmp_path: Path,
+) -> None:
+    env = FakeEnvironment()
+    runner = FakeRunner()
+    credentials = FakeCredentialStore({"pypi": "stored-token"})
+    service = ProjectService(
+        environment_factory=_factory(env),
+        runner=runner,
+        credential_store=credentials,
+    )
+    service.init(tmp_path, name="demo")
+
+    service.publish(
+        tmp_path,
+        repository_url="https://packages.example.com/legacy/",
+    )
+
+    upload_environment = runner.environments[1]
+    assert upload_environment is not None
+    assert credentials.calls == []
+    assert "TWINE_PASSWORD" not in upload_environment
+
+
+def test_publish_rejects_empty_namespaced_environment(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ARXPM_PUBLISH_TOKEN", " ")
+    env = FakeEnvironment()
+    runner = FakeRunner()
+    service = ProjectService(
+        environment_factory=_factory(env),
+        runner=runner,
+        credential_store=FakeCredentialStore(),
+    )
+    service.init(tmp_path, name="demo")
+
+    with pytest.raises(
+        ManifestError,
+        match="ARXPM_PUBLISH_TOKEN cannot be empty",
+    ):
+        service.publish(tmp_path)
+
+    assert runner.calls == []
+
+
+def test_publish_rejects_token_with_basic_auth_env(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ARXPM_PUBLISH_TOKEN", "pypi-token")
+    monkeypatch.setenv("ARXPM_PUBLISH_USERNAME", "demo-user")
+    env = FakeEnvironment()
+    runner = FakeRunner()
+    service = ProjectService(
+        environment_factory=_factory(env),
+        runner=runner,
+        credential_store=FakeCredentialStore(),
+    )
+    service.init(tmp_path, name="demo")
+
+    with pytest.raises(ManifestError, match="cannot be combined"):
+        service.publish(tmp_path)
+
+    assert runner.calls == []
 
 
 def test_pack_builds_artifacts_without_upload(tmp_path: Path) -> None:

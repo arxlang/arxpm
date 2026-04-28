@@ -5,7 +5,7 @@ title: Tests for the environment abstraction and uv-backed implementations.
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pytest
@@ -40,7 +40,9 @@ class Recorder:
         command: Sequence[str],
         cwd: Path | None = None,
         check: bool = False,
+        env: Mapping[str, str] | None = None,
     ) -> CommandResult:
+        _ = env
         self.calls.append((list(command), cwd, check))
         return CommandResult(tuple(command), 0, "", "")
 
@@ -62,8 +64,9 @@ def test_uv_managed_environment_creates_venv(tmp_path: Path) -> None:
         command: Sequence[str],
         cwd: Path | None = None,
         check: bool = False,
+        env: Mapping[str, str] | None = None,
     ) -> CommandResult:
-        _ = cwd, check
+        _ = cwd, check, env
         calls.append(list(command))
         bin_dir.mkdir(parents=True, exist_ok=True)
         (bin_dir / _interpreter_name()).write_text("", encoding="utf-8")
@@ -154,8 +157,9 @@ def test_conda_environment_resolves_by_name(tmp_path: Path) -> None:
         command: Sequence[str],
         cwd: Path | None = None,
         check: bool = False,
+        env: Mapping[str, str] | None = None,
     ) -> CommandResult:
-        _ = cwd, check
+        _ = cwd, check, env
         calls.append(list(command))
         return CommandResult(
             tuple(command),

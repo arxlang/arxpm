@@ -22,6 +22,7 @@ provisioning (via `uv`), and user-facing workflow commands.
 - `environment.py`: backend-neutral environment protocol plus `venv`, `conda`,
   and `system` implementations that install packages via
   `uv pip install --python <interp>`.
+- `credentials.py`: keyring-backed publish credential storage.
 - `project.py`: project workflows (`init`, `add`, `install`, `build`, `run`,
   `pack`, `publish`).
 - `healthcheck.py`: manifest, layout, environment, and toolchain checks.
@@ -30,6 +31,7 @@ provisioning (via `uv`), and user-facing workflow commands.
 ## Commands (v0)
 
 - `arxpm init`
+- `arxpm config`
 - `arxpm install`
 - `arxpm add <name> [--path PATH|--git URL]`
 - `arxpm build`

@@ -5,7 +5,7 @@ title: Shared fixtures for arxpm tests.
 from __future__ import annotations
 
 import shutil
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 import pytest
@@ -75,11 +75,14 @@ class FakeRunner:
     attributes:
       calls:
         type: list[tuple[list[str], Path | None, bool]]
+      environments:
+        type: list[dict[str, str] | None]
       module_install_dirs:
         type: dict[str, Path]
     """
 
     calls: list[tuple[list[str], Path | None, bool]]
+    environments: list[dict[str, str] | None]
     module_install_dirs: dict[str, Path]
 
     def __init__(
@@ -87,6 +90,7 @@ class FakeRunner:
         module_install_dirs: dict[str, Path] | None = None,
     ) -> None:
         self.calls = []
+        self.environments = []
         self.module_install_dirs = module_install_dirs or {}
 
     def __call__(
@@ -94,9 +98,11 @@ class FakeRunner:
         command: Sequence[str],
         cwd: Path | None = None,
         check: bool = False,
+        env: Mapping[str, str] | None = None,
     ) -> CommandResult:
         cmd_list = list(command)
         self.calls.append((cmd_list, cwd, check))
+        self.environments.append(dict(env) if env is not None else None)
 
         if "-m" in cmd_list and "build" in cmd_list and "--outdir" in cmd_list:
             outdir_value = Path(cmd_list[cmd_list.index("--outdir") + 1])

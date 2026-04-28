@@ -5,14 +5,19 @@ title: Project lifecycle operations.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import sys
 import tempfile
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from arxpm.credentials import (
+    PublishCredentialProvider,
+    PublishCredentialStore,
+)
 from arxpm.environment import (
     EnvironmentFactory,
     EnvironmentRuntime,
@@ -59,6 +64,17 @@ fn main() -> i32:
 """
 
 _SOURCE_SUFFIXES = (".x", ".arx")
+PUBLISH_DEFAULT_REPOSITORY_URL = "https://upload.pypi.org/legacy/"
+PUBLISH_TEST_REPOSITORY_URL = "https://test.pypi.org/legacy/"
+_PUBLISH_TOKEN_USERNAME = "__token__"
+_PUBLISH_ENV_TOKEN = "ARXPM_PUBLISH_TOKEN"
+_PUBLISH_ENV_USERNAME = "ARXPM_PUBLISH_USERNAME"
+_PUBLISH_ENV_PASSWORD = "ARXPM_PUBLISH_PASSWORD"
+_PUBLISH_ENV_REPOSITORY_URL = "ARXPM_PUBLISH_REPOSITORY_URL"
+_PUBLISH_BACKEND_ENV_PREFIX = "TWINE_"
+_PUBLISH_BACKEND_USERNAME = "TWINE_USERNAME"
+_PUBLISH_BACKEND_PASSWORD = "TWINE_PASSWORD"
+_PUBLISH_BACKEND_REPOSITORY_URL = "TWINE_REPOSITORY_URL"
 _EXCLUDED_SOURCE_DIRS = {
     ".git",
     ".mypy_cache",
@@ -134,18 +150,23 @@ class ProjectService:
         type: EnvironmentFactory
       _runner:
         type: CommandRunner
+      _credential_store:
+        type: PublishCredentialProvider
     """
 
     _environment_factory: EnvironmentFactory
     _runner: CommandRunner
+    _credential_store: PublishCredentialProvider
 
     def __init__(
         self,
         environment_factory: EnvironmentFactory | None = None,
         runner: CommandRunner = run_command,
+        credential_store: PublishCredentialProvider | None = None,
     ) -> None:
         self._environment_factory = environment_factory or build_environment
         self._runner = runner
+        self._credential_store = credential_store or PublishCredentialStore()
 
     def init(
         self,
@@ -402,8 +423,17 @@ class ProjectService:
         """
         manifest = load_manifest(directory)
 
-        if repository_url is not None and not repository_url.strip():
-            raise ManifestError("repository URL cannot be empty")
+        upload_repository_url = _normalize_publish_value(
+            "repository URL",
+            repository_url,
+        )
+        upload_environment = None
+        if not dry_run:
+            upload_environment = _build_publish_environment(
+                os.environ,
+                upload_repository_url,
+                self._credential_store,
+            )
 
         dist_dir = directory / "dist"
         dist_dir.mkdir(parents=True, exist_ok=True)
@@ -457,13 +487,19 @@ class ProjectService:
             "upload",
             "--non-interactive",
         ]
-        if repository_url:
-            upload_cmd.extend(["--repository-url", repository_url.strip()])
+        if upload_repository_url:
+            upload_cmd.extend(["--repository-url", upload_repository_url])
         if skip_existing:
             upload_cmd.append("--skip-existing")
         upload_cmd.extend(str(path) for path in artifacts)
 
-        upload_result = self._runner(upload_cmd, cwd=directory, check=True)
+        assert upload_environment is not None
+        upload_result = self._runner(
+            upload_cmd,
+            cwd=directory,
+            check=True,
+            env=upload_environment,
+        )
         return PublishResult(
             manifest=manifest,
             artifacts=artifacts,
@@ -572,6 +608,90 @@ def _dependency_install_target(name: str, spec: DependencySpec) -> str:
             return spec.git
         return f"git+{spec.git}"
     raise ManifestError(f"dependency {name!r} has no installable target")
+
+
+def _normalize_publish_value(name: str, value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    if normalized:
+        return normalized
+    raise ManifestError(f"{name} cannot be empty")
+
+
+def _publish_env_value(
+    environ: Mapping[str, str],
+    name: str,
+) -> str | None:
+    return _normalize_publish_value(name, environ.get(name))
+
+
+def _build_publish_environment(
+    environ: Mapping[str, str],
+    repository_url: str | None,
+    credential_store: PublishCredentialProvider,
+) -> dict[str, str]:
+    upload_environment = {
+        key: value
+        for key, value in environ.items()
+        if not key.startswith(_PUBLISH_BACKEND_ENV_PREFIX)
+    }
+    repository_url_env = None
+    if repository_url is None:
+        repository_url_env = _publish_env_value(
+            environ,
+            _PUBLISH_ENV_REPOSITORY_URL,
+        )
+    token = _publish_env_value(environ, _PUBLISH_ENV_TOKEN)
+    username = _publish_env_value(environ, _PUBLISH_ENV_USERNAME)
+    password = _publish_env_value(environ, _PUBLISH_ENV_PASSWORD)
+
+    if token is not None and (username is not None or password is not None):
+        raise ManifestError(
+            f"{_PUBLISH_ENV_TOKEN} cannot be combined with "
+            f"{_PUBLISH_ENV_USERNAME} or {_PUBLISH_ENV_PASSWORD}"
+        )
+
+    if repository_url is None and repository_url_env is not None:
+        upload_environment[_PUBLISH_BACKEND_REPOSITORY_URL] = (
+            repository_url_env
+        )
+
+    if token is not None:
+        upload_environment[_PUBLISH_BACKEND_USERNAME] = _PUBLISH_TOKEN_USERNAME
+        upload_environment[_PUBLISH_BACKEND_PASSWORD] = token
+        return upload_environment
+
+    if username is not None:
+        upload_environment[_PUBLISH_BACKEND_USERNAME] = username
+    if password is not None:
+        upload_environment[_PUBLISH_BACKEND_PASSWORD] = password
+    if username is not None or password is not None:
+        return upload_environment
+
+    effective_repository_url = (
+        repository_url or repository_url_env or PUBLISH_DEFAULT_REPOSITORY_URL
+    )
+    repository_name = _publish_repository_name(effective_repository_url)
+    if repository_name is None:
+        return upload_environment
+
+    stored_token = credential_store.get_token(repository_name)
+    if stored_token is None:
+        return upload_environment
+
+    upload_environment[_PUBLISH_BACKEND_USERNAME] = _PUBLISH_TOKEN_USERNAME
+    upload_environment[_PUBLISH_BACKEND_PASSWORD] = stored_token
+    return upload_environment
+
+
+def _publish_repository_name(repository_url: str) -> str | None:
+    normalized_url = repository_url.rstrip("/")
+    if normalized_url == PUBLISH_DEFAULT_REPOSITORY_URL.rstrip("/"):
+        return "pypi"
+    if normalized_url == PUBLISH_TEST_REPOSITORY_URL.rstrip("/"):
+        return "testpypi"
+    return None
 
 
 def _prepare_publish_workspace(

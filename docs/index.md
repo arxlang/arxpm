@@ -18,6 +18,7 @@
 - `src/arxpm/layout.py`: resolve effective `src_dir`, `package`, and `mode`.
 - `src/arxpm/environment.py`: environment runtime abstraction and the `venv`,
   `conda`, and `system` implementations.
+- `src/arxpm/credentials.py`: keyring-backed publish credential storage.
 - `src/arxpm/project.py`: `init`, `add`, `install`, `build`, `run`, `pack`,
   `publish`.
 - `src/arxpm/healthcheck.py`: manifest, layout, environment, and toolchain

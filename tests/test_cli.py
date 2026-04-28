@@ -238,6 +238,18 @@ def test_config_command_removes_token(
     assert "Removed publish token for pypi" in result.output
 
 
+def test_config_command_reports_missing_keyring_package(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("arxpm.credentials._keyring", None)
+
+    result = runner.invoke(app, ["config", "pypi-token.pypi"])
+
+    assert result.exit_code == 1
+    assert "keyring package is not available" in result.output
+    assert "ARXPM_PUBLISH_TOKEN" in result.output
+
+
 def test_add_command_writes_registry_dependency(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

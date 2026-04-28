@@ -208,6 +208,7 @@ __marimo__/
 
 # tmp
 PLAN.md
+REVIEW.md
 pytest-*
 
 # llm

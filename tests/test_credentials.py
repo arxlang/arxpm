@@ -80,3 +80,15 @@ def test_publish_credential_store_requires_keyring_for_writes(
 
     with pytest.raises(CredentialStoreError, match="No supported system"):
         PublishCredentialStore().set_token_key("pypi-token.pypi", "token")
+
+
+def test_publish_credential_store_reports_missing_keyring_package(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("arxpm.credentials._keyring", None)
+
+    with pytest.raises(
+        CredentialStoreError,
+        match="keyring package is not available",
+    ):
+        PublishCredentialStore().ensure_available()

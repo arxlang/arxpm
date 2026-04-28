@@ -17,6 +17,7 @@ dependencies = [
     "twine>=6.2.0",
     "build>=1.2.0",
     "uv>=0.5.0",
+    "keyring>=25.0.0",
 ]
 
 [project.scripts]

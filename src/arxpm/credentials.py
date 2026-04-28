@@ -47,6 +47,7 @@ class PublishCredentialStore:
         """
         title: Verify that a supported system keyring is available.
         """
+        _keyring_module()
         if _keyring_available():
             return
         raise CredentialStoreError(
@@ -173,5 +174,5 @@ def _keyring_module() -> Any:
         return _keyring
     raise CredentialStoreError(
         "The keyring package is not available. Use ARXPM_PUBLISH_TOKEN "
-        "for this publish, or install arxpm with keyring support."
+        "for this publish, or reinstall arxpm."
     )

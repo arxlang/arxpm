@@ -34,6 +34,7 @@ from arxpm.manifest import (
     MANIFEST_FILENAME,
     create_default_manifest,
     load_manifest,
+    render_manifest,
     save_manifest,
 )
 from arxpm.models import (
@@ -847,7 +848,10 @@ def _prepare_publish_workspace(
     if not manifest_path.exists():
         raise ManifestError(f"manifest not found: {manifest_path}")
 
-    shutil.copy2(manifest_path, package_root / MANIFEST_FILENAME)
+    (package_root / MANIFEST_FILENAME).write_text(
+        _render_packaged_manifest(manifest),
+        encoding="utf-8",
+    )
     (package_root / "__init__.py").write_text(
         _render_package_init(manifest),
         encoding="utf-8",
@@ -931,6 +935,30 @@ def _render_package_init(manifest: Manifest) -> str:
         )
         + "\n"
     )
+
+
+def _render_packaged_manifest(manifest: Manifest) -> str:
+    packaged_manifest = Manifest(
+        project=manifest.project,
+        build=BuildConfig(
+            src_dir=".",
+            out_dir=manifest.build.out_dir,
+            package=None,
+            mode=manifest.build.mode,
+        ),
+        dependencies={
+            name: _packaged_dependency_spec(spec)
+            for name, spec in manifest.dependencies.items()
+        },
+        toolchain=manifest.toolchain,
+    )
+    return render_manifest(packaged_manifest)
+
+
+def _packaged_dependency_spec(spec: DependencySpec) -> DependencySpec:
+    if spec.path is not None:
+        return DependencySpec.registry()
+    return spec
 
 
 def _render_publish_pyproject(

@@ -245,6 +245,12 @@ def test_local_lib_publish_workspace_bundles_all_arx_sources(
     assert (package_root / ".arxproject.toml").is_file()
     assert (package_root / "__init__.py").is_file()
 
+    manifest_text = (package_root / ".arxproject.toml").read_text(
+        encoding="utf-8"
+    )
+    assert 'src_dir = "."' in manifest_text
+    assert "package =" not in manifest_text
+
     pyproject_text = (staging_dir / "pyproject.toml").read_text(
         encoding="utf-8"
     )

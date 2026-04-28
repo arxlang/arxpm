@@ -1,6 +1,13 @@
 # Release Notes
 ---
 
+## [1.8.1](https://github.com/arxlang/arxpm/compare/1.8.0...1.8.1) (2026-04-28)
+
+
+### Bug Fixes
+
+* Fix dependencies management ([#12](https://github.com/arxlang/arxpm/issues/12)) ([d806434](https://github.com/arxlang/arxpm/commit/d806434ecefe270188fab192f04fe23fbfc0d5f5))
+
 # [1.8.0](https://github.com/arxlang/arxpm/compare/1.7.0...1.8.0) (2026-04-28)
 
 

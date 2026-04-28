@@ -121,6 +121,31 @@ class PassingPublishProjectService:
         )
 
 
+class CapturingCredentialStore:
+    """
+    title: Credential store that records config command calls.
+    attributes:
+      set_calls:
+        type: list[tuple[str, str]]
+      delete_calls:
+        type: list[str]
+    """
+
+    set_calls: list[tuple[str, str]] = []
+    delete_calls: list[str] = []
+
+    def ensure_available(self) -> None:
+        pass
+
+    def set_token_key(self, key: str, token: str) -> str:
+        type(self).set_calls.append((key, token))
+        return key.rsplit(".", maxsplit=1)[-1]
+
+    def delete_token_key(self, key: str) -> str:
+        type(self).delete_calls.append(key)
+        return key.rsplit(".", maxsplit=1)[-1]
+
+
 def test_init_command_creates_project_files(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -170,6 +195,47 @@ def test_init_command_writes_custom_environment(
     )
     assert manifest_data["environment"]["kind"] == "venv"
     assert manifest_data["environment"]["path"] == "/tmp/demo-env"
+
+
+def test_config_command_stores_token_in_keyring(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    CapturingCredentialStore.set_calls = []
+    CapturingCredentialStore.delete_calls = []
+    monkeypatch.setattr(
+        "arxpm.cli.PublishCredentialStore",
+        CapturingCredentialStore,
+    )
+
+    result = runner.invoke(
+        app,
+        ["config", "pypi-token.pypi"],
+        input="pypi-token\npypi-token\n",
+    )
+
+    assert result.exit_code == 0
+    assert CapturingCredentialStore.set_calls == [
+        ("pypi-token.pypi", "pypi-token")
+    ]
+    assert "Stored publish token for pypi" in result.output
+    assert "pypi-token\n" not in result.output
+
+
+def test_config_command_removes_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    CapturingCredentialStore.set_calls = []
+    CapturingCredentialStore.delete_calls = []
+    monkeypatch.setattr(
+        "arxpm.cli.PublishCredentialStore",
+        CapturingCredentialStore,
+    )
+
+    result = runner.invoke(app, ["config", "--unset", "pypi-token.pypi"])
+
+    assert result.exit_code == 0
+    assert CapturingCredentialStore.delete_calls == ["pypi-token.pypi"]
+    assert "Removed publish token for pypi" in result.output
 
 
 def test_add_command_writes_registry_dependency(

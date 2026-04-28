@@ -9,10 +9,11 @@ from typing import Annotated, NoReturn
 
 import typer
 
+from arxpm.credentials import PublishCredentialStore
 from arxpm.environment import default_environment_config_from_cli
 from arxpm.errors import ArxpmError
 from arxpm.healthcheck import HealthCheckService
-from arxpm.project import ProjectService
+from arxpm.project import PUBLISH_DEFAULT_REPOSITORY_URL, ProjectService
 
 app = typer.Typer(help="Arx project and package manager.")
 
@@ -51,6 +52,52 @@ def _print_health_report(directory: Path) -> None:
 
     if not report.ok:
         raise typer.Exit(code=1)
+
+
+@app.command("config")
+def config_command(
+    key: Annotated[
+        str,
+        typer.Argument(help="Configuration key, e.g. pypi-token.pypi."),
+    ],
+    unset: Annotated[
+        bool,
+        typer.Option(
+            "--unset",
+            help="Remove a stored configuration value.",
+        ),
+    ] = False,
+) -> None:
+    """
+    title: Configure user-level arxpm settings.
+    parameters:
+      key:
+        type: >-
+          Annotated[str, typer.Argument(help='Configuration key, e.g. pypi-
+          token.pypi.')]
+      unset:
+        type: >-
+          Annotated[bool, typer.Option('--unset', help='Remove a stored
+          configuration value.')]
+    """
+    credential_store = PublishCredentialStore()
+    try:
+        if unset:
+            repository = credential_store.delete_token_key(key)
+            typer.echo(f"Removed publish token for {repository}.")
+            return
+
+        credential_store.ensure_available()
+        token = typer.prompt(
+            "Publish token",
+            hide_input=True,
+            confirmation_prompt=True,
+        )
+        repository = credential_store.set_token_key(key, token)
+    except ArxpmError as exc:
+        _fail(exc)
+
+    typer.echo(f"Stored publish token for {repository} in the system keyring.")
 
 
 @app.command()
@@ -332,7 +379,10 @@ def publish_command(
         str | None,
         typer.Option(
             "--repository-url",
-            help="Override Python package repository upload URL.",
+            help=(
+                "Override Python package repository upload URL "
+                f"(default: {PUBLISH_DEFAULT_REPOSITORY_URL})."
+            ),
         ),
     ] = None,
     skip_existing: Annotated[
@@ -359,8 +409,9 @@ def publish_command(
     parameters:
       repository_url:
         type: >-
-          Annotated[str | None, typer.Option('--repository-url', help='Override
-          Python package repository upload URL.')]
+          Annotated[str | None, typer.Option('--repository-url',
+          help=f'Override Python package repository upload URL (default:
+          {PUBLISH_DEFAULT_REPOSITORY_URL}).')]
       skip_existing:
         type: >-
           Annotated[bool, typer.Option('--skip-existing/--no-skip-existing',

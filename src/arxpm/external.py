@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -45,6 +45,7 @@ class CommandRunner(Protocol):
         command: Sequence[str],
         cwd: Path | None = None,
         check: bool = False,
+        env: Mapping[str, str] | None = None,
     ) -> CommandResult:
         """
         title: Run a command and return its result.
@@ -55,6 +56,8 @@ class CommandRunner(Protocol):
             type: Path | None
           check:
             type: bool
+          env:
+            type: Mapping[str, str] | None
         returns:
           type: CommandResult
         """
@@ -64,6 +67,7 @@ def run_command(
     command: Sequence[str],
     cwd: Path | None = None,
     check: bool = False,
+    env: Mapping[str, str] | None = None,
 ) -> CommandResult:
     """
     title: Run a subprocess command.
@@ -74,6 +78,8 @@ def run_command(
         type: Path | None
       check:
         type: bool
+      env:
+        type: Mapping[str, str] | None
     returns:
       type: CommandResult
     """
@@ -83,6 +89,7 @@ def run_command(
         capture_output=True,
         text=True,
         check=False,
+        env=dict(env) if env is not None else None,
     )
     result = CommandResult(
         command=tuple(command),

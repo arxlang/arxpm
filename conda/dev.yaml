@@ -9,3 +9,4 @@ dependencies:
   - python
   - poetry >=2.0
   - uv
+  - nodejs

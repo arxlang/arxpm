@@ -73,8 +73,13 @@ static binary. `arxpm doctor` reports whether `uv` is reachable on your PATH.
 
 ## Tooling not managed by arxpm
 
-`arxpm publish` and `arxpm pack` use `python -m build` and `python -m twine`
-from the _outer_ interpreter that is running `arxpm`. They never install build
-tooling into your project environment. `build` and `twine` are declared as
-runtime dependencies of `arxpm` itself, so they are always available wherever
-`arxpm` is installed.
+`arxpm pack` and `arxpm publish` use Python packaging tooling from the _outer_
+interpreter that is running `arxpm`. They never install build or upload tooling
+into your project environment. These tools are declared as runtime dependencies
+of `arxpm` itself, so they are always available wherever `arxpm` is installed.
+
+Configure publish credentials with the `ARXPM_PUBLISH_*` environment variables
+documented in the command reference. `ARXPM_PUBLISH_REPOSITORY_URL` defaults to
+the official PyPI upload endpoint when unset. For repeated local publishes,
+`arxpm config pypi-token.<repository>` stores tokens in the system keyring only
+and does not fall back to plaintext files.

@@ -22,6 +22,22 @@ Effects:
 - writes an explicit `[environment]` block only when `--env-kind`, `--env-path`,
   or `--env-name` is provided
 
+## `arxpm config`
+
+Configure user-level arxpm settings. Publish tokens are stored in the system
+keyring only; arxpm does not write tokens to project files or plaintext config
+files.
+
+```bash
+arxpm config pypi-token.pypi
+arxpm config pypi-token.testpypi
+arxpm config --unset pypi-token.pypi
+```
+
+The token value is entered through a hidden prompt. If no supported keyring is
+available, use `ARXPM_PUBLISH_TOKEN` for a single publish or configure a keyring
+backend.
+
 ## `arxpm add`
 
 Add a dependency entry to `.arxproject.toml`.
@@ -81,6 +97,31 @@ Build package artifacts locally without uploading to a registry.
 
 Build and publish the current project as a Python package that bundles
 `.arxproject.toml` and `*.x`/`*.arx` sources.
+
+The default repository is the official PyPI upload endpoint:
+`https://upload.pypi.org/legacy/`. Override it with `--repository-url` or
+`ARXPM_PUBLISH_REPOSITORY_URL`.
+
+Use `ARXPM_PUBLISH_TOKEN` for PyPI or TestPyPI API tokens:
+
+```bash
+ARXPM_PUBLISH_TOKEN="pypi-..." arxpm publish
+ARXPM_PUBLISH_REPOSITORY_URL="https://test.pypi.org/legacy/" \
+  ARXPM_PUBLISH_TOKEN="pypi-..." arxpm publish
+```
+
+To store a token safely for repeated local publishes, use:
+
+```bash
+arxpm config pypi-token.pypi
+arxpm config pypi-token.testpypi
+```
+
+`pypi-token.pypi` is used for the default PyPI upload URL. `pypi-token.testpypi`
+is used when publishing to `https://test.pypi.org/legacy/`.
+
+For repositories that use basic authentication, set `ARXPM_PUBLISH_USERNAME` and
+`ARXPM_PUBLISH_PASSWORD`.
 
 ## `arxpm healthcheck`
 

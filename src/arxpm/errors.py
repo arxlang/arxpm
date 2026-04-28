@@ -37,6 +37,12 @@ class EnvironmentError(ArxpmError):
     """
 
 
+class CredentialStoreError(ArxpmError):
+    """
+    title: Credential storage or retrieval failure.
+    """
+
+
 class ExternalCommandError(ArxpmError):
     """
     title: External command execution failed.

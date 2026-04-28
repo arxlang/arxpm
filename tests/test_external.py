@@ -4,6 +4,7 @@ title: Tests for external command helpers.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -37,6 +38,24 @@ def test_run_command_forwards_stdout_and_stderr(
     assert result.stderr == "hello from stderr\n"
     assert captured.out == "hello from stdout\n"
     assert captured.err == "hello from stderr\n"
+
+
+def test_run_command_accepts_custom_environment(tmp_path: Path) -> None:
+    environment = dict(os.environ)
+    environment["ARXPM_TEST_ENV"] = "custom-value"
+
+    result = run_command(
+        [
+            sys.executable,
+            "-c",
+            "import os; print(os.environ['ARXPM_TEST_ENV'])",
+        ],
+        cwd=tmp_path,
+        env=environment,
+    )
+
+    assert result.returncode == 0
+    assert result.stdout == "custom-value\n"
 
 
 def test_run_command_check_raises_external_error() -> None:

@@ -73,6 +73,24 @@ class EnvironmentRuntime(Protocol):
         """
 
 
+def environment_executable(
+    environment: EnvironmentRuntime,
+    executable: str,
+) -> Path:
+    """
+    title: Return an executable installed beside the environment interpreter.
+    parameters:
+      environment:
+        type: EnvironmentRuntime
+      executable:
+        type: str
+    returns:
+      type: Path
+    """
+    suffix = ".exe" if sys.platform == "win32" else ""
+    return environment.python_executable().parent / f"{executable}{suffix}"
+
+
 class _UvBackend:
     """
     title: Shared uv-backed install logic used by concrete backends.

@@ -22,6 +22,7 @@ from arxpm.environment import (
     EnvironmentFactory,
     EnvironmentRuntime,
     build_environment,
+    environment_executable,
 )
 from arxpm.errors import ManifestError, MissingCompilerError
 from arxpm.external import CommandResult, CommandRunner, run_command
@@ -726,9 +727,7 @@ def _compiler_command(
 ) -> list[str]:
     if compiler == _DEFAULT_ARX_COMPILER:
         return [
-            str(environment.python_executable()),
-            "-m",
-            "arx",
+            str(environment_executable(environment, compiler)),
             source_path,
             "--output-file",
             str(artifact_rel),

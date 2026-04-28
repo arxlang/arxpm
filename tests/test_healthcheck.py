@@ -68,12 +68,16 @@ class StubRunner:
     attributes:
       returncode:
         type: int
+      calls:
+        type: list[tuple[str, Ellipsis]]
     """
 
     returncode: int
+    calls: list[tuple[str, ...]]
 
     def __init__(self, returncode: int = 0) -> None:
         self.returncode = returncode
+        self.calls = []
 
     def __call__(
         self,
@@ -83,7 +87,9 @@ class StubRunner:
         env: Mapping[str, str] | None = None,
     ) -> CommandResult:
         _ = cwd, check, env
-        return CommandResult(tuple(command), self.returncode, "", "")
+        command_tuple = tuple(command)
+        self.calls.append(command_tuple)
+        return CommandResult(command_tuple, self.returncode, "", "")
 
 
 def _stub_factory(description: str, fail: bool = False) -> EnvironmentFactory:
@@ -104,10 +110,11 @@ def _project_service() -> ProjectService:
 
 def test_healthcheck_reports_success(tmp_path: Path) -> None:
     _project_service().init(tmp_path, name="demo")
+    runner = StubRunner()
     service = HealthCheckService(
         environment_factory=_stub_factory("venv at /tmp/.venv"),
         which=_which_all,
-        runner=StubRunner(),
+        runner=runner,
     )
 
     report = service.run(tmp_path)
@@ -122,7 +129,10 @@ def test_healthcheck_reports_success(tmp_path: Path) -> None:
     assert checks["__init__.x"].ok is True
     assert checks["main.x"].ok is True
     assert checks["uv"].ok is True
-    assert checks["compiler (python -m arx)"].ok is True
+    assert checks["compiler (arx)"].ok is True
+    assert runner.calls[0][:2] == ("/fake/arx", "--help")
+    assert "package_index" in runner.calls[1][2]
+    assert "_resolve_installed_module_file" not in runner.calls[1][2]
     assert checks["environment"].ok is True
     assert "reachable" in checks["environment"].message
 
@@ -199,7 +209,7 @@ def test_healthcheck_reports_missing_environment_compiler(
     report = service.run(tmp_path)
     checks = {check.name: check for check in report.checks}
 
-    assert checks["compiler (python -m arx)"].ok is False
+    assert checks["compiler (arx)"].ok is False
 
 
 def test_healthcheck_reports_missing_custom_compiler(tmp_path: Path) -> None:

@@ -67,7 +67,9 @@ def test_init_and_add_dependency_forms(tmp_path: Path) -> None:
     )
 
 
-def test_build_and_run_invoke_environment_arx_module(tmp_path: Path) -> None:
+def test_build_and_run_invoke_environment_arx_executable(
+    tmp_path: Path,
+) -> None:
     env = FakeEnvironment()
     runner = FakeRunner()
     service = ProjectService(
@@ -81,10 +83,8 @@ def test_build_and_run_invoke_environment_arx_module(tmp_path: Path) -> None:
     run_result = service.run(tmp_path)
 
     assert build_result.artifact == tmp_path / "build" / "demo"
-    assert runner.calls[0][0][:4] == [
-        "/fake/python",
-        "-m",
-        "arx",
+    assert runner.calls[0][0][:2] == [
+        "/fake/arx",
         "src/demo/main.x",
     ]
     assert runner.calls[-1][0] == ["build/demo"]
@@ -727,9 +727,7 @@ def test_build_uses_init_module_for_lib_projects(tmp_path: Path) -> None:
 
     assert build_result.artifact == tmp_path / "build" / "demo"
     assert runner.calls[0][0] == [
-        "/fake/python",
-        "-m",
-        "arx",
+        "/fake/arx",
         "src/demo/__init__.x",
         "--output-file",
         "build/demo",

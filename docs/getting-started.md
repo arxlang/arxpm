@@ -34,7 +34,8 @@ The report should show:
 - `__init__.x` exists
 - `main.x` matches the resolved mode
 - `uv` is available on PATH
-- `arx >= 1.22.0` is importable from the configured environment
+- the Arx compiler and installed-package discovery are available from the
+  configured environment
 - the environment is reachable (defaults to a project `.venv`)
 
 ## Run Examples

@@ -7,7 +7,7 @@ so the Arx compiler finds the library's modules at build time.
 Published Arx packages use the same runtime shape: wheels and source
 distributions include `.arxproject.toml` plus `*.x` / `*.arx` source files.
 After `uv` installs registry, Git, or local wheel dependencies, `arxpm install`
-leaves source discovery to `arx >= 1.22.0`, which reads installed package
+leaves source discovery to the installed Arx compiler, which reads package
 metadata from the active Python environment.
 
 ## Supported layout
@@ -66,7 +66,7 @@ For each `project.dependencies` entry of the form `<name> @ <path>` where
 1. Validates the library layout.
 2. Packs the library to produce a wheel that bundles its `.x` / `.arx` sources.
 3. Installs the wheel into the consumer's Python environment with `uv`.
-4. Builds and runs through that environment's `python -m arx`, allowing the
+4. Builds and runs through that environment's `arx` executable, allowing the
    compiler to resolve the installed package directly.
 
 For registry, Git, or wheel dependencies, `arxpm install` first lets `uv`

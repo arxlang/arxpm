@@ -13,6 +13,7 @@ from arxpm.environment import (
     EnvironmentFactory,
     EnvironmentRuntime,
     build_environment,
+    environment_executable,
 )
 from arxpm.errors import ArxpmError
 from arxpm.external import CommandRunner, run_command
@@ -23,9 +24,10 @@ from arxpm.models import Manifest
 WhichFn = Callable[[str], str | None]
 _DEFAULT_ARX_COMPILER = "arx"
 _ARX_COMPILER_CHECK_SCRIPT = (
+    "from pathlib import Path; "
     "import arx.main; "
-    "assert hasattr(arx.main.FileImportResolver, "
-    "'_resolve_installed_module_file')"
+    "from arx import package_index; "
+    "package_index.discover_installed_arx_packages(start=Path.cwd())"
 )
 
 
@@ -327,30 +329,43 @@ def _compiler_check(
 
     if environment is None:
         return HealthCheck(
-            name="compiler (python -m arx)",
+            name="compiler (arx)",
             ok=False,
             message="skipped: environment unreachable",
         )
 
+    arx_executable = environment_executable(environment, _DEFAULT_ARX_COMPILER)
     python_executable = environment.python_executable()
     try:
-        result = runner(
+        executable_result = runner(
+            [str(arx_executable), "--help"],
+            cwd=directory,
+            check=False,
+        )
+        discovery_result = runner(
             [str(python_executable), "-c", _ARX_COMPILER_CHECK_SCRIPT],
             cwd=directory,
             check=False,
         )
     except OSError:
-        result = None
-    compiler_ok = result is not None and result.returncode == 0
+        executable_result = None
+        discovery_result = None
+    compiler_ok = (
+        executable_result is not None
+        and discovery_result is not None
+        and executable_result.returncode == 0
+        and discovery_result.returncode == 0
+    )
     return HealthCheck(
-        name="compiler (python -m arx)",
+        name="compiler (arx)",
         ok=compiler_ok,
         message=(
-            f"arx is importable from {python_executable}"
+            "arx compiler and installed-package discovery are available from "
+            f"{arx_executable}"
             if compiler_ok
             else (
-                "arx >= 1.22.0 is not importable from "
-                f"{python_executable}; run arxpm install"
+                "arx executable or installed-package discovery is not "
+                f"available from {arx_executable}; run arxpm install"
             )
         ),
     )

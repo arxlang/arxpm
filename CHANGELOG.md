@@ -1,6 +1,13 @@
 # Release Notes
 ---
 
+# [1.8.0](https://github.com/arxlang/arxpm/compare/1.7.0...1.8.0) (2026-04-28)
+
+
+### Features
+
+* Improve publishing workflow ([#11](https://github.com/arxlang/arxpm/issues/11)) ([c2c7732](https://github.com/arxlang/arxpm/commit/c2c77323a32de0ec84bcdc94d16e6ad53a5115bc))
+
 # [1.7.0](https://github.com/arxlang/arxpm/compare/1.6.0...1.7.0) (2026-04-20)
 
 

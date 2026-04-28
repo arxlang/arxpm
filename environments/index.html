@@ -753,11 +753,15 @@ match what you'd write by hand.</p>
 not require an active venv (it accepts <code class="language-python highlight"><span class="o">--</span><span class="n">python</span> <span class="o">&lt;</span><span class="n">interp</span><span class="o">&gt;</span></code>), and it is a single
 static binary. <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">doctor</span></code> reports whether <code class="language-python highlight"><span class="n">uv</span></code> is reachable on your PATH.</p>
 <h2 id="tooling-not-managed-by-arxpm">Tooling not managed by arxpm<a class="headerlink" href="#tooling-not-managed-by-arxpm" title="Permanent link">&para;</a></h2>
-<p><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">publish</span></code> and <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">pack</span></code> use <code class="language-python highlight"><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">build</span></code> and <code class="language-python highlight"><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">twine</span></code>
-from the <em>outer</em> interpreter that is running <code class="language-python highlight"><span class="n">arxpm</span></code>. They never install build
-tooling into your project environment. <code class="language-python highlight"><span class="n">build</span></code> and <code class="language-python highlight"><span class="n">twine</span></code> are declared as
-runtime dependencies of <code class="language-python highlight"><span class="n">arxpm</span></code> itself, so they are always available wherever
-<code class="language-python highlight"><span class="n">arxpm</span></code> is installed.</p>
+<p><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">pack</span></code> and <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">publish</span></code> use Python packaging tooling from the <em>outer</em>
+interpreter that is running <code class="language-python highlight"><span class="n">arxpm</span></code>. They never install build or upload tooling
+into your project environment. These tools are declared as runtime dependencies
+of <code class="language-python highlight"><span class="n">arxpm</span></code> itself, so they are always available wherever <code class="language-python highlight"><span class="n">arxpm</span></code> is installed.</p>
+<p>Configure publish credentials with the <code class="language-python highlight"><span class="n">ARXPM_PUBLISH_</span><span class="o">*</span></code> environment variables
+documented in the command reference. <code class="language-python highlight"><span class="n">ARXPM_PUBLISH_REPOSITORY_URL</span></code> defaults to
+the official PyPI upload endpoint when unset. For repeated local publishes,
+<code class="language-python highlight"><span class="n">arxpm</span> <span class="n">config</span> <span class="n">pypi</span><span class="o">-</span><span class="n">token</span><span class="o">.&lt;</span><span class="n">repository</span><span class="o">&gt;</span></code> stores tokens in the system keyring only
+and does not fall back to plaintext files.</p>
 
 
 

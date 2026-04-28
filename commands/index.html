@@ -383,6 +383,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#arxpm-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        arxpm config
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#arxpm-add" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -689,6 +700,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#arxpm-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        arxpm config
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#arxpm-add" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -826,6 +848,17 @@ arxpm<span class="w"> </span>init<span class="w"> </span>--env-kind<span class="
 <li>writes an explicit <code class="language-python highlight"><span class="p">[</span><span class="n">environment</span><span class="p">]</span></code> block only when <code class="language-python highlight"><span class="o">--</span><span class="n">env</span><span class="o">-</span><span class="n">kind</span></code>, <code class="language-python highlight"><span class="o">--</span><span class="n">env</span><span class="o">-</span><span class="n">path</span></code>,
   or <code class="language-python highlight"><span class="o">--</span><span class="n">env</span><span class="o">-</span><span class="n">name</span></code> is provided</li>
 </ul>
+<h2 id="arxpm-config"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">config</span></code><a class="headerlink" href="#arxpm-config" title="Permanent link">&para;</a></h2>
+<p>Configure user-level arxpm settings. Publish tokens are stored in the system
+keyring only; arxpm does not write tokens to project files or plaintext config
+files.</p>
+<div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>config<span class="w"> </span>pypi-token.pypi
+arxpm<span class="w"> </span>config<span class="w"> </span>pypi-token.testpypi
+arxpm<span class="w"> </span>config<span class="w"> </span>--unset<span class="w"> </span>pypi-token.pypi
+</code></pre></div>
+<p>The token value is entered through a hidden prompt. If no supported keyring is
+available, use <code class="language-python highlight"><span class="n">ARXPM_PUBLISH_TOKEN</span></code> for a single publish or configure a keyring
+backend.</p>
 <h2 id="arxpm-add"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">add</span></code><a class="headerlink" href="#arxpm-add" title="Permanent link">&para;</a></h2>
 <p>Add a dependency entry to <code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code>.</p>
 <div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>add<span class="w"> </span>http
@@ -863,6 +896,22 @@ arxpm<span class="w"> </span>run<span class="w"> </span>--directory<span class="
 <h2 id="arxpm-publish"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">publish</span></code><a class="headerlink" href="#arxpm-publish" title="Permanent link">&para;</a></h2>
 <p>Build and publish the current project as a Python package that bundles
 <code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code> and <code class="language-python highlight"><span class="o">*.</span><span class="n">x</span></code>/<code class="language-python highlight"><span class="o">*.</span><span class="n">arx</span></code> sources.</p>
+<p>The default repository is the official PyPI upload endpoint:
+<code class="language-python highlight"><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">upload</span><span class="o">.</span><span class="n">pypi</span><span class="o">.</span><span class="n">org</span><span class="o">/</span><span class="n">legacy</span><span class="o">/</span></code>. Override it with <code class="language-python highlight"><span class="o">--</span><span class="n">repository</span><span class="o">-</span><span class="n">url</span></code> or
+<code class="language-python highlight"><span class="n">ARXPM_PUBLISH_REPOSITORY_URL</span></code>.</p>
+<p>Use <code class="language-python highlight"><span class="n">ARXPM_PUBLISH_TOKEN</span></code> for PyPI or TestPyPI API tokens:</p>
+<div class="language-bash highlight"><pre><span></span><code><span class="nv">ARXPM_PUBLISH_TOKEN</span><span class="o">=</span><span class="s2">&quot;pypi-...&quot;</span><span class="w"> </span>arxpm<span class="w"> </span>publish
+<span class="nv">ARXPM_PUBLISH_REPOSITORY_URL</span><span class="o">=</span><span class="s2">&quot;https://test.pypi.org/legacy/&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nv">ARXPM_PUBLISH_TOKEN</span><span class="o">=</span><span class="s2">&quot;pypi-...&quot;</span><span class="w"> </span>arxpm<span class="w"> </span>publish
+</code></pre></div>
+<p>To store a token safely for repeated local publishes, use:</p>
+<div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>config<span class="w"> </span>pypi-token.pypi
+arxpm<span class="w"> </span>config<span class="w"> </span>pypi-token.testpypi
+</code></pre></div>
+<p><code class="language-python highlight"><span class="n">pypi</span><span class="o">-</span><span class="n">token</span><span class="o">.</span><span class="n">pypi</span></code> is used for the default PyPI upload URL. <code class="language-python highlight"><span class="n">pypi</span><span class="o">-</span><span class="n">token</span><span class="o">.</span><span class="n">testpypi</span></code>
+is used when publishing to <code class="language-python highlight"><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">test</span><span class="o">.</span><span class="n">pypi</span><span class="o">.</span><span class="n">org</span><span class="o">/</span><span class="n">legacy</span><span class="o">/</span></code>.</p>
+<p>For repositories that use basic authentication, set <code class="language-python highlight"><span class="n">ARXPM_PUBLISH_USERNAME</span></code> and
+<code class="language-python highlight"><span class="n">ARXPM_PUBLISH_PASSWORD</span></code>.</p>
 <h2 id="arxpm-healthcheck"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">healthcheck</span></code><a class="headerlink" href="#arxpm-healthcheck" title="Permanent link">&para;</a></h2>
 <p>Report manifest, layout, environment, and toolchain health.</p>
 <div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>healthcheck

@@ -55,6 +55,8 @@ def test_hello_arx_build_invokes_arx_with_main_module(
     service.build(project_dir)
 
     assert fake_runner.calls[0][0] == [
+        "/fake/python",
+        "-m",
         "arx",
         "src/hello_arx/main.x",
         "--output-file",
@@ -103,6 +105,8 @@ def test_multi_module_build_invokes_arx_with_main_module(
     service.build(project_dir)
 
     assert fake_runner.calls[0][0] == [
+        "/fake/python",
+        "-m",
         "arx",
         "src/multi_module/main.x",
         "--output-file",
@@ -216,6 +220,8 @@ def test_local_consumer_build_invokes_arx_with_main_module(
     service.build(project_dir)
 
     assert fake_runner.calls[0][0] == [
+        "/fake/python",
+        "-m",
         "arx",
         "src/local_consumer/main.x",
         "--output-file",

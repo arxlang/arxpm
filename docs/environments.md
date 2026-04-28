@@ -23,9 +23,10 @@ path = ".venv"   # optional; defaults to ".venv"
 Behavior:
 
 - `arxpm install` runs `uv venv <path>` if the venv does not yet exist, then
-  `uv pip install --python <venv>/bin/python ...` for your dependencies.
-- `arxpm run` and `arxpm build` do not touch the venv; they invoke the `arx`
-  compiler directly from the outer PATH.
+  `uv pip install --python <venv>/bin/python ...` for `arxlang >= 1.22.0` and
+  your dependencies.
+- `arxpm run` and `arxpm build` invoke `<venv>/bin/python -m arx` so the
+  compiler resolves installed Arx libraries from the same environment.
 
 Omit the whole `[environment]` section for the simplest projects — the defaults
 match what you'd write by hand.
@@ -48,6 +49,7 @@ Behavior:
 - Otherwise `arxpm` invokes
   `conda run -n <name> python -c "import sys; print(sys.executable)"` to locate
   the interpreter, then installs via `uv pip install --python <interp>`.
+- `arxpm run` and `arxpm build` invoke `<interp> -m arx`.
 - `conda` must be on PATH when only `name` is provided.
 
 ## Strategy 3 — `system`
@@ -63,6 +65,7 @@ Behavior:
 
 - `arxpm install` installs packages into the current Python environment using
   `uv pip install --python <sys.executable> ...`.
+- `arxpm run` and `arxpm build` invoke `<sys.executable> -m arx`.
 - `path` and `name` are not allowed for this mode.
 
 ## Why uv?

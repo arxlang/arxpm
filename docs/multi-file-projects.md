@@ -38,7 +38,7 @@ linker = "clang"
 `arxpm build` invokes the compiler as:
 
 ```text
-arx src/multi_module/main.x --output-file build/multi_module
+<env-python> -m arx src/multi_module/main.x --output-file build/multi_module
 ```
 
 Sibling imports still work from inside the package root.

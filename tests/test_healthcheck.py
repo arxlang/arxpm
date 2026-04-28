@@ -4,6 +4,7 @@ title: Tests for healthcheck service.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from arxpm.environment import EnvironmentFactory, EnvironmentRuntime
@@ -61,6 +62,30 @@ class StubEnvironment:
         return self._description
 
 
+class StubRunner:
+    """
+    title: Command runner stub for compiler import checks.
+    attributes:
+      returncode:
+        type: int
+    """
+
+    returncode: int
+
+    def __init__(self, returncode: int = 0) -> None:
+        self.returncode = returncode
+
+    def __call__(
+        self,
+        command: Sequence[str],
+        cwd: Path | None = None,
+        check: bool = False,
+        env: Mapping[str, str] | None = None,
+    ) -> CommandResult:
+        _ = cwd, check, env
+        return CommandResult(tuple(command), self.returncode, "", "")
+
+
 def _stub_factory(description: str, fail: bool = False) -> EnvironmentFactory:
     def _build(manifest: Manifest, project_dir: Path) -> EnvironmentRuntime:
         _ = manifest, project_dir
@@ -82,6 +107,7 @@ def test_healthcheck_reports_success(tmp_path: Path) -> None:
     service = HealthCheckService(
         environment_factory=_stub_factory("venv at /tmp/.venv"),
         which=_which_all,
+        runner=StubRunner(),
     )
 
     report = service.run(tmp_path)
@@ -96,7 +122,7 @@ def test_healthcheck_reports_success(tmp_path: Path) -> None:
     assert checks["__init__.x"].ok is True
     assert checks["main.x"].ok is True
     assert checks["uv"].ok is True
-    assert checks["compiler (arx)"].ok is True
+    assert checks["compiler (python -m arx)"].ok is True
     assert checks["environment"].ok is True
     assert "reachable" in checks["environment"].message
 
@@ -105,6 +131,7 @@ def test_healthcheck_reports_missing_manifest(tmp_path: Path) -> None:
     service = HealthCheckService(
         environment_factory=_stub_factory("venv"),
         which=_which_all,
+        runner=StubRunner(),
     )
 
     report = service.run(tmp_path)
@@ -127,6 +154,7 @@ def test_healthcheck_reports_missing_source_root(tmp_path: Path) -> None:
     service = HealthCheckService(
         environment_factory=_stub_factory("venv"),
         which=_which_all,
+        runner=StubRunner(),
     )
 
     report = service.run(tmp_path)
@@ -148,6 +176,7 @@ def test_healthcheck_reports_missing_uv(tmp_path: Path) -> None:
     service = HealthCheckService(
         environment_factory=_stub_factory("venv"),
         which=_which,
+        runner=StubRunner(),
     )
 
     report = service.run(tmp_path)
@@ -157,23 +186,46 @@ def test_healthcheck_reports_missing_uv(tmp_path: Path) -> None:
     assert checks["uv"].ok is False
 
 
-def test_healthcheck_reports_missing_compiler(tmp_path: Path) -> None:
+def test_healthcheck_reports_missing_environment_compiler(
+    tmp_path: Path,
+) -> None:
     _project_service().init(tmp_path, name="demo")
+    service = HealthCheckService(
+        environment_factory=_stub_factory("venv"),
+        which=_which_all,
+        runner=StubRunner(returncode=1),
+    )
+
+    report = service.run(tmp_path)
+    checks = {check.name: check for check in report.checks}
+
+    assert checks["compiler (python -m arx)"].ok is False
+
+
+def test_healthcheck_reports_missing_custom_compiler(tmp_path: Path) -> None:
+    _project_service().init(tmp_path, name="demo")
+    manifest = load_manifest(tmp_path)
+    manifest.toolchain = type(manifest.toolchain)(
+        compiler="custom-arx",
+        linker=manifest.toolchain.linker,
+    )
+    save_manifest(tmp_path, manifest)
 
     def _which(tool: str) -> str | None:
-        if tool == "arx":
+        if tool == "custom-arx":
             return None
         return f"/usr/bin/{tool}"
 
     service = HealthCheckService(
         environment_factory=_stub_factory("venv"),
         which=_which,
+        runner=StubRunner(),
     )
 
     report = service.run(tmp_path)
     checks = {check.name: check for check in report.checks}
 
-    assert checks["compiler (arx)"].ok is False
+    assert checks["compiler (custom-arx)"].ok is False
 
 
 def test_healthcheck_reports_unreachable_environment(
@@ -205,6 +257,7 @@ def test_healthcheck_reports_invalid_package_name(tmp_path: Path) -> None:
     service = HealthCheckService(
         environment_factory=_stub_factory("venv"),
         which=_which_all,
+        runner=StubRunner(),
     )
 
     report = service.run(tmp_path)

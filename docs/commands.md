@@ -51,7 +51,8 @@ arxpm add utils --git https://example.com/utils.git
 ## `arxpm install`
 
 Validate project metadata, prepare the configured Python environment, and
-install dependencies with `uv`.
+install dependencies with `uv`. With the default compiler, this also installs
+`arxlang >= 1.22.0` so builds can run through that environment.
 
 ```bash
 arxpm install
@@ -62,17 +63,20 @@ arxpm install --group dev
 ## `arxpm build`
 
 Resolve the effective layout, validate it, choose the default target file, and
-invoke the configured Arx compiler directly.
+invoke the Arx compiler from the configured Python environment.
 
 ```bash
 arxpm build
 arxpm build --directory examples
 ```
 
-Arx invocation uses one of these targets:
+For the default compiler, `arxpm` invokes `python -m arx` from the configured
+environment using one of these targets:
 
-- app: `arx <src_dir>/<package>/main.x --output-file <out_dir>/<package>`
-- lib: `arx <src_dir>/<package>/__init__.x --output-file <out_dir>/<package>`
+- app:
+  `<env-python> -m arx <src_dir>/<package>/main.x --output-file <out_dir>/<package>`
+- lib:
+  `<env-python> -m arx <src_dir>/<package>/__init__.x --output-file <out_dir>/<package>`
 
 ## `arxpm compile`
 

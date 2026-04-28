@@ -86,99 +86,8 @@ _EXCLUDED_SOURCE_DIRS = {
     "dist",
     "venv",
 }
-_ARX_PACKAGE_PROBE_SCRIPT = r"""
-import importlib.metadata as metadata
-import json
-import re
-import sys
-from pathlib import Path
-
-_SOURCE_SUFFIXES = {".x", ".arx"}
-_REQUIREMENT_NAME_RE = re.compile(r"^\s*([A-Za-z0-9_.-]+)")
-
-
-def _arxpm_has_arx_source(root):
-    for path in root.rglob("*"):
-        if path.is_file() and path.suffix in _SOURCE_SUFFIXES:
-            return True
-    return False
-
-
-def _arxpm_manifest_roots(dist):
-    roots = []
-    seen = set()
-    for file in dist.files or ():
-        if Path(str(file)).name != ".arxproject.toml":
-            continue
-        root = Path(dist.locate_file(file)).parent.resolve()
-        if root in seen:
-            continue
-        seen.add(root)
-        if _arxpm_has_arx_source(root):
-            roots.append(root)
-    return roots
-
-
-def _arxpm_normalized_name(dist_name):
-    return re.sub(r"[-_.]+", "-", dist_name).lower()
-
-
-def _arxpm_requirement_name(requirement):
-    requirement = requirement.split(";", 1)[0].strip()
-    if "@" in requirement:
-        requirement = requirement.split("@", 1)[0].strip()
-    match = _REQUIREMENT_NAME_RE.match(requirement)
-    if match is None:
-        return None
-    return match.group(1)
-
-
-def _arxpm_dependency_names(dist):
-    names = []
-    for requirement in dist.requires or ():
-        name = _arxpm_requirement_name(requirement)
-        if name is not None:
-            names.append(name)
-    return names
-
-
-def _arxpm_find_arx_packages(dist_names):
-    results = []
-    seen_roots = set()
-    visited_dists = set()
-    pending = list(dist_names)
-
-    while pending:
-        dist_name = pending.pop(0)
-        normalized_dist_name = _arxpm_normalized_name(dist_name)
-        if normalized_dist_name in visited_dists:
-            continue
-        visited_dists.add(normalized_dist_name)
-
-        try:
-            dist = metadata.distribution(dist_name)
-        except metadata.PackageNotFoundError:
-            continue
-
-        pending.extend(_arxpm_dependency_names(dist))
-        project_name = dist.metadata.get("Name", dist_name)
-        for root in _arxpm_manifest_roots(dist):
-            key = (root.name, str(root))
-            if key in seen_roots:
-                continue
-            seen_roots.add(key)
-            results.append(
-                {
-                    "dist": project_name,
-                    "module": root.name,
-                    "path": str(root),
-                }
-            )
-    return results
-
-
-print(json.dumps(_arxpm_find_arx_packages(json.loads(sys.argv[1]))))
-"""
+_DEFAULT_ARX_COMPILER = "arx"
+_ARX_COMPILER_REQUIREMENT = "arxlang>=1.22.0"
 
 
 @dataclass(slots=True, frozen=True)
@@ -233,21 +142,6 @@ class PublishResult:
     manifest: Manifest
     artifacts: tuple[Path, ...]
     upload_result: CommandResult | None
-
-
-@dataclass(slots=True, frozen=True)
-class _InstalledArxPackage:
-    """
-    title: Installed Arx source package discovered in an environment.
-    attributes:
-      module_name:
-        type: str
-      source_dir:
-        type: Path
-    """
-
-    module_name: str
-    source_dir: Path
 
 
 class ProjectService:
@@ -414,18 +308,12 @@ class ProjectService:
             directory,
             dependencies,
         )
-        path_dep_names = {dependency_name for dependency_name, _ in path_deps}
-        installed_dependency_names = [
-            dependency_name
-            for dependency_name in sorted(dependencies)
-            if dependency_name not in path_dep_names
-        ]
-        command_result = environment.install_packages(registry_reqs)
-        self._link_installed_arx_dependencies(
-            directory,
-            environment,
-            installed_dependency_names,
+        install_reqs = _environment_install_requirements(
+            manifest,
+            registry_reqs,
+            dependencies,
         )
+        command_result = environment.install_packages(install_reqs)
         installing_path_deps: list[Path] = []
         installed_path_deps: set[Path] = set()
         for dependency_name, library_directory in path_deps:
@@ -451,7 +339,14 @@ class ProjectService:
         """
         manifest = load_manifest(directory)
         layout = resolve_build_config(manifest, directory)
-        return self._build_with_layout(directory, manifest, layout)
+        environment = self._environment_factory(manifest, directory)
+        environment.validate()
+        return self._build_with_layout(
+            directory,
+            manifest,
+            layout,
+            environment,
+        )
 
     def run(self, directory: Path) -> RunResult:
         """
@@ -470,7 +365,14 @@ class ProjectService:
                 f"resolved mode is {layout.mode!r}"
             )
 
-        build_result = self._build_with_layout(directory, manifest, layout)
+        environment = self._environment_factory(manifest, directory)
+        environment.validate()
+        build_result = self._build_with_layout(
+            directory,
+            manifest,
+            layout,
+            environment,
+        )
         artifact_rel = Path(layout.out_dir) / layout.package
         command_result = self._runner(
             [str(artifact_rel)],
@@ -487,6 +389,7 @@ class ProjectService:
         directory: Path,
         manifest: Manifest,
         layout: ResolvedBuildConfig,
+        environment: EnvironmentRuntime,
     ) -> BuildResult:
         compiler = manifest.toolchain.compiler.strip()
         if not compiler:
@@ -497,12 +400,12 @@ class ProjectService:
         artifact_path = directory / artifact_rel
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
 
-        command = [
+        command = _compiler_command(
             compiler,
+            environment,
             source_path,
-            "--output-file",
-            str(artifact_rel),
-        ]
+            artifact_rel,
+        )
         command_result = self._runner(command, cwd=directory, check=True)
 
         return BuildResult(
@@ -629,31 +532,6 @@ class ProjectService:
             upload_result=upload_result,
         )
 
-    def _link_installed_arx_dependencies(
-        self,
-        directory: Path,
-        environment: EnvironmentRuntime,
-        dependency_names: Sequence[str],
-    ) -> None:
-        """
-        title: Link installed Arx package sources into the project root.
-        parameters:
-          directory:
-            type: Path
-          environment:
-            type: EnvironmentRuntime
-          dependency_names:
-            type: Sequence[str]
-        """
-        packages = _find_installed_arx_packages(
-            directory,
-            environment,
-            self._runner,
-            dependency_names,
-        )
-        for package in packages:
-            _link_arx_package_source(directory, package)
-
     def _install_arx_path_dependency(
         self,
         directory: Path,
@@ -732,31 +610,6 @@ class ProjectService:
                 force_reinstall=True,
                 no_deps=True,
             )
-
-            probe = self._runner(
-                [
-                    str(environment.python_executable()),
-                    "-c",
-                    (
-                        f"import {module_name}, os; "
-                        f"print(os.path.dirname({module_name}.__file__))"
-                    ),
-                ],
-                cwd=directory,
-                check=True,
-            )
-            install_dir_text = _last_stdout_line(probe.stdout)
-            if install_dir_text is None:
-                raise ManifestError(
-                    f"could not resolve installed {module_name!r} directory"
-                )
-            _link_arx_package_source(
-                directory,
-                _InstalledArxPackage(
-                    module_name=module_name,
-                    source_dir=Path(install_dir_text),
-                ),
-            )
         finally:
             installing_stack.pop()
         installed_paths.add(resolved_library_directory)
@@ -790,20 +643,8 @@ class ProjectService:
             dependency_directory,
             dict(dependency_manifest.dependencies),
         )
-        path_dep_names = {dependency_name for dependency_name, _ in path_deps}
-        installed_dependency_names = [
-            dependency_name
-            for dependency_name in sorted(dependency_manifest.dependencies)
-            if dependency_name not in path_dep_names
-        ]
-
         if registry_reqs:
             environment.install_packages(registry_reqs)
-            self._link_installed_arx_dependencies(
-                directory,
-                environment,
-                installed_dependency_names,
-            )
 
         for nested_name, nested_directory in path_deps:
             self._install_arx_path_dependency(
@@ -844,97 +685,54 @@ def _dependency_install_target(name: str, spec: DependencySpec) -> str:
     raise ManifestError(f"dependency {name!r} has no installable target")
 
 
-def _find_installed_arx_packages(
-    directory: Path,
-    environment: EnvironmentRuntime,
-    runner: CommandRunner,
-    dependency_names: Sequence[str],
-) -> tuple[_InstalledArxPackage, ...]:
-    if not dependency_names:
-        return ()
+def _environment_install_requirements(
+    manifest: Manifest,
+    requirements: Sequence[str],
+    dependencies: Mapping[str, DependencySpec],
+) -> list[str]:
+    install_requirements = list(requirements)
+    if not _uses_default_arx_compiler(manifest):
+        return install_requirements
+    if _has_dependency_named(dependencies, "arxlang"):
+        return install_requirements
+    return [_ARX_COMPILER_REQUIREMENT, *install_requirements]
 
-    probe = runner(
-        [
-            str(environment.python_executable()),
-            "-c",
-            _ARX_PACKAGE_PROBE_SCRIPT,
-            json.dumps(list(dependency_names)),
-        ],
-        cwd=directory,
-        check=True,
+
+def _uses_default_arx_compiler(manifest: Manifest) -> bool:
+    return manifest.toolchain.compiler.strip() == _DEFAULT_ARX_COMPILER
+
+
+def _has_dependency_named(
+    dependencies: Mapping[str, DependencySpec],
+    name: str,
+) -> bool:
+    normalized_name = _normalize_distribution_name(name)
+    return any(
+        _normalize_distribution_name(dependency_name) == normalized_name
+        for dependency_name in dependencies
     )
-    payload = _last_stdout_line(probe.stdout)
-    if payload is None:
-        return ()
-    return _parse_installed_arx_packages(payload)
 
 
-def _parse_installed_arx_packages(
-    payload: str,
-) -> tuple[_InstalledArxPackage, ...]:
-    try:
-        raw_packages = json.loads(payload)
-    except json.JSONDecodeError as exc:
-        raise ManifestError(
-            "could not parse installed Arx package probe output"
-        ) from exc
-
-    if not isinstance(raw_packages, list):
-        raise ManifestError(
-            "installed Arx package probe returned non-list data"
-        )
-
-    packages: list[_InstalledArxPackage] = []
-    for raw_package in raw_packages:
-        if not isinstance(raw_package, Mapping):
-            raise ManifestError(
-                "installed Arx package probe returned invalid package data"
-            )
-        module_name = raw_package.get("module")
-        source_dir = raw_package.get("path")
-        if not isinstance(module_name, str) or not isinstance(source_dir, str):
-            raise ManifestError(
-                "installed Arx package probe returned invalid package data"
-            )
-        packages.append(
-            _InstalledArxPackage(
-                module_name=module_name,
-                source_dir=Path(source_dir),
-            )
-        )
-    return tuple(packages)
+def _normalize_distribution_name(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name).lower()
 
 
-def _link_arx_package_source(
-    directory: Path,
-    package: _InstalledArxPackage,
-) -> None:
-    module_name = package.module_name
-    if not is_valid_package_name(module_name):
-        raise ManifestError(
-            f"installed Arx package has invalid module name: {module_name!r}"
-        )
-
-    source_dir = package.source_dir
-    if not source_dir.is_dir():
-        raise ManifestError(
-            f"installed {module_name!r} directory not found: {source_dir}"
-        )
-
-    link_path = directory / module_name
-    if link_path.is_symlink() or link_path.exists():
-        if link_path.is_symlink() or link_path.is_file():
-            link_path.unlink()
-        else:
-            shutil.rmtree(link_path)
-    link_path.symlink_to(source_dir, target_is_directory=True)
-
-
-def _last_stdout_line(stdout: str) -> str | None:
-    lines = [line.strip() for line in stdout.splitlines() if line.strip()]
-    if not lines:
-        return None
-    return lines[-1]
+def _compiler_command(
+    compiler: str,
+    environment: EnvironmentRuntime,
+    source_path: str,
+    artifact_rel: Path,
+) -> list[str]:
+    if compiler == _DEFAULT_ARX_COMPILER:
+        return [
+            str(environment.python_executable()),
+            "-m",
+            "arx",
+            source_path,
+            "--output-file",
+            str(artifact_rel),
+        ]
+    return [compiler, source_path, "--output-file", str(artifact_rel)]
 
 
 def _normalize_publish_value(name: str, value: str | None) -> str | None:

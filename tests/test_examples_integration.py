@@ -63,9 +63,7 @@ def test_local_consumer_installs_and_runs_via_path_dep(tmp_path: Path) -> None:
     service = ProjectService()
     service.install(consumer_dir)
 
-    symlink = consumer_dir / "local_lib"
-    assert symlink.is_symlink()
-    assert (symlink / "stats.x").is_file()
+    assert not (consumer_dir / "local_lib").exists()
 
     manifest = load_manifest(consumer_dir)
     from arxpm.environment import build_environment

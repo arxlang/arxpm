@@ -9,13 +9,24 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from arxpm.environment import EnvironmentFactory, build_environment
+from arxpm.environment import (
+    EnvironmentFactory,
+    EnvironmentRuntime,
+    build_environment,
+)
 from arxpm.errors import ArxpmError
+from arxpm.external import CommandRunner, run_command
 from arxpm.layout import is_valid_package_name
 from arxpm.manifest import MANIFEST_FILENAME, load_manifest
 from arxpm.models import Manifest
 
 WhichFn = Callable[[str], str | None]
+_DEFAULT_ARX_COMPILER = "arx"
+_ARX_COMPILER_CHECK_SCRIPT = (
+    "import arx.main; "
+    "assert hasattr(arx.main.FileImportResolver, "
+    "'_resolve_installed_module_file')"
+)
 
 
 @dataclass(slots=True, frozen=True)
@@ -65,18 +76,23 @@ class HealthCheckService:
         type: EnvironmentFactory
       _which:
         type: WhichFn
+      _runner:
+        type: CommandRunner
     """
 
     _environment_factory: EnvironmentFactory
     _which: WhichFn
+    _runner: CommandRunner
 
     def __init__(
         self,
         environment_factory: EnvironmentFactory | None = None,
         which: WhichFn = shutil.which,
+        runner: CommandRunner = run_command,
     ) -> None:
         self._environment_factory = environment_factory or build_environment
         self._which = which
+        self._runner = runner
 
     def run(self, directory: Path) -> HealthReport:
         """
@@ -143,20 +159,6 @@ class HealthCheckService:
             )
         )
 
-        compiler = manifest.toolchain.compiler
-        compiler_ok = self._which(compiler) is not None
-        checks.append(
-            HealthCheck(
-                name=f"compiler ({compiler})",
-                ok=compiler_ok,
-                message=(
-                    f"{compiler} is available"
-                    if compiler_ok
-                    else f"{compiler} is missing"
-                ),
-            )
-        )
-
         try:
             environment = self._environment_factory(manifest, directory)
             env_description = environment.describe()
@@ -171,6 +173,15 @@ class HealthCheckService:
                 name="environment",
                 ok=env_ok,
                 message=env_message,
+            )
+        )
+        checks.append(
+            _compiler_check(
+                manifest,
+                directory,
+                environment if env_ok else None,
+                self._which,
+                self._runner,
             )
         )
 
@@ -292,3 +303,54 @@ def _layout_checks(
     )
 
     return tuple(checks)
+
+
+def _compiler_check(
+    manifest: Manifest,
+    directory: Path,
+    environment: EnvironmentRuntime | None,
+    which: WhichFn,
+    runner: CommandRunner,
+) -> HealthCheck:
+    compiler = manifest.toolchain.compiler.strip()
+    if compiler != _DEFAULT_ARX_COMPILER:
+        compiler_ok = which(compiler) is not None
+        return HealthCheck(
+            name=f"compiler ({compiler})",
+            ok=compiler_ok,
+            message=(
+                f"{compiler} is available"
+                if compiler_ok
+                else f"{compiler} is missing"
+            ),
+        )
+
+    if environment is None:
+        return HealthCheck(
+            name="compiler (python -m arx)",
+            ok=False,
+            message="skipped: environment unreachable",
+        )
+
+    python_executable = environment.python_executable()
+    try:
+        result = runner(
+            [str(python_executable), "-c", _ARX_COMPILER_CHECK_SCRIPT],
+            cwd=directory,
+            check=False,
+        )
+    except OSError:
+        result = None
+    compiler_ok = result is not None and result.returncode == 0
+    return HealthCheck(
+        name="compiler (python -m arx)",
+        ok=compiler_ok,
+        message=(
+            f"arx is importable from {python_executable}"
+            if compiler_ok
+            else (
+                "arx >= 1.22.0 is not importable from "
+                f"{python_executable}; run arxpm install"
+            )
+        ),
+    )

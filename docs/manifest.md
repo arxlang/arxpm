@@ -125,6 +125,7 @@ Runtime dependencies live in the `project.dependencies` array and use PEP
 ```toml
 dependencies = [
   "pyyaml",
+  "requests>=2.31,<3",
 ]
 ```
 

@@ -167,21 +167,21 @@ pyarrow = ">=24.0.0,<25.0.0"
 
 [[package]]
 name = "arxlang"
-version = "1.23.0"
+version = "1.23.1"
 description = "Arx is a compiler built with llvm"
 optional = false
 python-versions = "<4,>=3.10"
 groups = ["main"]
 files = [
-    {file = "arxlang-1.23.0-py3-none-any.whl", hash = "sha256:cb8c5e1b4266689024a11bfcea56172172611e7bb323474a91de386370b45dba"},
-    {file = "arxlang-1.23.0.tar.gz", hash = "sha256:4bf15f0b163b8c80d6c690a8339e78caadd2ba39a23d90d2bebacd98e4d81f50"},
+    {file = "arxlang-1.23.1-py3-none-any.whl", hash = "sha256:05ddad44abb121582747db40fd213655a81bcf82880f0fe895236ad64dfbb34f"},
+    {file = "arxlang-1.23.1.tar.gz", hash = "sha256:c1422879e649b4775ccdae64e5f6ffbbaaea580213b67ad7f20c929579d62ed9"},
 ]
 
 [package.dependencies]
-astx = "1.23.0"
+astx = "1.23.1"
 jsonschema = ">=4.0.0"
 packaging = ">=23"
-pyirx = "1.23.0"
+pyirx = "1.23.1"
 pyyaml = ">=4"
 tomli = {version = ">=2.0.0", markers = "python_version < \"3.11\""}
 types-pyyaml = ">=6.0.12.20250516"
@@ -204,14 +204,14 @@ test = ["astroid (>=2,<5)", "pytest (<9.0)", "pytest-cov", "pytest-xdist"]
 
 [[package]]
 name = "astx"
-version = "1.23.0"
+version = "1.23.1"
 description = "ASTx is an agnostic expression structure for AST."
 optional = false
 python-versions = "<4,>=3.10"
 groups = ["main"]
 files = [
-    {file = "astx-1.23.0-py3-none-any.whl", hash = "sha256:0e928429d83c2f61f9f216d87340622d131a0aa98b3f832887e27416bf6fd480"},
-    {file = "astx-1.23.0.tar.gz", hash = "sha256:2c8365c7fae28e65e4a42b7ce4490de1799e5e714797cd60107c370a3675042e"},
+    {file = "astx-1.23.1-py3-none-any.whl", hash = "sha256:970e0698b95a3fec8e6f166761ff80a51b4fca8063ef4642640138f318e7475b"},
+    {file = "astx-1.23.1.tar.gz", hash = "sha256:e773c39c8f26b3f52f4b890e898efb17498c8affae389822780e0f5895725d99"},
 ]
 
 [package.dependencies]
@@ -3489,19 +3489,19 @@ windows-terminal = ["colorama (>=0.4.6)"]
 
 [[package]]
 name = "pyirx"
-version = "1.23.0"
+version = "1.23.1"
 description = "IRx"
 optional = false
 python-versions = "<4,>=3.10"
 groups = ["main"]
 files = [
-    {file = "pyirx-1.23.0-py3-none-any.whl", hash = "sha256:dd83e73a15412d02197dcf12248f719189e8e670e581d3e40e16444a19cada16"},
-    {file = "pyirx-1.23.0.tar.gz", hash = "sha256:1ddc6efa77274360247453fc77a2e5d3c31d87cb49eafec3f2f6ed3945cd1d73"},
+    {file = "pyirx-1.23.1-py3-none-any.whl", hash = "sha256:5856677a8d1608a990e69f188dc28e4795ba3808fe538d516e745f01fd4f62db"},
+    {file = "pyirx-1.23.1.tar.gz", hash = "sha256:14738a5adfa1c08f48b3df2ab7a69b42204517d4a5c2b563ab88a7ac1562e135"},
 ]
 
 [package.dependencies]
 arx-arrowcpp-sources = "24.0.0"
-astx = "1.23.0"
+astx = "1.23.1"
 atpublic = ">=4.0"
 llvmlite = ">=0.44.0"
 plum-dispatch = ">=2.2.2"
@@ -5173,4 +5173,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4"
-content-hash = "095b9e3b602544a3867ae83a490abacf8fdbd2a761f7bb0ebcc98004d29e1dbd"
+content-hash = "b704c3be3a8d1b1a065dd2d0948ac7de4bad94c11e2516a5ea81260f2a475b54"

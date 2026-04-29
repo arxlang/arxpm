@@ -19,6 +19,7 @@ from arxpm.models import (
     BuildConfig,
     BuildSystemConfig,
     DependencyGroupInclude,
+    DependencySpec,
     Manifest,
 )
 from arxpm.project import ProjectService, _prepare_publish_workspace
@@ -179,6 +180,24 @@ def test_install_dispatches_dependencies_through_environment(
     )
     assert not (tmp_path / "http").exists()
     assert not (tmp_path / "utils").exists()
+
+
+def test_install_uses_project_dependency_version_constraints(
+    tmp_path: Path,
+) -> None:
+    env = FakeEnvironment()
+    service = ProjectService(environment_factory=_factory(env))
+    service.init(tmp_path, name="demo")
+
+    manifest = load_manifest(tmp_path)
+    manifest.dependencies["http"] = DependencySpec.registry(">=1.2")
+    save_manifest(tmp_path, manifest)
+
+    service.install(tmp_path)
+
+    requirements = env.install_calls[0][0]
+    _assert_default_arx_requirement(requirements[0])
+    assert requirements[1:] == ("http>=1.2",)
 
 
 def test_install_includes_selected_dependency_groups(
@@ -462,7 +481,7 @@ def test_publish_workspace_renders_dependency_metadata(
     env = FakeEnvironment()
     service = ProjectService(environment_factory=_factory(env))
     service.init(tmp_path, name="demo")
-    service.add_dependency(tmp_path, "http")
+    service.add_dependency(tmp_path, "http>=1.2")
     service.add_dependency(tmp_path, "local-lib", path=Path("../local-lib"))
     service.add_dependency(
         tmp_path,
@@ -481,7 +500,7 @@ def test_publish_workspace_renders_dependency_metadata(
         encoding="utf-8"
     )
     assert "dependencies = [" in pyproject_text
-    assert '  "http",' in pyproject_text
+    assert '  "http>=1.2",' in pyproject_text
     assert '  "local-lib",' in pyproject_text
     assert '  "utils @ git+https://example.com/utils.git",' in pyproject_text
 

@@ -208,11 +208,14 @@ class DependencySpec:
         type: str | None
       git:
         type: str | None
+      version_constraint:
+        type: str | None
     """
 
     source: str | None = None
     path: str | None = None
     git: str | None = None
+    version_constraint: str | None = None
 
     def __post_init__(self) -> None:
         forms = int(self.source is not None)
@@ -228,6 +231,24 @@ class DependencySpec:
             raise ManifestError("dependency path must be non-empty")
         if self.git is not None and not self.git.strip():
             raise ManifestError("dependency git must be non-empty")
+        if self.version_constraint is None:
+            return
+        if self.source is None:
+            raise ManifestError(
+                "dependency version constraint is only allowed for "
+                "registry dependencies"
+            )
+        if not self.version_constraint.strip():
+            raise ManifestError(
+                "dependency version constraint must be non-empty"
+            )
+        try:
+            SpecifierSet(self.version_constraint)
+        except InvalidSpecifier as exc:
+            raise ManifestError(
+                "dependency version constraint must be a valid version "
+                "specifier"
+            ) from exc
 
     @property
     def kind(self) -> str:
@@ -243,13 +264,22 @@ class DependencySpec:
         return "git"
 
     @classmethod
-    def registry(cls) -> DependencySpec:
+    def registry(
+        cls,
+        version_constraint: str | None = None,
+    ) -> DependencySpec:
         """
         title: Create a registry placeholder dependency.
+        parameters:
+          version_constraint:
+            type: str | None
         returns:
           type: DependencySpec
         """
-        return cls(source="registry")
+        return cls(
+            source="registry",
+            version_constraint=version_constraint,
+        )
 
     @classmethod
     def from_path(cls, path: str) -> DependencySpec:
@@ -306,9 +336,26 @@ class DependencySpec:
                 return name, cls.from_git(ref[len("git+") :])
             return name, cls.from_path(ref)
 
-        name = raw
-        _validate_name(name, text)
-        return name, cls.registry()
+        try:
+            requirement = Requirement(raw)
+        except InvalidRequirement as exc:
+            raise ManifestError(
+                f"dependency {text!r} must be a valid Python requirement"
+            ) from exc
+        _validate_name(requirement.name, text)
+        if requirement.extras:
+            raise ManifestError(f"dependency {text!r} must not use extras")
+        if requirement.marker is not None:
+            raise ManifestError(
+                f"dependency {text!r} must not use environment markers"
+            )
+        if requirement.url is not None:
+            raise ManifestError(
+                f"dependency {text!r} must use '<name> @ <path-or-git>' "
+                "for direct references"
+            )
+        version_constraint = str(requirement.specifier) or None
+        return requirement.name, cls.registry(version_constraint)
 
     def to_requirement_string(self, name: str) -> str:
         """
@@ -320,6 +367,8 @@ class DependencySpec:
           type: str
         """
         if self.source is not None:
+            if self.version_constraint is not None:
+                return f"{name}{self.version_constraint}"
             return name
         if self.path is not None:
             return f"{name} @ {self.path}"

@@ -258,13 +258,15 @@ class ProjectService:
 
         spec: DependencySpec
         if path is not None:
+            dependency_name = _parse_bare_dependency_name(name)
             spec = DependencySpec.from_path(str(path))
         elif git is not None:
+            dependency_name = _parse_bare_dependency_name(name)
             spec = DependencySpec.from_git(git)
         else:
-            spec = DependencySpec.registry()
+            dependency_name, spec = DependencySpec.parse_requirement(name)
 
-        manifest.dependencies[name] = spec
+        manifest.dependencies[dependency_name] = spec
         save_manifest(directory, manifest)
         return manifest
 
@@ -674,8 +676,19 @@ def _partition_dependencies(
     return registry_reqs, path_deps
 
 
+def _parse_bare_dependency_name(name: str) -> str:
+    dependency_name, spec = DependencySpec.parse_requirement(name)
+    if spec.kind != "registry" or spec.version_constraint is not None:
+        raise ManifestError(
+            "dependency name for --path or --git must be a bare package name"
+        )
+    return dependency_name
+
+
 def _dependency_install_target(name: str, spec: DependencySpec) -> str:
     if spec.source is not None:
+        if spec.version_constraint is not None:
+            return f"{name}{spec.version_constraint}"
         return name
     if spec.path is not None:
         return spec.path
@@ -994,6 +1007,8 @@ def _publish_dependency_requirement(
     spec: DependencySpec,
 ) -> str:
     if spec.source is not None:
+        if spec.version_constraint is not None:
+            return f"{name}{spec.version_constraint}"
         return name
     if spec.path is not None:
         return name

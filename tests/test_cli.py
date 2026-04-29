@@ -327,6 +327,21 @@ def test_add_command_writes_registry_dependency(
     assert "[dependencies]" not in manifest
 
 
+def test_add_command_writes_versioned_registry_dependency(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    runner.invoke(app, ["init", "--name", "demo"])
+
+    result = runner.invoke(app, ["add", "http>=1.2"])
+
+    assert result.exit_code == 0
+    manifest = (tmp_path / ".arxproject.toml").read_text(encoding="utf-8")
+    assert '"http>=1.2",' in manifest
+    assert "Added dependency http (registry)." in result.output
+
+
 def test_add_command_surfaces_human_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -13,6 +13,7 @@ from arxpm.credentials import PublishCredentialStore
 from arxpm.environment import default_environment_config_from_cli
 from arxpm.errors import ArxpmError
 from arxpm.healthcheck import HealthCheckService
+from arxpm.models import DependencySpec
 from arxpm.project import PUBLISH_DEFAULT_REPOSITORY_URL, ProjectService
 
 app = typer.Typer(help="Arx project and package manager.")
@@ -233,7 +234,7 @@ def install(
 
 @app.command()
 def add(
-    name: Annotated[str, typer.Argument(help="Dependency name.")],
+    name: Annotated[str, typer.Argument(help="Dependency requirement.")],
     path: Annotated[
         Path | None,
         typer.Option("--path", help="Local path dependency."),
@@ -251,7 +252,7 @@ def add(
     title: Add a dependency entry to .arxproject.toml.
     parameters:
       name:
-        type: Annotated[str, typer.Argument(help='Dependency name.')]
+        type: Annotated[str, typer.Argument(help='Dependency requirement.')]
       path:
         type: >-
           Annotated[Path | None, typer.Option('--path', help='Local path
@@ -276,8 +277,9 @@ def add(
     except ArxpmError as exc:
         _fail(exc)
 
-    kind = manifest.dependencies[name].kind
-    typer.echo(f"Added dependency {name} ({kind}).")
+    dependency_name, _ = DependencySpec.parse_requirement(name)
+    kind = manifest.dependencies[dependency_name].kind
+    typer.echo(f"Added dependency {dependency_name} ({kind}).")
 
 
 def _compile_project(directory: Path, label: str) -> None:

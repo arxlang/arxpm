@@ -46,6 +46,7 @@ Add a dependency entry to `.arxproject.toml`.
 
 ```bash
 arxpm add http
+arxpm add "http>=1.2"
 arxpm add mylib --path ../mylib
 arxpm add utils --git https://example.com/utils.git
 ```

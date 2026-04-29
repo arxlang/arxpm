@@ -33,7 +33,7 @@ provisioning (via `uv`), and user-facing workflow commands.
 - `arxpm init`
 - `arxpm config`
 - `arxpm install`
-- `arxpm add <name> [--path PATH|--git URL]`
+- `arxpm add <requirement> [--path PATH|--git URL]`
 - `arxpm build`
 - `arxpm compile`
 - `arxpm run`

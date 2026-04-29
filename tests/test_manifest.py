@@ -53,6 +53,7 @@ version = "0.1.0"
 edition = "2026"
 dependencies = [
   "http",
+  "requests>=2.31",
   "mylib @ ../mylib",
   "utils @ git+https://example.com/utils.git",
 ]
@@ -70,6 +71,7 @@ out_dir = "build"
     assert manifest.build.package == "hello_arx"
     assert manifest.build.mode == "app"
     assert manifest.dependencies["http"].kind == "registry"
+    assert manifest.dependencies["requests"].version_constraint == ">=2.31"
     assert manifest.dependencies["mylib"].path == "../mylib"
     assert (
         manifest.dependencies["utils"].git == "https://example.com/utils.git"
@@ -203,7 +205,7 @@ def test_manifest_round_trip_preserves_dependencies(tmp_path: Path) -> None:
     manifest = Manifest(
         project=ProjectConfig(name="demo"),
         dependencies={
-            "pyyaml": DependencySpec.registry(),
+            "pyyaml": DependencySpec.registry(">=6"),
             "local_lib": DependencySpec.from_path("../local_lib"),
             "utils": DependencySpec.from_git("https://example.com/utils.git"),
         },
@@ -214,6 +216,7 @@ def test_manifest_round_trip_preserves_dependencies(tmp_path: Path) -> None:
     loaded = load_manifest_file(path)
 
     assert loaded.dependencies["pyyaml"].kind == "registry"
+    assert loaded.dependencies["pyyaml"].version_constraint == ">=6"
     assert loaded.dependencies["local_lib"].path == "../local_lib"
     assert loaded.dependencies["utils"].git == "https://example.com/utils.git"
 

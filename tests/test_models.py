@@ -90,6 +90,17 @@ def test_environment_config_rejects_invalid_values(
             "project.requires-arx must be a valid version specifier",
         ),
         (
+            lambda: DependencySpec.registry("not-valid"),
+            "dependency version constraint must be a valid version specifier",
+        ),
+        (
+            lambda: DependencySpec(
+                path="../pkg",
+                version_constraint=">=1",
+            ),
+            "dependency version constraint is only allowed",
+        ),
+        (
             lambda: BuildSystemConfig(dependencies=("not a requirement",)),
             r"build-system.dependencies\[0\] must be a valid Python "
             "requirement",
@@ -176,6 +187,7 @@ def test_dependency_spec_rejects_invalid_shapes(
     ("requirement", "name", "kind", "value"),
     [
         ("http", "http", "registry", None),
+        ("http>=1.2", "http", "registry", ">=1.2"),
         ("mylib @ ../mylib", "mylib", "path", "../mylib"),
         (
             "utils @ git+https://example.com/utils.git",
@@ -195,6 +207,8 @@ def test_dependency_spec_parse_requirement_accepts_supported_forms(
 
     assert parsed_name == name
     assert spec.kind == kind
+    if kind == "registry":
+        assert spec.version_constraint == value
     if kind == "path":
         assert spec.path == value
     if kind == "git":

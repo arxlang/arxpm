@@ -1,6 +1,13 @@
 # Release Notes
 ---
 
+# [1.9.0](https://github.com/arxlang/arxpm/compare/1.8.1...1.9.0) (2026-04-29)
+
+
+### Features
+
+* Improve the libraries discovery via arx ([#13](https://github.com/arxlang/arxpm/issues/13)) ([50c0432](https://github.com/arxlang/arxpm/commit/50c0432b3ffb2203116d46125b297432fab8a676))
+
 ## [1.8.1](https://github.com/arxlang/arxpm/compare/1.8.0...1.8.1) (2026-04-28)
 
 

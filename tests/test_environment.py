@@ -61,6 +61,18 @@ def _executable_name(name: str) -> str:
     return f"{name}.exe" if sys.platform == "win32" else name
 
 
+def _conda_interpreter_path(environment_path: Path) -> Path:
+    if sys.platform == "win32":
+        return environment_path / "python.exe"
+    return environment_path / "bin" / "python"
+
+
+def _conda_executable_path(environment_path: Path, name: str) -> Path:
+    if sys.platform == "win32":
+        return environment_path / "Scripts" / _executable_name(name)
+    return environment_path / "bin" / _executable_name(name)
+
+
 def test_uv_managed_environment_creates_venv(tmp_path: Path) -> None:
     calls: list[list[str]] = []
     venv_dir = (tmp_path / ".venv").resolve()
@@ -209,7 +221,6 @@ def test_conda_environment_resolves_by_name(tmp_path: Path) -> None:
 
 def test_conda_environment_uses_path_when_provided(tmp_path: Path) -> None:
     env_path = tmp_path / "envs" / "demo"
-    (env_path / _bin_dir()).mkdir(parents=True)
 
     env = CondaEnvironment(
         tmp_path,
@@ -220,14 +231,13 @@ def test_conda_environment_uses_path_when_provided(tmp_path: Path) -> None:
 
     interpreter = env.python_executable()
 
-    assert interpreter == env_path / _bin_dir() / _interpreter_name()
+    assert interpreter == _conda_interpreter_path(env_path)
 
 
 def test_conda_environment_executable_uses_resolved_env_bin(
     tmp_path: Path,
 ) -> None:
     env_path = tmp_path / "envs" / "demo"
-    (env_path / _bin_dir()).mkdir(parents=True)
     env = CondaEnvironment(
         tmp_path,
         path=str(env_path),
@@ -235,8 +245,28 @@ def test_conda_environment_executable_uses_resolved_env_bin(
         which=lambda _: "/usr/bin/uv",
     )
 
+    assert environment_executable(env, "arx") == _conda_executable_path(
+        env_path,
+        "arx",
+    )
+
+
+def test_conda_environment_executable_uses_windows_scripts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(sys, "platform", "win32")
+    env_path = tmp_path / "envs" / "demo"
+    env = CondaEnvironment(
+        tmp_path,
+        path=str(env_path),
+        runner=Recorder(),
+        which=lambda _: "/usr/bin/uv",
+    )
+
+    assert env.python_executable() == env_path / "python.exe"
     assert environment_executable(env, "arx") == (
-        env_path / _bin_dir() / _executable_name("arx")
+        env_path / "Scripts" / "arx.exe"
     )
 
 

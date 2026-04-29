@@ -24,7 +24,7 @@ from arxpm.environment import (
     build_environment,
     environment_executable,
 )
-from arxpm.errors import ManifestError
+from arxpm.errors import EnvironmentError, ManifestError
 from arxpm.external import CommandResult, CommandRunner, run_command
 from arxpm.layout import (
     ResolvedBuildConfig,
@@ -402,7 +402,12 @@ class ProjectService:
             source_path,
             artifact_rel,
         )
-        command_result = self._runner(command, cwd=directory, check=True)
+        try:
+            command_result = self._runner(command, cwd=directory, check=True)
+        except OSError as exc:
+            raise EnvironmentError(
+                f"arx compiler not found at {command[0]}; run arxpm install"
+            ) from exc
 
         return BuildResult(
             manifest=manifest,

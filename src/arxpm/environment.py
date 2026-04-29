@@ -306,7 +306,7 @@ class CondaEnvironment(_UvBackend):
         if self._cached_interpreter is not None:
             return self._cached_interpreter
         if self._env_path is not None:
-            interpreter = _interpreter_for(self._env_path)
+            interpreter = _conda_interpreter_for(self._env_path)
         else:
             interpreter = self._resolve_by_name()
         self._cached_interpreter = interpreter
@@ -343,7 +343,7 @@ class CondaEnvironment(_UvBackend):
         return Path(resolved)
 
     def executable(self, name: str) -> Path:
-        return self.python_executable().parent / _executable_name(name)
+        return _conda_executable_for(self.python_executable(), name)
 
     def install_packages(
         self,
@@ -475,10 +475,22 @@ def _interpreter_for(venv_path: Path) -> Path:
     return venv_path / "bin" / "python"
 
 
+def _conda_interpreter_for(environment_path: Path) -> Path:
+    if sys.platform == "win32":
+        return environment_path / "python.exe"
+    return environment_path / "bin" / "python"
+
+
 def _executable_for(environment_path: Path, name: str) -> Path:
     if sys.platform == "win32":
         return environment_path / "Scripts" / _executable_name(name)
     return environment_path / "bin" / _executable_name(name)
+
+
+def _conda_executable_for(interpreter: Path, name: str) -> Path:
+    if sys.platform == "win32":
+        return interpreter.parent / "Scripts" / _executable_name(name)
+    return interpreter.parent / _executable_name(name)
 
 
 def _executable_name(name: str) -> str:

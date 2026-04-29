@@ -5,13 +5,15 @@ title: Tests for project workflow operations.
 from __future__ import annotations
 
 import sys
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pytest
 from conftest import FakeEnvironment, FakeRunner
 
 from arxpm.environment import EnvironmentFactory, EnvironmentRuntime
-from arxpm.errors import ManifestError
+from arxpm.errors import EnvironmentError, ManifestError
+from arxpm.external import CommandResult
 from arxpm.manifest import load_manifest, save_manifest
 from arxpm.models import (
     BuildConfig,
@@ -98,6 +100,28 @@ def test_build_and_run_invoke_environment_arx_executable(
     ]
     assert runner.calls[-1][0] == ["build/demo"]
     assert run_result.build_result.artifact == tmp_path / "build" / "demo"
+
+
+def test_build_reports_missing_environment_compiler_before_install(
+    tmp_path: Path,
+) -> None:
+    def runner(
+        command: Sequence[str],
+        cwd: Path | None = None,
+        check: bool = False,
+        env: Mapping[str, str] | None = None,
+    ) -> CommandResult:
+        _ = cwd, check, env
+        raise FileNotFoundError(command[0])
+
+    service = ProjectService(runner=runner)
+    service.init(tmp_path, name="demo")
+
+    with pytest.raises(
+        EnvironmentError,
+        match=r"arx compiler not found .*run arxpm install",
+    ):
+        service.build(tmp_path)
 
 
 def test_install_calls_environment_ensure_ready(tmp_path: Path) -> None:

@@ -5,15 +5,22 @@ title: Tests for project workflow operations.
 from __future__ import annotations
 
 import sys
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pytest
 from conftest import FakeEnvironment, FakeRunner
 
 from arxpm.environment import EnvironmentFactory, EnvironmentRuntime
-from arxpm.errors import ManifestError
+from arxpm.errors import EnvironmentError, ManifestError
+from arxpm.external import CommandResult
 from arxpm.manifest import load_manifest, save_manifest
-from arxpm.models import BuildConfig, DependencyGroupInclude, Manifest
+from arxpm.models import (
+    BuildConfig,
+    BuildSystemConfig,
+    DependencyGroupInclude,
+    Manifest,
+)
 from arxpm.project import ProjectService, _prepare_publish_workspace
 
 
@@ -23,6 +30,10 @@ def _factory(env: FakeEnvironment) -> EnvironmentFactory:
         return env
 
     return _build
+
+
+def _assert_default_arx_requirement(requirement: str) -> None:
+    assert requirement.startswith("arxlang>=")
 
 
 class FakeCredentialStore:
@@ -67,8 +78,10 @@ def test_init_and_add_dependency_forms(tmp_path: Path) -> None:
     )
 
 
-def test_build_and_run_invoke_compiler_directly(tmp_path: Path) -> None:
-    env = FakeEnvironment()
+def test_build_and_run_invoke_environment_arx_executable(
+    tmp_path: Path,
+) -> None:
+    env = FakeEnvironment(tmp_path / ".venv" / "bin" / "python")
     runner = FakeRunner()
     service = ProjectService(
         environment_factory=_factory(env),
@@ -81,13 +94,34 @@ def test_build_and_run_invoke_compiler_directly(tmp_path: Path) -> None:
     run_result = service.run(tmp_path)
 
     assert build_result.artifact == tmp_path / "build" / "demo"
-    assert runner.calls[0][0][:3] == [
-        "arx",
+    assert runner.calls[0][0][:2] == [
+        str(tmp_path / ".venv" / "bin" / "arx"),
         "src/demo/main.x",
-        "--output-file",
     ]
     assert runner.calls[-1][0] == ["build/demo"]
     assert run_result.build_result.artifact == tmp_path / "build" / "demo"
+
+
+def test_build_reports_missing_environment_compiler_before_install(
+    tmp_path: Path,
+) -> None:
+    def runner(
+        command: Sequence[str],
+        cwd: Path | None = None,
+        check: bool = False,
+        env: Mapping[str, str] | None = None,
+    ) -> CommandResult:
+        _ = cwd, check, env
+        raise FileNotFoundError(command[0])
+
+    service = ProjectService(runner=runner)
+    service.init(tmp_path, name="demo")
+
+    with pytest.raises(
+        EnvironmentError,
+        match=r"arx compiler not found .*run arxpm install",
+    ):
+        service.build(tmp_path)
 
 
 def test_install_calls_environment_ensure_ready(tmp_path: Path) -> None:
@@ -98,6 +132,24 @@ def test_install_calls_environment_ensure_ready(tmp_path: Path) -> None:
     service.install(tmp_path)
 
     assert env.ensure_ready_calls == 1
+    assert len(env.install_calls) == 1
+    assert env.install_calls[0][1:] == (False, False)
+    _assert_default_arx_requirement(env.install_calls[0][0][0])
+
+
+def test_install_preserves_explicit_arx_build_dependency(
+    tmp_path: Path,
+) -> None:
+    env = FakeEnvironment()
+    service = ProjectService(environment_factory=_factory(env))
+    service.init(tmp_path, name="demo")
+    manifest = load_manifest(tmp_path)
+    manifest.build_system = BuildSystemConfig(dependencies=("arxlang==1.5.0",))
+    save_manifest(tmp_path, manifest)
+
+    service.install(tmp_path)
+
+    assert env.install_calls == [(("arxlang==1.5.0",), False, False)]
 
 
 def test_install_dispatches_dependencies_through_environment(
@@ -119,9 +171,12 @@ def test_install_dispatches_dependencies_through_environment(
     service.install(tmp_path)
 
     requirements = [call[0] for call in env.install_calls]
-    assert requirements == [
-        ("http", "git+https://example.com/utils.git"),
-    ]
+    assert len(requirements) == 1
+    _assert_default_arx_requirement(requirements[0][0])
+    assert requirements[0][1:] == (
+        "http",
+        "git+https://example.com/utils.git",
+    )
     assert not (tmp_path / "http").exists()
     assert not (tmp_path / "utils").exists()
 
@@ -147,7 +202,9 @@ def test_install_includes_selected_dependency_groups(
     service.install(tmp_path, groups=("dev-test",))
 
     requirements = [call[0] for call in env.install_calls]
-    assert requirements == [("pytest", "ruff")]
+    assert len(requirements) == 1
+    _assert_default_arx_requirement(requirements[0][0])
+    assert requirements[0][1:] == ("pytest", "ruff")
 
 
 def test_install_dev_alias_selects_dev_group(tmp_path: Path) -> None:
@@ -166,7 +223,9 @@ def test_install_dev_alias_selects_dev_group(tmp_path: Path) -> None:
     service.install(tmp_path, dev=True)
 
     requirements = [call[0] for call in env.install_calls]
-    assert requirements == [("pytest",)]
+    assert len(requirements) == 1
+    _assert_default_arx_requirement(requirements[0][0])
+    assert requirements[0][1:] == ("pytest",)
 
 
 def test_publish_builds_and_uploads_artifacts(tmp_path: Path) -> None:
@@ -464,17 +523,14 @@ def test_init_is_idempotent_when_manifest_exists(tmp_path: Path) -> None:
     assert main_path.read_text(encoding="utf-8") == "// existing source\n"
 
 
-def test_install_packs_and_symlinks_arx_path_dependency(
+def test_install_packs_arx_path_dependency_without_source_link(
     tmp_path: Path,
 ) -> None:
     env = FakeEnvironment()
     library_dir = tmp_path / "mylib"
     consumer_dir = tmp_path / "app"
-    fake_install_dir = tmp_path / "fake-site-packages" / "mylib"
-    fake_install_dir.mkdir(parents=True)
-    (fake_install_dir / "__init__.x").write_text("", encoding="utf-8")
 
-    runner = FakeRunner(module_install_dirs={"mylib": fake_install_dir})
+    runner = FakeRunner()
     service = ProjectService(
         environment_factory=_factory(env),
         runner=runner,
@@ -506,41 +562,17 @@ def test_install_packs_and_symlinks_arx_path_dependency(
     assert wheel_install_calls[0][1] is True  # force_reinstall
     assert wheel_install_calls[0][2] is True  # no_deps
 
-    probe_commands = [
-        cmd
-        for cmd, _cwd, _check in runner.calls
-        if len(cmd) >= 3 and cmd[1] == "-c" and "import mylib" in cmd[2]
-    ]
-    assert probe_commands, "expected a python -c probe for the install dir"
-
-    symlink = consumer_dir / "mylib"
-    assert symlink.is_symlink()
-    assert symlink.resolve() == fake_install_dir
+    assert env.install_calls[0][1:] == (False, False)
+    _assert_default_arx_requirement(env.install_calls[0][0][0])
+    assert not (consumer_dir / "mylib").exists()
 
 
-def test_install_symlinks_installed_registry_arx_dependency(
+def test_install_leaves_installed_registry_arx_dependency_unlinked(
     tmp_path: Path,
 ) -> None:
     env = FakeEnvironment()
     consumer_dir = tmp_path / "app"
-    fake_install_dir = tmp_path / "fake-site-packages" / "shared_lib"
-    fake_install_dir.mkdir(parents=True)
-    (fake_install_dir / ".arxproject.toml").write_text(
-        """
-[project]
-name = "shared-lib"
-version = "0.1.0"
-
-[build]
-package = "shared_lib"
-mode = "lib"
-""".strip()
-        + "\n",
-        encoding="utf-8",
-    )
-    (fake_install_dir / "__init__.x").write_text("", encoding="utf-8")
-
-    runner = FakeRunner(module_install_dirs={"shared-lib": fake_install_dir})
+    runner = FakeRunner()
     service = ProjectService(
         environment_factory=_factory(env),
         runner=runner,
@@ -550,46 +582,19 @@ mode = "lib"
 
     service.install(consumer_dir)
 
-    assert env.install_calls == [(("shared-lib",), False, False)]
-    symlink = consumer_dir / "shared_lib"
-    assert symlink.is_symlink()
-    assert symlink.resolve() == fake_install_dir
+    assert len(env.install_calls) == 1
+    _assert_default_arx_requirement(env.install_calls[0][0][0])
+    assert env.install_calls[0][0][1:] == ("shared-lib",)
+    assert env.install_calls[0][1:] == (False, False)
+    assert not (consumer_dir / "shared_lib").exists()
 
 
-def test_install_symlinks_transitive_registry_arx_dependency(
+def test_install_delegates_transitive_registry_arx_dependencies_to_uv(
     tmp_path: Path,
 ) -> None:
     env = FakeEnvironment()
     consumer_dir = tmp_path / "app"
-    project_a_dir = tmp_path / "fake-site-packages" / "project_a"
-    project_b_dir = tmp_path / "fake-site-packages" / "project_b"
-    for package_dir, project_name in (
-        (project_a_dir, "project-a"),
-        (project_b_dir, "project-b"),
-    ):
-        package_dir.mkdir(parents=True)
-        (package_dir / ".arxproject.toml").write_text(
-            f"""
-[project]
-name = "{project_name}"
-version = "0.1.0"
-
-[build]
-package = "{package_dir.name}"
-mode = "lib"
-""".strip()
-            + "\n",
-            encoding="utf-8",
-        )
-        (package_dir / "__init__.x").write_text("", encoding="utf-8")
-
-    runner = FakeRunner(
-        module_install_dirs={
-            "project-a": project_a_dir,
-            "project-b": project_b_dir,
-        },
-        module_dependencies={"project-a": ("project-b",)},
-    )
+    runner = FakeRunner()
     service = ProjectService(
         environment_factory=_factory(env),
         runner=runner,
@@ -599,8 +604,12 @@ mode = "lib"
 
     service.install(consumer_dir)
 
-    assert (consumer_dir / "project_a").resolve() == project_a_dir
-    assert (consumer_dir / "project_b").resolve() == project_b_dir
+    assert len(env.install_calls) == 1
+    _assert_default_arx_requirement(env.install_calls[0][0][0])
+    assert env.install_calls[0][0][1:] == ("project-a",)
+    assert env.install_calls[0][1:] == (False, False)
+    assert not (consumer_dir / "project_a").exists()
+    assert not (consumer_dir / "project_b").exists()
 
 
 def test_install_packs_nested_arx_path_dependency(
@@ -610,19 +619,7 @@ def test_install_packs_nested_arx_path_dependency(
     consumer_dir = tmp_path / "app"
     project_a_dir = tmp_path / "project_a"
     project_b_dir = tmp_path / "project_b"
-    project_a_install_dir = tmp_path / "fake-site-packages" / "project_a"
-    project_b_install_dir = tmp_path / "fake-site-packages" / "project_b"
-    project_a_install_dir.mkdir(parents=True)
-    project_b_install_dir.mkdir(parents=True)
-    (project_a_install_dir / "__init__.x").write_text("", encoding="utf-8")
-    (project_b_install_dir / "__init__.x").write_text("", encoding="utf-8")
-
-    runner = FakeRunner(
-        module_install_dirs={
-            "project_a": project_a_install_dir,
-            "project_b": project_b_install_dir,
-        }
-    )
+    runner = FakeRunner()
     service = ProjectService(
         environment_factory=_factory(env),
         runner=runner,
@@ -670,8 +667,10 @@ def test_install_packs_nested_arx_path_dependency(
     ]
     assert any("project_b" in wheel for wheel in wheel_installs)
     assert any("project_a" in wheel for wheel in wheel_installs)
-    assert (consumer_dir / "project_a").resolve() == project_a_install_dir
-    assert (consumer_dir / "project_b").resolve() == project_b_install_dir
+    assert env.install_calls[0][1:] == (False, False)
+    _assert_default_arx_requirement(env.install_calls[0][0][0])
+    assert not (consumer_dir / "project_a").exists()
+    assert not (consumer_dir / "project_b").exists()
 
 
 def test_install_rejects_arx_path_dep_name_mismatch(tmp_path: Path) -> None:
@@ -790,7 +789,7 @@ def test_build_uses_init_module_for_lib_projects(tmp_path: Path) -> None:
 
     assert build_result.artifact == tmp_path / "build" / "demo"
     assert runner.calls[0][0] == [
-        "arx",
+        "/fake/arx",
         "src/demo/__init__.x",
         "--output-file",
         "build/demo",

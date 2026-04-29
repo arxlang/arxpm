@@ -462,7 +462,7 @@ def healthcheck(
     _print_health_report(directory)
 
 
-@app.command()
+@app.command(hidden=True)
 def doctor(
     directory: Annotated[
         Path,
@@ -470,7 +470,7 @@ def doctor(
     ] = Path("."),
 ) -> None:
     """
-    title: Report manifest, layout, environment, and toolchain health.
+    title: Report manifest, layout, environment, and compiler health.
     parameters:
       directory:
         type: >-

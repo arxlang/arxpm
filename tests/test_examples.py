@@ -38,7 +38,7 @@ def test_hello_arx_manifest_parses(copy_example: CopyExample) -> None:
     assert manifest.build.package == "hello_arx"
     assert manifest.build.mode == "app"
     assert layout.target_file == project_dir / "src" / "hello_arx" / "main.x"
-    assert manifest.toolchain.compiler == "arx"
+    assert manifest.build_system is not None
 
 
 def test_hello_arx_build_invokes_arx_with_main_module(
@@ -55,7 +55,7 @@ def test_hello_arx_build_invokes_arx_with_main_module(
     service.build(project_dir)
 
     assert fake_runner.calls[0][0] == [
-        "arx",
+        "/fake/arx",
         "src/hello_arx/main.x",
         "--output-file",
         "build/hello_arx",
@@ -103,7 +103,7 @@ def test_multi_module_build_invokes_arx_with_main_module(
     service.build(project_dir)
 
     assert fake_runner.calls[0][0] == [
-        "arx",
+        "/fake/arx",
         "src/multi_module/main.x",
         "--output-file",
         "build/multi_module",
@@ -216,7 +216,7 @@ def test_local_consumer_build_invokes_arx_with_main_module(
     service.build(project_dir)
 
     assert fake_runner.calls[0][0] == [
-        "arx",
+        "/fake/arx",
         "src/local_consumer/main.x",
         "--output-file",
         "build/local_consumer",
@@ -238,6 +238,12 @@ def test_local_lib_publish_workspace_bundles_all_arx_sources(
     assert (package_root / "stats.x").is_file()
     assert (package_root / ".arxproject.toml").is_file()
     assert (package_root / "__init__.py").is_file()
+
+    manifest_text = (package_root / ".arxproject.toml").read_text(
+        encoding="utf-8"
+    )
+    assert 'src_dir = "."' in manifest_text
+    assert "package =" not in manifest_text
 
     pyproject_text = (staging_dir / "pyproject.toml").read_text(
         encoding="utf-8"

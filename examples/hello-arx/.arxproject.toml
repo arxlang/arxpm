@@ -2,15 +2,15 @@
 name = "hello-arx"
 version = "0.1.0"
 edition = "2026"
+requires-arx = ">=1.0"
 
-dependencies = []
+[build-system]
+dependencies = [
+  "arxlang>=1.0",
+]
 
 [build]
 src_dir = "src"
 out_dir = "build"
 package = "hello_arx"
 mode = "app"
-
-[toolchain]
-compiler = "arx"
-linker = "clang"

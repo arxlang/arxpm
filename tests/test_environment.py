@@ -5,6 +5,7 @@ title: Tests for the environment abstraction and uv-backed implementations.
 from __future__ import annotations
 
 import sys
+import sysconfig
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from arxpm.environment import (
     UvManagedEnvironment,
     build_environment,
     default_environment_config_from_cli,
+    environment_executable,
 )
 from arxpm.errors import EnvironmentError, ManifestError, MissingUvError
 from arxpm.external import CommandResult
@@ -53,6 +55,22 @@ def _interpreter_name() -> str:
 
 def _bin_dir() -> str:
     return "Scripts" if sys.platform == "win32" else "bin"
+
+
+def _executable_name(name: str) -> str:
+    return f"{name}.exe" if sys.platform == "win32" else name
+
+
+def _conda_interpreter_path(environment_path: Path) -> Path:
+    if sys.platform == "win32":
+        return environment_path / "python.exe"
+    return environment_path / "bin" / "python"
+
+
+def _conda_executable_path(environment_path: Path, name: str) -> Path:
+    if sys.platform == "win32":
+        return environment_path / "Scripts" / _executable_name(name)
+    return environment_path / "bin" / _executable_name(name)
 
 
 def test_uv_managed_environment_creates_venv(tmp_path: Path) -> None:
@@ -99,6 +117,24 @@ def test_uv_managed_environment_install_packages(tmp_path: Path) -> None:
     assert "--python" in recorder.calls[0][0]
     assert "pyyaml" in recorder.calls[0][0]
     assert "httpx" in recorder.calls[0][0]
+
+
+def test_uv_managed_environment_executable_uses_venv_bin(
+    tmp_path: Path,
+) -> None:
+    env = UvManagedEnvironment(
+        tmp_path,
+        venv_path=".venv",
+        runner=Recorder(),
+        which=lambda _: "/usr/bin/uv",
+    )
+
+    assert (
+        environment_executable(env, "arx")
+        == (
+            tmp_path / ".venv" / _bin_dir() / _executable_name("arx")
+        ).resolve()
+    )
 
 
 def test_uv_managed_environment_force_reinstall_and_no_deps(
@@ -185,7 +221,6 @@ def test_conda_environment_resolves_by_name(tmp_path: Path) -> None:
 
 def test_conda_environment_uses_path_when_provided(tmp_path: Path) -> None:
     env_path = tmp_path / "envs" / "demo"
-    (env_path / _bin_dir()).mkdir(parents=True)
 
     env = CondaEnvironment(
         tmp_path,
@@ -196,7 +231,43 @@ def test_conda_environment_uses_path_when_provided(tmp_path: Path) -> None:
 
     interpreter = env.python_executable()
 
-    assert interpreter == env_path / _bin_dir() / _interpreter_name()
+    assert interpreter == _conda_interpreter_path(env_path)
+
+
+def test_conda_environment_executable_uses_resolved_env_bin(
+    tmp_path: Path,
+) -> None:
+    env_path = tmp_path / "envs" / "demo"
+    env = CondaEnvironment(
+        tmp_path,
+        path=str(env_path),
+        runner=Recorder(),
+        which=lambda _: "/usr/bin/uv",
+    )
+
+    assert environment_executable(env, "arx") == _conda_executable_path(
+        env_path,
+        "arx",
+    )
+
+
+def test_conda_environment_executable_uses_windows_scripts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(sys, "platform", "win32")
+    env_path = tmp_path / "envs" / "demo"
+    env = CondaEnvironment(
+        tmp_path,
+        path=str(env_path),
+        runner=Recorder(),
+        which=lambda _: "/usr/bin/uv",
+    )
+
+    assert env.python_executable() == env_path / "python.exe"
+    assert environment_executable(env, "arx") == (
+        env_path / "Scripts" / "arx.exe"
+    )
 
 
 def test_conda_environment_requires_name_or_path(tmp_path: Path) -> None:
@@ -216,6 +287,20 @@ def test_system_environment_uses_current_python(tmp_path: Path) -> None:
     )
 
     assert env.python_executable() == Path(sys.executable).resolve()
+
+
+def test_system_environment_executable_uses_current_python_scripts(
+    tmp_path: Path,
+) -> None:
+    env = SystemEnvironment(
+        tmp_path,
+        runner=Recorder(),
+        which=lambda _: "/usr/bin/uv",
+    )
+
+    assert environment_executable(env, "arx") == (
+        Path(sysconfig.get_path("scripts")).resolve() / _executable_name("arx")
+    )
 
 
 def test_system_environment_install_packages_uses_current_python(

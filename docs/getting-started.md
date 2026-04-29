@@ -21,7 +21,8 @@ poetry install --with dev
 ## Verify Toolchain
 
 ```bash
-python -m arxpm doctor --directory examples/hello-arx
+python -m arxpm install --directory examples/hello-arx
+python -m arxpm healthcheck --directory examples/hello-arx
 ```
 
 The report should show:
@@ -33,8 +34,9 @@ The report should show:
 - `__init__.x` exists
 - `main.x` matches the resolved mode
 - `uv` is available on PATH
-- the configured compiler (`arx`) is on PATH
-- the environment is configurable (defaults to a project `.venv`)
+- the Arx compiler and installed-package discovery are available from the
+  configured environment
+- the environment is reachable (defaults to a project `.venv`)
 
 ## Run Examples
 

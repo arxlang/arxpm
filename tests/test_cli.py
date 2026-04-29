@@ -206,6 +206,10 @@ def test_init_command_creates_project_files(
     assert manifest_path.exists()
 
     manifest_data = tomllib.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest_data["project"]["requires-arx"].startswith(">=")
+    assert manifest_data["build-system"]["dependencies"][0].startswith(
+        "arxlang>="
+    )
     build = manifest_data["build"]
     src_dir = build["src_dir"]
     package = build["package"]

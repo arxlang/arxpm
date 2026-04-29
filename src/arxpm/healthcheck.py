@@ -9,13 +9,26 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from arxpm.environment import EnvironmentFactory, build_environment
+from arxpm.environment import (
+    EnvironmentFactory,
+    EnvironmentRuntime,
+    build_environment,
+    environment_executable,
+)
 from arxpm.errors import ArxpmError
+from arxpm.external import CommandRunner, run_command
 from arxpm.layout import is_valid_package_name
 from arxpm.manifest import MANIFEST_FILENAME, load_manifest
 from arxpm.models import Manifest
 
 WhichFn = Callable[[str], str | None]
+_DEFAULT_ARX_COMPILER = "arx"
+_ARX_COMPILER_CHECK_SCRIPT = (
+    "from pathlib import Path; "
+    "import arx.main; "
+    "from arx import package_index; "
+    "package_index.discover_installed_arx_packages(start=Path.cwd())"
+)
 
 
 @dataclass(slots=True, frozen=True)
@@ -59,24 +72,29 @@ class HealthReport:
 
 class HealthCheckService:
     """
-    title: Validate project manifest, layout, environment, and toolchain.
+    title: Validate project manifest, layout, environment, and compiler.
     attributes:
       _environment_factory:
         type: EnvironmentFactory
       _which:
         type: WhichFn
+      _runner:
+        type: CommandRunner
     """
 
     _environment_factory: EnvironmentFactory
     _which: WhichFn
+    _runner: CommandRunner
 
     def __init__(
         self,
         environment_factory: EnvironmentFactory | None = None,
         which: WhichFn = shutil.which,
+        runner: CommandRunner = run_command,
     ) -> None:
         self._environment_factory = environment_factory or build_environment
         self._which = which
+        self._runner = runner
 
     def run(self, directory: Path) -> HealthReport:
         """
@@ -143,20 +161,6 @@ class HealthCheckService:
             )
         )
 
-        compiler = manifest.toolchain.compiler
-        compiler_ok = self._which(compiler) is not None
-        checks.append(
-            HealthCheck(
-                name=f"compiler ({compiler})",
-                ok=compiler_ok,
-                message=(
-                    f"{compiler} is available"
-                    if compiler_ok
-                    else f"{compiler} is missing"
-                ),
-            )
-        )
-
         try:
             environment = self._environment_factory(manifest, directory)
             env_description = environment.describe()
@@ -171,6 +175,14 @@ class HealthCheckService:
                 name="environment",
                 ok=env_ok,
                 message=env_message,
+            )
+        )
+        checks.append(
+            _compiler_check(
+                manifest,
+                directory,
+                environment if env_ok else None,
+                self._runner,
             )
         )
 
@@ -292,3 +304,65 @@ def _layout_checks(
     )
 
     return tuple(checks)
+
+
+def _compiler_check(
+    manifest: Manifest,
+    directory: Path,
+    environment: EnvironmentRuntime | None,
+    runner: CommandRunner,
+) -> HealthCheck:
+    _ = manifest
+
+    if environment is None:
+        return HealthCheck(
+            name="compiler (arx)",
+            ok=False,
+            message="skipped: environment unreachable",
+        )
+
+    python_executable = environment.python_executable()
+    arx_executable = environment_executable(environment, _DEFAULT_ARX_COMPILER)
+    if not python_executable.exists():
+        return HealthCheck(
+            name="compiler (arx)",
+            ok=True,
+            message=(
+                "skipped: environment has not been created yet; "
+                f"run arxpm install to install {arx_executable}"
+            ),
+        )
+
+    try:
+        executable_result = runner(
+            [str(arx_executable), "--help"],
+            cwd=directory,
+            check=False,
+        )
+        discovery_result = runner(
+            [str(python_executable), "-c", _ARX_COMPILER_CHECK_SCRIPT],
+            cwd=directory,
+            check=False,
+        )
+    except OSError:
+        executable_result = None
+        discovery_result = None
+    compiler_ok = (
+        executable_result is not None
+        and discovery_result is not None
+        and executable_result.returncode == 0
+        and discovery_result.returncode == 0
+    )
+    return HealthCheck(
+        name="compiler (arx)",
+        ok=compiler_ok,
+        message=(
+            "arx compiler and installed-package discovery are available from "
+            f"{arx_executable}"
+            if compiler_ok
+            else (
+                "arx executable or installed-package discovery is not "
+                f"available from {arx_executable}; run arxpm install"
+            )
+        ),
+    )

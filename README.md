@@ -25,7 +25,7 @@ provisioning (via `uv`), and user-facing workflow commands.
 - `credentials.py`: keyring-backed publish credential storage.
 - `project.py`: project workflows (`init`, `add`, `install`, `build`, `run`,
   `pack`, `publish`).
-- `healthcheck.py`: manifest, layout, environment, and toolchain checks.
+- `healthcheck.py`: manifest, layout, environment, and compiler checks.
 - `cli.py`: Typer command layer.
 
 ## Commands (v0)
@@ -40,7 +40,6 @@ provisioning (via `uv`), and user-facing workflow commands.
 - `arxpm pack`
 - `arxpm publish`
 - `arxpm healthcheck`
-- `arxpm doctor`
 
 ## Development
 
@@ -60,7 +59,7 @@ The `examples/` directory ships several sample projects:
 - `examples/local_lib/` + `examples/local-consumer/` — a library and a consumer
   that live side by side on disk so the consumer resolves imports against the
   library's installed `.x` files. See [Local Packages](docs/local-packages.md)
-  for path dependencies and installed Arx package source links.
+  for path dependencies and installed Arx package resolution.
 
 Integration tests that compile and execute the examples live in
 `tests/test_examples_integration.py` and are gated on `arx` and `uv` being on

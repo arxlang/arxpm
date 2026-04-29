@@ -17,6 +17,8 @@ Effects:
 - creates `.arxproject.toml`
 - creates `src/<package>/__init__.x`
 - creates `src/<package>/main.x`
+- writes `project.requires-arx`
+- writes `[build-system].dependencies` with the Arx compiler package
 - writes `build.mode = "app"`
 - writes `build.package` when `project.name` is not a valid package identifier
 - writes an explicit `[environment]` block only when `--env-kind`, `--env-path`,
@@ -51,7 +53,9 @@ arxpm add utils --git https://example.com/utils.git
 ## `arxpm install`
 
 Validate project metadata, prepare the configured Python environment, and
-install dependencies with `uv`.
+install build-system and runtime dependencies with `uv`. By default, the
+effective build-system dependencies include the Arx compiler package so builds
+run through the configured environment.
 
 ```bash
 arxpm install
@@ -62,14 +66,15 @@ arxpm install --group dev
 ## `arxpm build`
 
 Resolve the effective layout, validate it, choose the default target file, and
-invoke the configured Arx compiler directly.
+invoke the Arx compiler from the configured Python environment.
 
 ```bash
 arxpm build
 arxpm build --directory examples
 ```
 
-Arx invocation uses one of these targets:
+For the default compiler, `arxpm` invokes the `arx` executable from the
+configured environment using one of these targets:
 
 - app: `arx <src_dir>/<package>/main.x --output-file <out_dir>/<package>`
 - lib: `arx <src_dir>/<package>/__init__.x --output-file <out_dir>/<package>`
@@ -130,16 +135,8 @@ For repositories that use basic authentication, set `ARXPM_PUBLISH_USERNAME` and
 
 ## `arxpm healthcheck`
 
-Report manifest, layout, environment, and toolchain health.
+Report manifest, layout, environment, and compiler health.
 
 ```bash
 arxpm healthcheck
-```
-
-## `arxpm doctor`
-
-Alias for `arxpm healthcheck` with the same checks and exit behavior.
-
-```bash
-arxpm doctor
 ```

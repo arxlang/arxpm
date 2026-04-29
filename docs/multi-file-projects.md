@@ -24,15 +24,17 @@ multi-module/
 name = "multi-module"
 version = "0.1.0"
 edition = "2026"
+requires-arx = ">=1.0"
+
+[build-system]
+dependencies = [
+  "arxlang>=1.0",
+]
 
 [build]
 package = "multi_module"
 mode = "app"
 out_dir = "build"
-
-[toolchain]
-compiler = "arx"
-linker = "clang"
 ```
 
 `arxpm build` invokes the compiler as:

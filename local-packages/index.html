@@ -633,13 +633,13 @@
 
 <h1 id="local-packages">Local Packages<a class="headerlink" href="#local-packages" title="Permanent link">&para;</a></h1>
 <p>A library and its consumer can live side by side on disk and be wired together
-with a path dependency. <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code> handles the packaging / install / link
-step so the Arx compiler finds the library's modules at build time.</p>
+with a path dependency. <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code> handles the packaging/install workflow
+so the Arx compiler finds the library's modules at build time.</p>
 <p>Published Arx packages use the same runtime shape: wheels and source
 distributions include <code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code> plus <code class="language-python highlight"><span class="o">*.</span><span class="n">x</span></code> / <code class="language-python highlight"><span class="o">*.</span><span class="n">arx</span></code> source files.
 After <code class="language-python highlight"><span class="n">uv</span></code> installs registry, Git, or local wheel dependencies, <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code>
-links any installed Arx package sources in the dependency closure into the
-consumer project root.</p>
+leaves source discovery to the installed Arx compiler, which reads package
+metadata from the active Python environment.</p>
 <h2 id="supported-layout">Supported layout<a class="headerlink" href="#supported-layout" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code>workspace/
 ├── local_lib/
@@ -659,6 +659,12 @@ consumer project root.</p>
 <div class="language-toml highlight"><pre><span></span><code><span class="k">[project]</span>
 <span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;local_lib&quot;</span>
 <span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
+<span class="n">requires-arx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&gt;=1.0&quot;</span>
+
+<span class="k">[build-system]</span>
+<span class="n">dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">  </span><span class="s2">&quot;arxlang&gt;=1.0&quot;</span><span class="p">,</span>
+<span class="p">]</span>
 
 <span class="k">[build]</span>
 <span class="n">mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;lib&quot;</span>
@@ -667,9 +673,15 @@ consumer project root.</p>
 <div class="language-toml highlight"><pre><span></span><code><span class="k">[project]</span>
 <span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;local-consumer&quot;</span>
 <span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
+<span class="n">requires-arx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&gt;=1.0&quot;</span>
 
 <span class="n">dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
 <span class="w">  </span><span class="s2">&quot;local_lib @ ../local_lib&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="k">[build-system]</span>
+<span class="n">dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">  </span><span class="s2">&quot;arxlang&gt;=1.0&quot;</span><span class="p">,</span>
 <span class="p">]</span>
 
 <span class="k">[build]</span>
@@ -685,14 +697,14 @@ package name. <code class="language-python highlight"><span class="n">arxpm</spa
 <li>Validates the library layout.</li>
 <li>Packs the library to produce a wheel that bundles its <code class="language-python highlight"><span class="o">.</span><span class="n">x</span></code> / <code class="language-python highlight"><span class="o">.</span><span class="n">arx</span></code> sources.</li>
 <li>Installs the wheel into the consumer's Python environment with <code class="language-python highlight"><span class="n">uv</span></code>.</li>
-<li>Creates a symlink <code class="language-python highlight"><span class="o">&lt;</span><span class="n">consumer</span><span class="o">&gt;/&lt;</span><span class="n">package</span><span class="o">&gt;</span></code> pointing at the installed package
-   directory so Arx import resolution can find it locally.</li>
+<li>Builds and runs through that environment's <code class="language-python highlight"><span class="n">arx</span></code> executable, allowing the
+   compiler to resolve the installed package directly.</li>
 </ol>
 <p>For registry, Git, or wheel dependencies, <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code> first lets <code class="language-python highlight"><span class="n">uv</span></code>
 install the requested packages and their metadata-declared transitive
-dependencies. It then inspects the installed dependency closure for bundled
-<code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code> files and links each discovered Arx source root as
-<code class="language-python highlight"><span class="o">&lt;</span><span class="n">consumer</span><span class="o">&gt;/&lt;</span><span class="n">package</span><span class="o">&gt;</span></code>. Normal Python-only dependencies are left untouched.</p>
+dependencies. Normal Python-only dependencies are left untouched, while
+installed Arx packages become visible to the compiler through their package
+metadata.</p>
 <p>For packaging, <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">pack</span></code> and <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">publish</span></code> render dependencies into the
 generated <code class="language-python highlight"><span class="n">pyproject</span><span class="o">.</span><span class="n">toml</span></code>. Registry dependencies remain plain package names,
 Git dependencies are rendered as <code class="language-python highlight"><span class="n">name</span> <span class="o">@</span> <span class="n">git</span><span class="o">+...</span></code>, and path dependencies are

@@ -672,15 +672,17 @@ explicit file path to <code class="language-python highlight"><span class="n">ar
 <span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;multi-module&quot;</span>
 <span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
 <span class="n">edition</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;2026&quot;</span>
+<span class="n">requires-arx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&gt;=1.0&quot;</span>
+
+<span class="k">[build-system]</span>
+<span class="n">dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">  </span><span class="s2">&quot;arxlang&gt;=1.0&quot;</span><span class="p">,</span>
+<span class="p">]</span>
 
 <span class="k">[build]</span>
 <span class="n">package</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;multi_module&quot;</span>
 <span class="n">mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;app&quot;</span>
 <span class="n">out_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;build&quot;</span>
-
-<span class="k">[toolchain]</span>
-<span class="n">compiler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;arx&quot;</span>
-<span class="n">linker</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;clang&quot;</span>
 </code></pre></div>
 <p><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">build</span></code> invokes the compiler as:</p>
 <div class="language-text highlight"><pre><span></span><code>arx src/multi_module/main.x --output-file build/multi_module

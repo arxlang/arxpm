@@ -715,9 +715,10 @@ omitted, <code class="language-python highlight"><span class="n">arxpm</span></c
 <p>Behavior:</p>
 <ul>
 <li><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code> runs <code class="language-python highlight"><span class="n">uv</span> <span class="n">venv</span> <span class="o">&lt;</span><span class="n">path</span><span class="o">&gt;</span></code> if the venv does not yet exist, then
-  <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">python</span> <span class="o">&lt;</span><span class="n">venv</span><span class="o">&gt;/</span><span class="nb">bin</span><span class="o">/</span><span class="n">python</span> <span class="o">...</span></code> for your dependencies.</li>
-<li><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">run</span></code> and <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">build</span></code> do not touch the venv; they invoke the <code class="language-python highlight"><span class="n">arx</span></code>
-  compiler directly from the outer PATH.</li>
+  <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">python</span> <span class="o">&lt;</span><span class="n">venv</span><span class="o">&gt;/</span><span class="nb">bin</span><span class="o">/</span><span class="n">python</span> <span class="o">...</span></code> for build-system and runtime
+  dependencies.</li>
+<li><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">run</span></code> and <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">build</span></code> invoke <code class="language-python highlight"><span class="o">&lt;</span><span class="n">venv</span><span class="o">&gt;/</span><span class="nb">bin</span><span class="o">/</span><span class="n">arx</span></code> so the compiler resolves
+  installed Arx libraries from the same environment.</li>
 </ul>
 <p>Omit the whole <code class="language-python highlight"><span class="p">[</span><span class="n">environment</span><span class="p">]</span></code> section for the simplest projects — the defaults
 match what you'd write by hand.</p>
@@ -735,6 +736,8 @@ match what you'd write by hand.</p>
 <li>Otherwise <code class="language-python highlight"><span class="n">arxpm</span></code> invokes
   <code class="language-python highlight"><span class="n">conda</span> <span class="n">run</span> <span class="o">-</span><span class="n">n</span> <span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">python</span> <span class="o">-</span><span class="n">c</span> <span class="s2">&quot;import sys; print(sys.executable)&quot;</span></code> to locate
   the interpreter, then installs via <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">python</span> <span class="o">&lt;</span><span class="n">interp</span><span class="o">&gt;</span></code>.</li>
+<li><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">run</span></code> and <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">build</span></code> invoke the <code class="language-python highlight"><span class="n">arx</span></code> executable installed beside
+  <code class="language-python highlight"><span class="o">&lt;</span><span class="n">interp</span><span class="o">&gt;</span></code>.</li>
 <li><code class="language-python highlight"><span class="n">conda</span></code> must be on PATH when only <code class="language-python highlight"><span class="n">name</span></code> is provided.</li>
 </ul>
 <h2 id="strategy-3-system">Strategy 3 — <code class="language-python highlight"><span class="n">system</span></code><a class="headerlink" href="#strategy-3-system" title="Permanent link">&para;</a></h2>
@@ -746,12 +749,15 @@ match what you'd write by hand.</p>
 <ul>
 <li><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code> installs packages into the current Python environment using
   <code class="language-python highlight"><span class="n">uv</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">python</span> <span class="o">&lt;</span><span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="o">&gt;</span> <span class="o">...</span></code>.</li>
+<li><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">run</span></code> and <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">build</span></code> invoke the <code class="language-python highlight"><span class="n">arx</span></code> executable installed beside
+  <code class="language-python highlight"><span class="o">&lt;</span><span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="o">&gt;</span></code>.</li>
 <li><code class="language-python highlight"><span class="n">path</span></code> and <code class="language-python highlight"><span class="n">name</span></code> are not allowed for this mode.</li>
 </ul>
 <h2 id="why-uv">Why uv?<a class="headerlink" href="#why-uv" title="Permanent link">&para;</a></h2>
 <p><code class="language-python highlight"><span class="n">uv</span></code> is used as the package installer for every strategy. It is fast, it does
 not require an active venv (it accepts <code class="language-python highlight"><span class="o">--</span><span class="n">python</span> <span class="o">&lt;</span><span class="n">interp</span><span class="o">&gt;</span></code>), and it is a single
-static binary. <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">doctor</span></code> reports whether <code class="language-python highlight"><span class="n">uv</span></code> is reachable on your PATH.</p>
+static binary. <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">healthcheck</span></code> reports whether <code class="language-python highlight"><span class="n">uv</span></code> is reachable on your
+PATH.</p>
 <h2 id="tooling-not-managed-by-arxpm">Tooling not managed by arxpm<a class="headerlink" href="#tooling-not-managed-by-arxpm" title="Permanent link">&para;</a></h2>
 <p><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">pack</span></code> and <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">publish</span></code> use Python packaging tooling from the <em>outer</em>
 interpreter that is running <code class="language-python highlight"><span class="n">arxpm</span></code>. They never install build or upload tooling

@@ -481,17 +481,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#arxpm-doctor" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        arxpm doctor
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -798,17 +787,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#arxpm-doctor" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        arxpm doctor
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -843,6 +821,8 @@ arxpm<span class="w"> </span>init<span class="w"> </span>--env-kind<span class="
 <li>creates <code class="language-python highlight"><span class="o">.</span><span class="n">arxproject</span><span class="o">.</span><span class="n">toml</span></code></li>
 <li>creates <code class="language-python highlight"><span class="n">src</span><span class="o">/&lt;</span><span class="n">package</span><span class="o">&gt;/</span><span class="fm">__init__</span><span class="o">.</span><span class="n">x</span></code></li>
 <li>creates <code class="language-python highlight"><span class="n">src</span><span class="o">/&lt;</span><span class="n">package</span><span class="o">&gt;/</span><span class="n">main</span><span class="o">.</span><span class="n">x</span></code></li>
+<li>writes <code class="language-python highlight"><span class="n">project</span><span class="o">.</span><span class="n">requires</span><span class="o">-</span><span class="n">arx</span></code></li>
+<li>writes <code class="language-python highlight"><span class="p">[</span><span class="n">build</span><span class="o">-</span><span class="n">system</span><span class="p">]</span><span class="o">.</span><span class="n">dependencies</span></code> with the Arx compiler package</li>
 <li>writes <code class="language-python highlight"><span class="n">build</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;app&quot;</span></code></li>
 <li>writes <code class="language-python highlight"><span class="n">build</span><span class="o">.</span><span class="n">package</span></code> when <code class="language-python highlight"><span class="n">project</span><span class="o">.</span><span class="n">name</span></code> is not a valid package identifier</li>
 <li>writes an explicit <code class="language-python highlight"><span class="p">[</span><span class="n">environment</span><span class="p">]</span></code> block only when <code class="language-python highlight"><span class="o">--</span><span class="n">env</span><span class="o">-</span><span class="n">kind</span></code>, <code class="language-python highlight"><span class="o">--</span><span class="n">env</span><span class="o">-</span><span class="n">path</span></code>,
@@ -867,18 +847,21 @@ arxpm<span class="w"> </span>add<span class="w"> </span>utils<span class="w"> </
 </code></pre></div>
 <h2 id="arxpm-install"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">install</span></code><a class="headerlink" href="#arxpm-install" title="Permanent link">&para;</a></h2>
 <p>Validate project metadata, prepare the configured Python environment, and
-install dependencies with <code class="language-python highlight"><span class="n">uv</span></code>.</p>
+install build-system and runtime dependencies with <code class="language-python highlight"><span class="n">uv</span></code>. By default, the
+effective build-system dependencies include the Arx compiler package so builds
+run through the configured environment.</p>
 <div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>install
 arxpm<span class="w"> </span>install<span class="w"> </span>--directory<span class="w"> </span>examples
 arxpm<span class="w"> </span>install<span class="w"> </span>--group<span class="w"> </span>dev
 </code></pre></div>
 <h2 id="arxpm-build"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">build</span></code><a class="headerlink" href="#arxpm-build" title="Permanent link">&para;</a></h2>
 <p>Resolve the effective layout, validate it, choose the default target file, and
-invoke the configured Arx compiler directly.</p>
+invoke the Arx compiler from the configured Python environment.</p>
 <div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>build
 arxpm<span class="w"> </span>build<span class="w"> </span>--directory<span class="w"> </span>examples
 </code></pre></div>
-<p>Arx invocation uses one of these targets:</p>
+<p>For the default compiler, <code class="language-python highlight"><span class="n">arxpm</span></code> invokes the <code class="language-python highlight"><span class="n">arx</span></code> executable from the
+configured environment using one of these targets:</p>
 <ul>
 <li>app: <code class="language-python highlight"><span class="n">arx</span> <span class="o">&lt;</span><span class="n">src_dir</span><span class="o">&gt;/&lt;</span><span class="n">package</span><span class="o">&gt;/</span><span class="n">main</span><span class="o">.</span><span class="n">x</span> <span class="o">--</span><span class="n">output</span><span class="o">-</span><span class="n">file</span> <span class="o">&lt;</span><span class="n">out_dir</span><span class="o">&gt;/&lt;</span><span class="n">package</span><span class="o">&gt;</span></code></li>
 <li>lib: <code class="language-python highlight"><span class="n">arx</span> <span class="o">&lt;</span><span class="n">src_dir</span><span class="o">&gt;/&lt;</span><span class="n">package</span><span class="o">&gt;/</span><span class="fm">__init__</span><span class="o">.</span><span class="n">x</span> <span class="o">--</span><span class="n">output</span><span class="o">-</span><span class="n">file</span> <span class="o">&lt;</span><span class="n">out_dir</span><span class="o">&gt;/&lt;</span><span class="n">package</span><span class="o">&gt;</span></code></li>
@@ -918,12 +901,8 @@ is used when publishing to <code class="language-python highlight"><span class="
 <p>For repositories that use basic authentication, set <code class="language-python highlight"><span class="n">ARXPM_PUBLISH_USERNAME</span></code> and
 <code class="language-python highlight"><span class="n">ARXPM_PUBLISH_PASSWORD</span></code>.</p>
 <h2 id="arxpm-healthcheck"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">healthcheck</span></code><a class="headerlink" href="#arxpm-healthcheck" title="Permanent link">&para;</a></h2>
-<p>Report manifest, layout, environment, and toolchain health.</p>
+<p>Report manifest, layout, environment, and compiler health.</p>
 <div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>healthcheck
-</code></pre></div>
-<h2 id="arxpm-doctor"><code class="language-python highlight"><span class="n">arxpm</span> <span class="n">doctor</span></code><a class="headerlink" href="#arxpm-doctor" title="Permanent link">&para;</a></h2>
-<p>Alias for <code class="language-python highlight"><span class="n">arxpm</span> <span class="n">healthcheck</span></code> with the same checks and exit behavior.</p>
-<div class="language-bash highlight"><pre><span></span><code>arxpm<span class="w"> </span>doctor
 </code></pre></div>
 
 

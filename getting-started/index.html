@@ -691,7 +691,8 @@ conda<span class="w"> </span>activate<span class="w"> </span>arxpm
 poetry<span class="w"> </span>install<span class="w"> </span>--with<span class="w"> </span>dev
 </code></pre></div>
 <h2 id="verify-toolchain">Verify Toolchain<a class="headerlink" href="#verify-toolchain" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>arxpm<span class="w"> </span>doctor<span class="w"> </span>--directory<span class="w"> </span>examples/hello-arx
+<div class="language-bash highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>arxpm<span class="w"> </span>install<span class="w"> </span>--directory<span class="w"> </span>examples/hello-arx
+python<span class="w"> </span>-m<span class="w"> </span>arxpm<span class="w"> </span>healthcheck<span class="w"> </span>--directory<span class="w"> </span>examples/hello-arx
 </code></pre></div>
 <p>The report should show:</p>
 <ul>
@@ -702,8 +703,9 @@ poetry<span class="w"> </span>install<span class="w"> </span>--with<span class="
 <li><code class="language-python highlight"><span class="fm">__init__</span><span class="o">.</span><span class="n">x</span></code> exists</li>
 <li><code class="language-python highlight"><span class="n">main</span><span class="o">.</span><span class="n">x</span></code> matches the resolved mode</li>
 <li><code class="language-python highlight"><span class="n">uv</span></code> is available on PATH</li>
-<li>the configured compiler (<code class="language-python highlight"><span class="n">arx</span></code>) is on PATH</li>
-<li>the environment is configurable (defaults to a project <code class="language-python highlight"><span class="o">.</span><span class="n">venv</span></code>)</li>
+<li>the Arx compiler and installed-package discovery are available from the
+  configured environment</li>
+<li>the environment is reachable (defaults to a project <code class="language-python highlight"><span class="o">.</span><span class="n">venv</span></code>)</li>
 </ul>
 <h2 id="run-examples">Run Examples<a class="headerlink" href="#run-examples" title="Permanent link">&para;</a></h2>
 <p>The <code class="language-python highlight"><span class="n">examples</span><span class="o">/</span></code> directory ships several projects:</p>

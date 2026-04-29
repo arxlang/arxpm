@@ -726,18 +726,35 @@
 <span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;hello-arx&quot;</span>
 <span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
 <span class="n">edition</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;2026&quot;</span>
-<span class="n">dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[]</span>
+<span class="n">requires-arx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&gt;=1.0&quot;</span>
+
+<span class="k">[build-system]</span>
+<span class="n">dependencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">  </span><span class="s2">&quot;arxlang&gt;=1.0&quot;</span><span class="p">,</span>
+<span class="p">]</span>
 
 <span class="k">[build]</span>
 <span class="n">src_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;src&quot;</span>
 <span class="n">out_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;build&quot;</span>
 <span class="n">package</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;hello_arx&quot;</span>
 <span class="n">mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;app&quot;</span>
-
-<span class="k">[toolchain]</span>
-<span class="n">compiler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;arx&quot;</span>
-<span class="n">linker</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;clang&quot;</span>
 </code></pre></div>
+<p><code class="language-python highlight"><span class="p">[</span><span class="n">project</span><span class="p">]</span></code> supports:</p>
+<ul>
+<li><code class="language-python highlight"><span class="n">name</span></code>: required project name</li>
+<li><code class="language-python highlight"><span class="n">version</span></code>: required project version</li>
+<li><code class="language-python highlight"><span class="n">edition</span></code>: optional Arx edition</li>
+<li><code class="language-python highlight"><span class="n">requires</span><span class="o">-</span><span class="n">arx</span></code>: optional Arx compiler version specifier</li>
+<li><code class="language-python highlight"><span class="n">dependencies</span></code>: optional runtime dependency strings</li>
+</ul>
+<p><code class="language-python highlight"><span class="p">[</span><span class="n">build</span><span class="o">-</span><span class="n">system</span><span class="p">]</span></code> supports:</p>
+<ul>
+<li><code class="language-python highlight"><span class="n">dependencies</span></code>: optional Python requirement strings used to prepare the build
+  environment. If omitted, <code class="language-python highlight"><span class="n">arxpm</span></code> installs the default Arx compiler package.</li>
+</ul>
+<p>When <code class="language-python highlight"><span class="n">project</span><span class="o">.</span><span class="n">requires</span><span class="o">-</span><span class="n">arx</span></code> is set and no explicit <code class="language-python highlight"><span class="n">arxlang</span></code> build dependency is
+listed, <code class="language-python highlight"><span class="n">arxpm</span></code> prepends <code class="language-python highlight"><span class="n">arxlang</span><span class="o">&lt;</span><span class="n">specifier</span><span class="o">&gt;</span></code> to the effective build-system
+dependencies. An explicit <code class="language-python highlight"><span class="n">arxlang</span></code> entry is preserved as written.</p>
 <p><code class="language-python highlight"><span class="p">[</span><span class="n">build</span><span class="p">]</span></code> supports:</p>
 <ul>
 <li><code class="language-python highlight"><span class="n">src_dir</span></code>: optional, defaults to <code class="language-python highlight"><span class="s2">&quot;src&quot;</span></code></li>
@@ -745,7 +762,9 @@
 <li><code class="language-python highlight"><span class="n">package</span></code>: optional, defaults to <code class="language-python highlight"><span class="n">project</span><span class="o">.</span><span class="n">name</span></code></li>
 <li><code class="language-python highlight"><span class="n">mode</span></code>: optional, <code class="language-python highlight"><span class="s2">&quot;lib&quot;</span></code> or <code class="language-python highlight"><span class="s2">&quot;app&quot;</span></code></li>
 </ul>
-<p><code class="language-python highlight"><span class="p">[</span><span class="n">build</span><span class="p">]</span><span class="o">.</span><span class="n">entry</span></code> was removed. <code class="language-python highlight"><span class="n">arxpm</span></code> rejects manifests that still declare it.</p>
+<p><code class="language-python highlight"><span class="p">[</span><span class="n">build</span><span class="p">]</span><span class="o">.</span><span class="n">entry</span></code> was removed. <code class="language-python highlight"><span class="n">arxpm</span></code> rejects manifests that still declare it.
+<code class="language-python highlight"><span class="p">[</span><span class="n">toolchain</span><span class="p">]</span></code> was removed; declare compiler/build requirements in
+<code class="language-python highlight"><span class="p">[</span><span class="n">build</span><span class="o">-</span><span class="n">system</span><span class="p">]</span><span class="o">.</span><span class="n">dependencies</span></code>.</p>
 <h2 id="source-layout">Source layout<a class="headerlink" href="#source-layout" title="Permanent link">&para;</a></h2>
 <p><code class="language-python highlight"><span class="n">arxpm</span></code> resolves the effective layout from the project root:</p>
 <ul>

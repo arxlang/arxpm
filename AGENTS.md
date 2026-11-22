@@ -1,242 +1,138 @@
-# AI Skill: IRx Contributor Guide
+# AI Contributor Guide: arxpm
 
-This file is the shared operating manual for AI contributors working in `irx`.
-Use it to keep implementation style, review standards, and delivery quality
-consistent across different agents.
+This file is the shared operating manual for contributors working in `arxpm`.
+Keep implementation style, review standards, and delivery quality consistent
+across agents and humans.
 
-## When To Use This Skill
+## Project Snapshot
 
-Use this guidance for any change inside the IRx repository:
-
-- LLVM lowering or codegen behavior
-- ASTx node support in visitors/builders
-- build/link/run behavior
-- tests, typing, lint, and coverage work
-- docs/examples updates
-- CI/release-related maintenance
+- Package: `arxpm`, a project and package manager for Arx workspaces.
+- Python: `>=3.10,<4`; Python 3.10 uses `tomli`, while newer Python uses
+  `tomllib`.
+- CLI: Typer app exposed as `arxpm = arxpm.cli:app`.
+- Key dependencies: `typer`, `arxlang`, `tomli`, `twine`, `build`, `uv`, and
+  `keyring`; Poetry Core builds the package.
+- Docs stack: MkDocs, Material, mkdocstrings, and the Jupyter notebook plugins
+  configured in `pyproject.toml`.
 
 ## Core Objectives
 
-1. Preserve existing IR semantics unless the task explicitly changes behavior.
-2. Keep lowering code, tests, and docs aligned.
-3. Keep quality gates green (tests, mypy, ruff, pre-commit, coverage).
+1. Preserve manifest, layout, environment, CLI, packaging, and publish behavior
+   unless the request explicitly changes it.
+2. Keep typed models, filesystem validation, subprocess boundaries, tests, and
+   docs aligned.
+3. Keep quality gates green: unit coverage, smoke tests, pre-commit, Ruff,
+   strict mypy, and docs build.
 4. Make minimal, targeted edits with clear intent.
 
 ## Codex Authoring Rule
 
-- Never use heredocs inside YAML files. When editing YAML, use YAML-safe
-  single-line commands or move logic into scripts/files instead.
-
-## Project Snapshot
-
-- Package: `pyirx`
-- Runtime: Python `>=3.10,<4`
-- Main architecture:
-  `ASTx -> LLVMLiteIRVisitor -> LLVM IR -> object -> clang link`
-- Key dependencies:
-  - `astx` for AST nodes
-  - `llvmlite` for IR and object emission
-  - `plum-dispatch` for visitor dispatch
-  - `xhell` for invoking `clang`
-- Docs stack: MkDocs + Material + mkdocstrings
+- Never use heredocs inside YAML files. Use plain YAML-safe commands or move
+  script logic into a repository file.
+- Do not modify remote repositories, publish packages, open PRs, or merge
+  changes without explicit authorization.
 
 ## Repository Layout
 
-- `src/irx/builders/base.py`: generic builder interfaces and command runner
-- `src/irx/builders/llvmliteir.py`: main LLVM visitor/builder implementation
-- `src/irx/system.py`: IRx-specific ASTx expression helpers (`PrintExpr`,
-  `Cast`)
-- `src/irx/symbol_table.py`: register/symbol table helpers
-- `src/irx/tools/typing.py`: typing/typeguard helpers
-- `tests/`: unit/integration tests (translate and build/run flows)
-- `docs/`: project documentation and notebook tutorials
-- `.makim.yaml`: local task runner definitions
-- `.github/workflows/main.yaml`: CI pipeline
+- `src/arxpm/models.py`: typed manifest/environment/dependency models and
+  validation.
+- `src/arxpm/manifest.py`: `.arxproject.toml` loading, rendering, and
+  dependency-group validation.
+- `src/arxpm/layout.py`: effective source/build layout and package-name
+  validation.
+- `src/arxpm/_toml.py`: `tomllib`/`tomli` compatibility import.
+- `src/arxpm/environment.py`: backend-neutral environment protocol for `venv`,
+  `conda`, and `system` runtimes with `uv pip` installation.
+- `src/arxpm/credentials.py`: keyring-backed publish credentials and
+  repository/environment fallbacks.
+- `src/arxpm/project.py`: init, install, build, run, pack, and publish
+  workflows.
+- `src/arxpm/healthcheck.py`: manifest, layout, environment, and compiler health
+  checks.
+- `src/arxpm/external.py`: external subprocess execution and structured results.
+- `src/arxpm/errors.py`: typed public exception hierarchy.
+- `src/arxpm/cli.py`: Typer command and option layer.
+- `src/arxpm/__main__.py`: `python -m arxpm` entry point.
+- `tests/`: unit and integration tests, including example-project smoke
+  coverage.
+- `examples/`: app and library sample projects with `.x` source modules and
+  `.arxproject.toml` manifests.
+- `docs/`: MkDocs source for commands, manifests, environments, and workflows.
+- `.makim.yaml`: canonical local tasks.
+- `.github/workflows/`: main, docs, and release workflows.
 
-## Architecture And Responsibilities
+## Code Style & Standards
 
-### `src/irx/builders/base.py`
+- Python 4-space indentation, strict type annotations, and Ruff line length 79.
+- Ruff target Python 3.11 with `E`, `F`, `I`, `UP`, and `B` rules.
+- mypy is strict, uses `mypy_path = "src"`, checks `src`, and targets Python
+  3.11.
+- Pre-commit runs whitespace and EOF fixes, JSON/TOML/XML checks, debug and
+  private-key checks, Prettier, Ruff format/check, Douki sync, strict mypy,
+  shellcheck, bandit, and mccabe.
+- Markdown uses `.prettierrc.yaml`: the `remark` parser, `proseWrap: always`,
+  and print width 80.
+- Python source docstrings use Douki YAML fields such as `title`, `summary`,
+  `parameters`, `attributes`, and `returns`. Preserve existing contracts and
+  update them only when changed behavior makes them inaccurate.
+- `.x` files in `examples/` begin with a Douki module docstring at line 1,
+  column 1. Preserve their existing syntax and two-space indentation.
+- Use guard clauses and explicit error types. Keep subprocess, credential,
+  filesystem, and manifest failures at their owning boundaries.
+- `atpublic`, `typeguard`, and `plum-dispatch` are not used in `arxpm`; do not
+  add those conventions merely to match another repository.
 
-- Defines `BuilderVisitor` and `Builder` abstractions.
-- `Builder.module()` creates ASTx modules.
-- `Builder.translate()` delegates to visitor translation.
-- `Builder.run()` executes generated binaries via `run_command()`.
+## Tooling & Commands
 
-### `src/irx/builders/llvmliteir.py`
-
-- `VariablesLLVM`: canonical LLVM types and module/builder state.
-- `LLVMLiteIRVisitor`: ASTx -> LLVM lowering via `@dispatch` methods.
-- `LLVMLiteIR`: public builder API (`translate`, `build`, `run`).
-- Handles:
-  - literals, identifiers, assignments, unary/binary ops
-  - functions/prototypes/calls/returns
-  - control flow (`if`, loops)
-  - system expressions (`PrintExpr`, `Cast`)
-
-### `src/irx/system.py`
-
-- Defines IRx expression helpers used by lowering:
-  - `PrintExpr`
-  - `Cast`
-- These are ASTx expressions and should remain structurally serializable.
-
-## Codegen Invariants You Must Preserve
-
-- `result_stack` discipline:
-  - push only real produced values
-  - never assume a value exists after statement-only or terminating branches
-- Terminator safety:
-  - never emit instructions after a block terminator (`ret`, `br`, etc.)
-  - when temporarily moving insertion point (entry allocas), restore the
-    previous block
-- If/merge behavior:
-  - build PHI only when both incoming paths fall through and value types match
-  - allow branch-terminating paths without forced stack pops
-- `safe_pop()` behavior is optional (`None` on empty stack); callers must guard
-  appropriately
-- Keep generated IR parseable by LLVM (`llvm.parse_assembly`).
-
-## Build And Runtime Contract
-
-- `translate()` only returns LLVM IR text.
-- `build()` parses IR, emits object, and links with `clang`.
-- `run()` executes the compiled output file.
-- Build-path tests require `clang` available on `PATH`.
-
-## Code Style And Standards
-
-### Formatting and static quality
-
-- Python style:
-  - 4-space indentation (`.editorconfig`)
-  - keep lines shorter than 80 characters (`ruff` uses 79)
-- Ruff:
-  - `ruff check src tests`
-  - `ruff format src tests`
-- Typing:
-  - `mypy` strict mode (`check_untyped_defs = true`, `strict = true`)
-- Pre-commit also runs:
-  - `bandit`, `vulture`, `mccabe`, and project hooks
-- Design:
-  - follow SOLID principles
-  - prefer the Never Nest philosophy as much as possible
-  - do not reuse the same variable for different types
-  - avoid unnecessary or obvious comments in code
-
-### Python docstring convention in this repo
-
-- Docstrings are written in Douki format:
-  - https://github.com/arxlang/douki/
-- Keep existing docstring style (`title: ...`, optional metadata fields).
-- Preserve docstrings for public-facing symbols when adding/updating code.
-
-### Error handling
-
-- Keep errors explicit and local to failure context.
-- Avoid introducing broad catch-all behavior that hides IR-generation faults.
-
-## Tooling And Commands
-
-Environment setup:
+Create the development environment:
 
 ```bash
 mamba env create --file conda/dev.yaml
-conda activate irx
-poetry install
+conda activate arxpm
+poetry install --with dev
 ```
 
-High-value commands:
+Canonical local checks:
 
 ```bash
-# tests
-pytest tests -q
-
-# strict typing
-mypy src tests
-
-# lint/format
-ruff check src tests
-ruff format src tests
-
-# project lint stack
-makim tests.linter
-
-# CI-like local run
-makim tests.ci
-
-# coverage-gated unit run (fails under 80%)
 makim tests.unit
-
-# docs
-mkdocs build --config-file mkdocs.yaml
+makim tests.smoke
+makim tests.linter
+makim tests.ci
+makim docs.build
+makim release.dry
+makim release.ci
 ```
 
-IR/build debug helpers:
+`tests.unit` runs pytest with `--cov=arxpm`, a 90% coverage requirement, and
+term-missing reporting. `tests.smoke` copies every example project to a
+temporary directory and requires both `uv` and `arx` to healthcheck, install,
+build, and run app examples. `tests.linter` installs the pre-commit hook and
+runs it across all files.
 
-```bash
-# generate temporary C test binary
-makim tests.build
+## CI, Testing & Docs Contracts
 
-# emit LLVM IR from C for comparison experiments
-makim tests.emit-ir
+- Main CI pushes and pull requests to `main`.
+- The test matrix uses Ubuntu with Python 3.10, 3.11, 3.12, 3.13, and 3.14.
+- Ubuntu/Python 3.10 runs the linter stack.
+- Tests run `makim tests.unit`; smoke tests run `makim tests.smoke`.
+- The docs workflow builds `mkdocs.yaml` on push, pull request, and manual
+  dispatch.
+- The release workflow performs `makim release.dry` on normal events and
+  `makim release.ci` only for manual dispatch.
+- Prefer a focused existing pytest test/node first. Add integration smoke
+  coverage only for behavior exercised through real example projects.
+- `90%` coverage is a minimum, not evidence by itself.
+- Update the smallest relevant guide in `docs/` or `README.md` only when a
+  public CLI, manifest, environment, or workflow contract changes.
 
-# build binary from .ll
-makim tests.build-from-ir --file <path-without-extension>
-```
+## Reusable Agent Skills
 
-## CI Contract (What Must Stay Green)
+Task workflows and detailed coding guidance live in
+`.agents/skills/<skill-name>/SKILL.md`. Select skills for API design, issue
+work, implementation planning, CI debugging, reviews, Python style, testing,
+Douki docstrings, release checks, PR operations, or issue triage.
 
-GitHub Actions (`.github/workflows/main.yaml`) runs:
-
-- tests on Python 3.10, 3.11, 3.12, 3.13, 3.14
-- operating systems: ubuntu + windows (windows/3.13 excluded)
-- linter job on ubuntu (Python 3.13) with pre-commit stack
-
-Do not merge feature work that assumes only one interpreter/OS path.
-
-## Testing Contract
-
-- Prefer targeted tests near changed behavior (`tests/test_*.py`).
-- For lowering/control-flow work:
-  - add at least one `translate`-path assertion (IR validity/shape)
-  - add `build`/runtime assertions when behavior depends on execution
-- Keep/extend regressions for previously fixed edge cases (e.g.,
-  terminator-sensitive branches).
-
-## Documentation Contract
-
-When behavior changes, update docs in the same PR:
-
-- `README.md` usage/examples
-- `docs/installation.md` / `docs/contributing.md` when setup changes
-- tutorial notebooks when user-facing behavior changes
-
-## Change Playbooks
-
-### Adding support for a new ASTx node
-
-1. Add/adjust a `@dispatch` visitor in `llvmliteir.py`.
-2. Ensure type handling and stack behavior are explicit.
-3. Add tests for both happy path and at least one invalid/edge path.
-4. Validate generated IR is parseable.
-5. Update README/docs if feature is user-visible.
-
-### Changing control flow or PHI logic
-
-1. Validate block terminator states before branching/merging.
-2. Avoid unconditional pops from `result_stack`.
-3. Add branch-termination regressions (both terminate, one terminates, neither).
-4. Verify IR parse + runtime behavior.
-
-### Changing build/link behavior
-
-1. Keep `translate` and `build` responsibilities separate.
-2. Preserve `clang` invocation behavior across platforms where possible.
-3. Add tests that fail clearly when toolchain assumptions are not met.
-
-## Contributor Workflow Expectations
-
-1. Make minimal focused changes.
-2. Add/update tests for behavior changes.
-3. Run local checks before finalizing (`ruff`, `mypy`, targeted `pytest`).
-4. Keep AGENTS/docs consistent with any workflow or architecture changes.
+Apply `minimal-change` and `implementation-planning` to implementation and
+planning work. These skills supplement, rather than override, this contributor
+guide.

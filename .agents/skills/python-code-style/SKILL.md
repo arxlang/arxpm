@@ -51,7 +51,7 @@ def checked_divisor(value: int | None) -> int:
 
 ```bash
 pytest -q tests/test_<area>.py
-ruff format src tests
+ruff format --check src tests
 ruff check src tests
 mypy .
 makim tests.linter

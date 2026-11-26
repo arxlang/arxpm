@@ -48,8 +48,6 @@ summary: Describe the module.
 ```
 ````
 
-```
-
 Preserve existing two-space indentation and module/package layout. Smoke tests
 copy examples to temporary directories and run `healthcheck`, `install`,
 `build`, and app `run` workflows.
@@ -65,4 +63,3 @@ copy examples to temporary directories and run `healthcheck`, `install`,
 
 Run `makim tests.linter` for source/docstring lint and `makim docs.build` when
 MkDocs output is affected.
-```

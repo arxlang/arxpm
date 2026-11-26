@@ -101,7 +101,6 @@ makim tests.linter
 makim tests.ci
 makim docs.build
 makim release.dry
-makim release.ci
 ```
 
 `tests.unit` runs pytest with `--cov=arxpm`, a 90% coverage requirement, and
